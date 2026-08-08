@@ -9781,7 +9781,16 @@ function bulkUploadProducts() {
 window._simpleProductSubmit = async function(mode) {
   const name = document.getElementById('sellerName')?.value.trim();
   const desc = document.getElementById('sellerDesc')?.value.trim();
-  const cat = document.getElementById('sellerCategory')?.value;
+  const catId = document.getElementById('sellerCategory')?.value;
+  // The cascading picker's hidden field stores the category's numeric id,
+  // but the shop's category-tab filtering matches products against a
+  // slug/name string (see getFilteredProducts' "cat:" branch) - there's
+  // no category_id column on products, only the legacy `category` string
+  // one, so we must send the slug here, not the raw id, or products
+  // silently never match any category tab (though they'd still show up
+  // in category-agnostic sections like New Arrivals).
+  const catNode = catId ? CATEGORY_FLAT.find(c => c.id === Number(catId)) : null;
+  const cat = catNode ? (catNode.slug || catNode.name.toLowerCase()) : '';
   const price = parseFloat(document.getElementById('sellerPrice')?.value);
   const orig = parseFloat(document.getElementById('sellerOriginalPrice')?.value) || null;
   const stock = parseInt(document.getElementById('sellerStock')?.value, 10);
@@ -9793,7 +9802,7 @@ window._simpleProductSubmit = async function(mode) {
   if (mode === 'publish') {
     if (!name) { showToast('Please enter a product name.', 'error'); return; }
     if (!desc) { showToast('Please enter a description.', 'error'); return; }
-    if (!cat) { showToast('Please choose a category.', 'error'); return; }
+    if (!catId) { showToast('Please choose a category.', 'error'); return; }
     if (!price || price <= 0) { showToast('Please enter a valid price.', 'error'); return; }
     if (isNaN(stock) || stock < 0) { showToast('Please enter a stock quantity.', 'error'); return; }
     if (!editingProductId && !window._getUploadedImage()) { showToast('Please add a product photo.', 'error'); return; }
