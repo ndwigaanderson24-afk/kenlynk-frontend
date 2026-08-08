@@ -9832,15 +9832,20 @@ window._simpleProductSubmit = async function(mode) {
       if (sizes.length) attrNames.push('Size');
       if (colours.length) attrNames.push('Colour');
 
-      await apiCall(`/products/${savedId}/attributes`, { method: 'PUT', body: JSON.stringify({ attributes: attrNames }) });
+      const attrRes = await apiCall(`/products/${savedId}/attributes`, { method: 'PUT', body: JSON.stringify({ attributes: attrNames }) });
+      // The backend stores each variant option against a numeric
+      // attribute_id (the row created just above), not the name string -
+      // build a name -> id lookup from what it just gave back.
+      const attrIdByName = {};
+      (attrRes.data.attributes || []).forEach(a => { attrIdByName[a.name] = a.id; });
 
       const combos = [];
       if (sizes.length && colours.length) {
-        sizes.forEach(sz => colours.forEach(cl => combos.push([{ attrName: 'Size', value: sz }, { attrName: 'Colour', value: cl }])));
+        sizes.forEach(sz => colours.forEach(cl => combos.push([{ attribute_id: attrIdByName['Size'], value: sz }, { attribute_id: attrIdByName['Colour'], value: cl }])));
       } else if (sizes.length) {
-        sizes.forEach(sz => combos.push([{ attrName: 'Size', value: sz }]));
+        sizes.forEach(sz => combos.push([{ attribute_id: attrIdByName['Size'], value: sz }]));
       } else {
-        colours.forEach(cl => combos.push([{ attrName: 'Colour', value: cl }]));
+        colours.forEach(cl => combos.push([{ attribute_id: attrIdByName['Colour'], value: cl }]));
       }
       for (const options of combos) {
         await apiCall(`/products/${savedId}/variants`, {
