@@ -6929,7 +6929,7 @@ if(page === "admin") {
     }
 
     // Load categories then render
-    loadCategories().then(_renderCategoryBrowser);
+    loadCategories().then(() => { _renderCategoryBrowser(); window._renderCatTabBar && window._renderCatTabBar(); window._renderSubTabStrip && window._renderSubTabStrip(); });
 
   }
 
@@ -19208,35 +19208,50 @@ const CAT_SUBS = {
   'digital':       ['eBooks','Software','Online Courses','Digital Templates','Graphic Resources','Website Themes'],
 };
 
-let _activeSubTab = null; // currently selected subcategory string
+let _activeSubTab = null; // currently selected subcategory id (or null)
 
-let _activeTab = 'all';
+let _activeTab = 'all';   // currently selected top-level category id (or 'all')
 
+// Tab bar now built from the real, seller-facing category tree
+// (CATEGORY_TREE) instead of a hardcoded, disconnected list - this is
+// the same data source and the same 'cat:<id>' matching already used
+// correctly elsewhere (the hidden catMainGrid browser), so a product's
+// real category always matches the tab it was actually filed under,
+// with no keyword-guessing involved.
 window._renderCatTabBar = function() {
   const bar = document.getElementById('catTabBar');
   if (!bar) return;
   bar.innerHTML = '';
-  for (const tab of CAT_TABS) {
+
+  const allBtn = document.createElement('button');
+  allBtn.className = 'cat-tab' + (_activeTab === 'all' ? ' active' : '');
+  allBtn.innerHTML = `<span class="tab-ic">🏠</span><span>All</span>`;
+  allBtn.onclick = () => {
+    _activeTab = 'all';
+    _activeSubTab = null;
+    window._renderCatTabBar();
+    window._renderSubTabStrip();
+    activeCategory = 'all';
+    searchTerm = '';
+    const si = document.getElementById('searchInput');
+    if (si) si.value = '';
+    window._syncShopSections && window._syncShopSections();
+    window.renderShopCollections && window.renderShopCollections();
+  };
+  bar.appendChild(allBtn);
+
+  for (const cat of CATEGORY_TREE) {
     const btn = document.createElement('button');
-    btn.className = 'cat-tab' + (_activeTab === tab.key ? ' active' : '');
-    btn.innerHTML = `<span class="tab-ic">${tab.icon}</span><span>${tab.label}</span>`;
+    btn.className = 'cat-tab' + (_activeTab === cat.id ? ' active' : '');
+    btn.innerHTML = `<span class="tab-ic">${cat.icon || '📦'}</span><span>${escapeHtml(cat.name)}</span>`;
     btn.onclick = () => {
-      _activeTab     = tab.key;
-      _activeSubTab  = null;
+      _activeTab = cat.id;
+      _activeSubTab = null;
       window._renderCatTabBar();
       window._renderSubTabStrip();
-      if (tab.key === 'all') {
-        activeCategory = 'all';
-        searchTerm     = '';
-        const si = document.getElementById('searchInput');
-        if (si) si.value = '';
-        window._syncShopSections && window._syncShopSections();
-        window.renderShopCollections && window.renderShopCollections();
-      } else {
-        activeCategory = 'tab:' + tab.key;
-        window._syncShopSections && window._syncShopSections();
-        window.renderProducts && window.renderProducts();
-      }
+      activeCategory = 'cat:' + cat.id;
+      window._syncShopSections && window._syncShopSections();
+      window.renderProducts && window.renderProducts();
     };
     bar.appendChild(btn);
   }
@@ -19253,7 +19268,8 @@ window._renderSubTabStrip = function() {
     if (bar && bar.parentNode) bar.parentNode.insertBefore(strip, bar.nextSibling);
   }
 
-  const subs = CAT_SUBS[_activeTab] || [];
+  const activeNode = _activeTab === 'all' ? null : CATEGORY_TREE.find(c => c.id === _activeTab);
+  const subs = (activeNode && activeNode.children) || [];
   if (!subs.length || _activeTab === 'all') {
     strip.innerHTML = '';
     strip.style.display = 'none';
@@ -19269,7 +19285,7 @@ window._renderSubTabStrip = function() {
   allChip.textContent = 'All';
   allChip.onclick = () => {
     _activeSubTab  = null;
-    activeCategory = 'tab:' + _activeTab;
+    activeCategory = 'cat:' + _activeTab;
     window._renderSubTabStrip();
     window.renderProducts && window.renderProducts();
   };
@@ -19277,11 +19293,11 @@ window._renderSubTabStrip = function() {
 
   for (const sub of subs) {
     const chip = document.createElement('button');
-    chip.className = 'cat-sub-pill' + (_activeSubTab === sub ? ' active' : '');
-    chip.textContent = sub;
+    chip.className = 'cat-sub-pill' + (_activeSubTab === sub.id ? ' active' : '');
+    chip.textContent = (sub.icon ? sub.icon + ' ' : '') + sub.name;
     chip.onclick = () => {
-      _activeSubTab  = sub;
-      activeCategory = 'subtab:' + sub;
+      _activeSubTab  = sub.id;
+      activeCategory = 'cat:' + sub.id;
       window._renderSubTabStrip();
       window._syncShopSections && window._syncShopSections();
       window.renderProducts && window.renderProducts();
@@ -19290,10 +19306,16 @@ window._renderSubTabStrip = function() {
   }
 };
 
-// Render tab bar on load
+// Render tab bar on load - categories may not have finished loading from
+// the backend yet, so this renders "All" only for now; the real list
+// fills in once loadCategories() resolves (see its .then() callers,
+// which also call this again).
 window._renderCatTabBar();
 
-// Patch getFilteredProducts to support tab: and subtab: prefixes
+// (getFilteredProducts' tab:/subtab: patch below is now unreachable dead
+// code, since activeCategory is only ever set to 'all' or 'cat:<id>'
+// here now - left in place harmlessly rather than risk removing it, in
+// case anything else still sets those prefixes.)
 const _origGetFiltered = window.getFilteredProducts;
 window.getFilteredProducts = function() {
   // Subcategory filter
