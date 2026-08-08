@@ -312,10 +312,6 @@
     #catTabBar::-webkit-scrollbar{ display:none; }
     @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(231,76,60,0.5);}50%{opacity:0.85;box-shadow:0 0 0 6px rgba(231,76,60,0);}}
     .ss-live-badge{display:inline-flex;align-items:center;gap:4px;background:#e74c3c;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;animation:pulse 1.5s infinite;}
-    .sub-plan-card{ transition:all 0.15s ease; }
-    .sub-plan-card:hover{ transform:translateY(-2px); }
-    .sub-plan-card.selected{ border-color:var(--green) !important; background:rgba(0,107,63,0.15) !important; }
-    .featured-badge{ position:absolute;top:8px;right:8px;z-index:5;background:linear-gradient(135deg,#f39c12,#e67e22);color:#fff;font-size:9px;font-weight:700;padding:3px 8px;border-radius:999px;display:flex;align-items:center;gap:3px; }
     .cat-tab{
       flex-shrink:0;
       display:flex; flex-direction:column; align-items:center; gap:3px;
@@ -1990,18 +1986,6 @@
 
 
 
-    <section class="page" id="page-seller-shop">
-      <div class="page-head">
-        <button onclick="goToPage('shop')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); padding:8px 16px; border-radius:8px; margin-bottom:16px; cursor:pointer;">← Back to Shop</button>
-        <div id="sellerShopContent">
-          <div style="text-align:center; padding:40px; color:var(--gray);">
-            <div style="font-size:48px; margin-bottom:16px;">🏪</div>
-            <p>Loading shop…</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <section class="page" id="page-cart">
 
       <div class="page-head"><h1>Your cart</h1><p>Review your items and complete your order.</p></div>
@@ -2601,16 +2585,13 @@
         <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; margin-bottom:24px;">
           <div class="admin-stat"><div class="icon">💰</div><div class="number" id="analRevenue">KES 0</div><div class="label">Total Revenue</div></div>
           <div class="admin-stat"><div class="icon">📋</div><div class="number" id="analOrders">0</div><div class="label">Total Orders</div></div>
-          <div class="admin-stat"><div class="icon">🛒</div><div class="number" id="analUnitsSold">0</div><div class="label">Sales (Units)</div></div>
           <div class="admin-stat"><div class="icon">📦</div><div class="number" id="analProducts">0</div><div class="label">Products Listed</div></div>
           <div class="admin-stat"><div class="icon">⏳</div><div class="number" id="analPending">0</div><div class="label">Pending Orders</div></div>
-          <div class="admin-stat"><div class="icon">👀</div><div class="number" id="analViews">—</div><div class="label">Product Views</div></div>
-          <div class="admin-stat"><div class="icon">🖱️</div><div class="number" id="analProductClicks">—</div><div class="label">Product Clicks</div></div>
-          <div class="admin-stat"><div class="icon">▶️</div><div class="number" id="analVideoViews">0</div><div class="label">Video Views</div></div>
-          <div class="admin-stat"><div class="icon">📈</div><div class="number" id="analConversion">—</div><div class="label">Conversion Rate</div></div>
+          <div class="admin-stat"><div class="icon">👀</div><div class="number" id="analViews">—</div><div class="label">Store Views</div></div>
+          <div class="admin-stat"><div class="icon">📈</div><div class="number" id="analConversion">—</div><div class="label">Conversion</div></div>
         </div>
         <div style="background:var(--surface); border:1px solid var(--border-strong); border-radius:14px; padding:18px; margin-bottom:16px;">
-          <h4 style="font-family:var(--font-display); margin-bottom:14px;">⭐ Best-Performing Products</h4>
+          <h4 style="font-family:var(--font-display); margin-bottom:14px;">⭐ Top Products</h4>
           <div id="analTopProducts"><div style="color:var(--gray); font-size:13px;">Add products to see your top sellers here.</div></div>
         </div>
         <div style="background:var(--surface); border:1px solid var(--border-strong); border-radius:14px; padding:18px;">
@@ -2740,6 +2721,18 @@
           <div id="wizardStepBar" style="display:flex; gap:4px; margin-bottom:24px; overflow-x:auto; scrollbar-width:none; padding-bottom:4px;">
           </div>
 
+          <!-- Quality Score -->
+          <div id="qualityScoreBar" style="margin-bottom:18px; padding:12px; background:var(--surface-2); border-radius:10px; border:1px solid var(--border);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+              <span style="font-size:12px; font-weight:700; color:var(--white);">📊 Product Quality Score</span>
+              <span id="qualityScoreLabel" style="font-size:13px; font-weight:700; color:var(--gold);">0%</span>
+            </div>
+            <div style="background:var(--surface-3); border-radius:999px; height:6px; overflow:hidden;">
+              <div id="qualityScoreBar2" style="height:100%; background:var(--green); border-radius:999px; width:0%; transition:width 0.4s ease;"></div>
+            </div>
+            <div id="qualityScoreTips" style="font-size:11px; color:var(--gray); margin-top:6px;"></div>
+          </div>
+
           <!-- STEP 1: Product Info -->
           <div class="wizard-step" id="wStep1">
             <div class="wizard-step-title">Step 1 — Product Information</div>
@@ -2793,12 +2786,6 @@
               <div class="field"><label>Stock Quantity *</label><input type="number" id="sellerStock" placeholder="20" min="0" step="1" oninput="window._wizardUpdatePreview(); window._wizardCalcScore();"></div>
               <div class="field"><label>SKU (optional)</label><input type="text" id="sellerSKU" placeholder="e.g. SAM-A56-BLK-128"></div>
               <div class="field"><label>Low Stock Alert</label><input type="number" id="sellerLowStock" placeholder="5" min="0" step="1"></div>
-              <div class="field" style="grid-column:1/-1;">
-                <label>Wholesale / Quantity Pricing (optional)</label>
-                <div style="font-size:11px; color:var(--gray); margin:2px 0 10px;">Give buyers a lower unit price when they order in bulk — e.g. 1–4 items KES 1,200, 5–19 items KES 1,050, 20+ items KES 980. Leave empty to charge the Selling Price at every quantity.</div>
-                <div id="wholesaleTiersWrap" style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;"></div>
-                <button type="button" onclick="window.addWholesaleTier()" style="background:var(--surface-3); color:var(--green); border:1px solid var(--green); padding:6px 14px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">+ Add Price Tier</button>
-              </div>
             </div>
           </div>
 
@@ -2810,10 +2797,10 @@
               <div style="font-size:13px; color:var(--white); font-weight:600;">Click to upload cover image</div>
               <div style="font-size:11px; color:var(--gray); margin-top:4px;">JPG, PNG, WEBP — max 5MB. First image = cover photo.</div>
             </div>
-            <input type="file" id="sellerImageFile" accept="image/*" style="display:none;">
+            <input type="file" id="sellerImageFile" accept="image/*" style="display:none;" onchange="handleSellerImageUpload(event)">
             <div id="sellerImagePreview" style="display:none; margin-bottom:12px;">
               <img id="sellerImagePreviewImg" style="max-width:100%; max-height:200px; border-radius:10px; object-fit:cover;">
-              <button onclick="removeImage()" style="display:block; margin-top:6px; background:#e74c3c; border:none; color:#fff; border-radius:6px; padding:4px 12px; cursor:pointer; font-size:12px;">✕ Remove</button>
+              <button onclick="clearSellerImage()" style="display:block; margin-top:6px; background:#e74c3c; border:none; color:#fff; border-radius:6px; padding:4px 12px; cursor:pointer; font-size:12px;">✕ Remove</button>
             </div>
             <div class="field" style="margin-top:10px;">
               <label>Video URL (optional)</label>
@@ -2824,70 +2811,26 @@
 
           <!-- STEP 4: Variants -->
           <div class="wizard-step" id="wStep4" style="display:none;">
-            <div class="wizard-step-title">Step 4 — Variations</div>
+            <div class="wizard-step-title">Step 4 — Product Variants</div>
             <div style="margin-bottom:14px; padding:12px; background:var(--surface-2); border-radius:10px; border:1px solid var(--border);">
-              <div style="font-size:13px; color:var(--white); font-weight:600; margin-bottom:10px;">Does this product have different variations?</div>
-              <div style="display:flex; flex-direction:column; gap:8px;">
-                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);">
-                  <input type="radio" name="sellerHasVariants" id="sellerHasVariantsNo" value="no" checked onchange="window.toggleVariantBuilder(false)"> No, one version
-                </label>
-                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);">
-                  <input type="radio" name="sellerHasVariants" id="sellerHasVariantsYes" value="yes" onchange="window.toggleVariantBuilder(true)"> Yes, it has variations
-                </label>
-              </div>
+              <div style="font-size:13px; color:var(--gray); margin-bottom:10px;">Does your product come in different colours, sizes, storage options, etc.?</div>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white); font-weight:600;">
+                <input type="checkbox" id="sellerHasVariants" style="width:16px; height:16px;" onchange="window.toggleVariantBuilder(this.checked)"> ✅ Yes, this product has variants
+              </label>
             </div>
-
             <div id="variantBuilderBody" style="display:none;">
-
-              <!-- ④ Smart category recommendations -->
-              <div id="variantCategoryHint" style="display:none; margin-bottom:14px; padding:12px; background:var(--surface-2); border:1px solid var(--green); border-radius:10px;">
-                <div style="font-size:12px; color:var(--white);">💡 <strong id="variantCategoryHintLabel"></strong>: recommended <span id="variantCategoryHintTypes" style="color:var(--green-light);"></span></div>
-                <button type="button" onclick="window._addRecommendedVariantTypes()" style="margin-top:8px; background:var(--green); color:#fff; border:none; padding:6px 14px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">+ Add recommended options</button>
-              </div>
-
-              <!-- ① Choose variation options -->
               <div style="background:var(--surface-2); border-radius:10px; padding:14px; margin-bottom:14px;">
-                <div style="font-size:13px; font-weight:700; margin-bottom:4px; color:var(--white);">① Choose variation options</div>
-                <div style="font-size:12px; color:var(--gray); margin-bottom:10px;">Select variation type</div>
-                <div id="variantTypePicker" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;"></div>
-                <div id="variantTypesWrap"></div>
-                <div id="variantAddAnotherWrap" style="margin-top:6px;"></div>
+                <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:var(--white);">Step A — What options does your product have?</div>
+                <div style="font-size:12px; color:var(--gray); margin-bottom:10px;">e.g. Colour, Size, Storage, Weight, RAM, Material, Flavour…</div>
+                <div id="attrInputsWrap" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;"></div>
+                <button type="button" onclick="window.addAttributeInput()" style="background:var(--surface-3); color:var(--green); border:1px solid var(--green); padding:6px 14px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">+ Add Option Type</button>
               </div>
-
-              <!-- ② Variation combinations -->
-              <div style="background:var(--surface-2); border-radius:10px; padding:14px; margin-bottom:14px;">
-                <div style="font-size:13px; font-weight:700; margin-bottom:4px; color:var(--white);">② Variation combinations</div>
-                <div id="variantComboCount" style="font-size:12px; color:var(--green-light); margin-bottom:10px;">0 variants generated</div>
-
-                <!-- ③ Bulk edit toolbar -->
-                <div id="variantBulkToolbar" style="display:none; margin-bottom:12px; padding:10px; background:var(--surface-3); border-radius:8px;">
-                  <div style="font-size:12px; font-weight:700; color:var(--white); margin-bottom:8px;">⚡ Bulk Edit</div>
-                  <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
-                    <button type="button" onclick="window._bulkVariantAction('price')" style="background:var(--surface-2); color:var(--white); border:1px solid var(--border-strong); padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px;">Set price</button>
-                    <button type="button" onclick="window._bulkVariantAction('stock')" style="background:var(--surface-2); color:var(--white); border:1px solid var(--border-strong); padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px;">Set stock</button>
-                    <button type="button" onclick="window._bulkVariantAction('sku')" style="background:var(--surface-2); color:var(--white); border:1px solid var(--border-strong); padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px;">Generate SKUs</button>
-                    <button type="button" onclick="window._bulkVariantAction('image')" style="background:var(--surface-2); color:var(--white); border:1px solid var(--border-strong); padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px;">Add images</button>
-                    <button type="button" onclick="window._bulkVariantAction('sale_price')" style="background:var(--surface-2); color:var(--white); border:1px solid var(--border-strong); padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px;">Set sale price</button>
-                    <button type="button" onclick="window._bulkVariantAction('delete')" style="background:var(--surface-2); color:#e74c3c; border:1px solid #e74c3c; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px;">Delete variants</button>
-                  </div>
-                  <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; color:var(--white);">
-                    <input type="checkbox" id="variantSamePriceToggle" onchange="window._toggleSamePriceForAll(this.checked)"> Same price for all variants
-                  </label>
-                  <div id="variantSamePriceWrap" style="display:none; margin-top:8px;">
-                    <input type="number" id="variantSamePriceInput" placeholder="Price for all variants (KES)" min="0" oninput="window._applySamePriceToAll(this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--gold); border-radius:6px; padding:8px; font-size:13px;">
-                  </div>
-                </div>
-
-                <div id="variantComboTableWrap" style="overflow-x:auto;"></div>
+              <div style="background:var(--surface-2); border-radius:10px; padding:14px;">
+                <div style="font-size:13px; font-weight:600; margin-bottom:4px; color:var(--white);">Step B — Add each variant combination</div>
+                <div style="font-size:12px; color:var(--gray); margin-bottom:12px;">Each row = one purchasable combination (e.g. Black / EU41)</div>
+                <div id="variantRowsWrap"></div>
+                <button type="button" onclick="window.addVariantRow()" style="background:var(--green); color:#fff; border:none; padding:8px 18px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; margin-top:8px;">+ Add Variant</button>
               </div>
-
-              <!-- ⑦ Advanced (collapsed by default) -->
-              <details style="background:var(--surface-2); border-radius:10px; padding:14px;">
-                <summary style="cursor:pointer; font-size:13px; font-weight:700; color:var(--white);">⚙ Advanced variant settings</summary>
-                <div style="font-size:12px; color:var(--gray); margin-top:10px; line-height:1.6;">
-                  Tap ⚙ on any variant row below to set its cost price, sale price, weight, low-stock threshold, and availability individually. SKU, barcode, weight, dimensions, cost price, sale price, and image are all optional — KenLynk auto-generates a SKU for any variant you leave blank.
-                </div>
-              </details>
             </div>
           </div>
 
@@ -3052,8 +2995,7 @@
 
           <!-- Video list -->
           <div id="sellerSSVideoList"></div>
-        </div>
-      </div>
+        
 
 
     </section>
@@ -3165,17 +3107,6 @@
           <div class="label">Categories</div>
         </div>
 
-        <div class="admin-stat" onclick="window._renderRevenuePanel && window._renderRevenuePanel(); document.getElementById('adminRevenuePanelWrap').scrollIntoView({behavior:'smooth'});" style="cursor:pointer; border-color:var(--gold); transition:all 0.2s ease;" onmouseover="this.style.background='rgba(255,215,0,0.08)'" onmouseout="this.style.background=''">
-          <div class="icon">💰</div>
-          <div class="number" style="font-size:16px; color:var(--gold);">Revenue</div>
-          <div class="label">Overview</div>
-        </div>
-
-      </div>
-
-      <!-- Revenue Panel -->
-      <div id="adminRevenuePanelWrap" style="margin-bottom:20px;">
-        <div id="adminRevenuePanel" style="background:var(--surface); border:1px solid var(--border-strong); border-radius:16px; padding:20px;"></div>
       </div>
 
   <!-- Advanced Analytics Dashboard -->
@@ -6118,12 +6049,17 @@ var lastDeliveryPlan = null;
   // Commission rates by category (HIDDEN from buyers and sellers)
 
   const COMMISSION_RATES = {
-    // 1-2% commission on completed sales only
-    'electronics': 0.02,   // 2%
-    'glassware':   0.02,   // 2%
-    'furniture':   0.02,   // 2%
-    'automotive':  0.02,   // 2%
-    'default':     0.01    // 1%
+
+    'electronics': 0.15,    // 15% - Fragile
+
+    'glassware': 0.15,      // 15% - Fragile
+
+    'furniture': 0.12,      // 12% - Heavy
+
+    'automotive': 0.12,     // 12% - Heavy
+
+    'default': 0.10         // 10% - Normal
+
   };
 
   
@@ -6211,15 +6147,8 @@ let PRODUCTS = [];
 let CATEGORY_TREE = [];
 let CATEGORY_FLAT = [];
 let categoriesLoaded = false;
-// NOTE: these three used to be exposed via a one-time `window.X = X;`
-// copy taken here, while still empty — so when loadCategories() below
-// later reassigns them with real data, window.CATEGORY_TREE stayed
-// stuck pointing at the original empty array forever. That's exactly
-// why the category picker's dropdown always looked empty. Using the
-// same live get/set bridge as `currentUser` (~line 12497) instead
-// fixes this permanently, the same way it did for that variable.
-Object.defineProperty(window, 'CATEGORY_TREE', { get: () => CATEGORY_TREE, set: (v) => { CATEGORY_TREE = v; } });
-Object.defineProperty(window, 'CATEGORY_FLAT', { get: () => CATEGORY_FLAT, set: (v) => { CATEGORY_FLAT = v; } });
+window.CATEGORY_TREE = CATEGORY_TREE;
+window.CATEGORY_FLAT = CATEGORY_FLAT;
 
 async function loadCategories() {
   if (categoriesLoaded) return;
@@ -6464,7 +6393,6 @@ async function apiCall(endpoint, options = {}) {
   }
   return data;
 }
-window.apiCall = apiCall;
 
 // Same as apiCall, but always authenticates as the admin - used for every
 // /api/admin/* request.
@@ -6702,7 +6630,6 @@ const CATEGORY_FALLBACK_IMAGES = {
 const DEFAULT_PRODUCT_IMAGE = 'data:image/svg+xml;utf8,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="400" height="400" fill="%23e5e0d8"/><path d="M140 260h120v20H140zM160 180h80v60h-80z" fill="none" stroke="%23a89f8f" stroke-width="6"/><circle cx="175" cy="200" r="8" fill="%23a89f8f"/><path d="M160 230l25-25 20 20 20-30 35 35" fill="none" stroke="%23a89f8f" stroke-width="6"/></svg>'
 );
-window.DEFAULT_PRODUCT_IMAGE = DEFAULT_PRODUCT_IMAGE;
 
 // The single source of truth for "what image should this product show?"
 // Priority: the seller/admin's own uploaded photo, then a relevant demo
@@ -6792,8 +6719,6 @@ function escapeHtml(str) {
 
     if(page === "cart") renderCart();
 
-    if(page === "seller-shop") { window._renderSellerShopPage && window._renderSellerShopPage(); }
-
     if(page === "shop") {
       loadProductsFromApi();
       setTimeout(() => {
@@ -6857,8 +6782,6 @@ function escapeHtml(str) {
 
       document.getElementById("adminTotalUsers").textContent = currentUser ? 1 : 0;
 
-      setTimeout(() => window._renderRevenuePanel && window._renderRevenuePanel(), 200);
-
       renderAdminSellerApplications();
 
       createAdminManagementPanel();
@@ -6870,8 +6793,6 @@ function escapeHtml(str) {
       createAdminReferralsPanel();
 
       createAdminRequestsPanel();
-
-      createAdminCommissionPanel();
 
       renderAdminLogoPanel();
 
@@ -7190,19 +7111,15 @@ if(page === "admin") {
         </div>
         <div class="pcard-body">
           <div class="pcard-name">${escapeHtml(p.name)}</div>
-          ${p.sellerBusinessName ? `<div class="pcard-seller" data-seller="${escapeHtml(p.sellerEmail||'')}">🏪 ${escapeHtml(p.sellerBusinessName)}</div>` : ''}
+          ${p.sellerBusinessName ? `<div class="pcard-seller">🏪 ${escapeHtml(p.sellerBusinessName)}</div>` : ''}
           ${p.rating ? `<div class="pcard-rating">${'★'.repeat(Math.round(p.rating))}${'☆'.repeat(5-Math.round(p.rating))} <span style="color:var(--gray)">(${p.numReviews||0})</span></div>` : ''}
           <div class="pcard-price">KES ${p.price.toLocaleString()}</div>
           ${p.originalPrice ? `<div class="pcard-original">KES ${p.originalPrice.toLocaleString()}</div>` : ''}
-          ${(p.wholesaleTiers && p.wholesaleTiers.length) ? `<div style="font-size:10px; color:var(--green-light); font-weight:600; margin-top:2px;">📦 Buy ${p.wholesaleTiers[0].min}+ from KES ${Math.min(...p.wholesaleTiers.map(t=>Number(t.price))).toLocaleString()}</div>` : ''}
-          ${_isProductLowStock(p) ? `<div style="font-size:10px; color:#e74c3c; font-weight:700; margin-top:2px;">⚠️ Only ${p.stock} left</div>` : ''}
           <button class="pcard-add" data-id="${p.id}">🛒 Add</button>
         </div>
       `;
       div.querySelector('.pcard-wish').addEventListener('click', e => { e.stopPropagation(); toggleWishlist(p.id); });
       div.querySelector('.pcard-add').addEventListener('click', e => { e.stopPropagation(); addToCart(p.id); });
-      const pcardSellerEl = div.querySelector('.pcard-seller');
-      if (pcardSellerEl && p.sellerEmail) pcardSellerEl.addEventListener('click', e => { e.stopPropagation(); window.viewSellerShop(p.sellerEmail); });
       div.addEventListener('click', () => showProductDetail(p.id));
       return div;
     }
@@ -7219,7 +7136,7 @@ if(page === "admin") {
       </div>
       <div class="card-body">
         ${p.sellerBusinessName ? `
-          <div class="card-seller-row" data-seller="${escapeHtml(p.sellerEmail||'')}">
+          <div class="card-seller-row">
             <span>🏪</span>
             <span>${escapeHtml(p.sellerBusinessName)}</span>
             <span class="card-seller-badge">✓ Seller</span>
@@ -7231,8 +7148,6 @@ if(page === "admin") {
           ${p.originalPrice ? `<span class="card-original">KES ${p.originalPrice.toLocaleString()}</span>` : ''}
           ${disc ? `<span class="card-discount-pct">${disc}% off</span>` : ''}
         </div>
-        ${(p.wholesaleTiers && p.wholesaleTiers.length) ? `<div style="font-size:11px; color:var(--green-light); font-weight:600; margin-top:2px;">📦 Buy ${p.wholesaleTiers[0].min}+ from KES ${Math.min(...p.wholesaleTiers.map(t=>Number(t.price))).toLocaleString()} each</div>` : ''}
-        ${_isProductLowStock(p) ? `<div style="font-size:11px; color:#e74c3c; font-weight:700; margin-top:2px;">⚠️ Only ${p.stock} left in stock</div>` : ''}
         <div class="card-delivery">📦 ${p.county ? escapeHtml(p.county) : 'Kenya-wide'} delivery</div>
         <div class="card-actions">
           <button class="card-add-btn" data-id="${p.id}">🛒 Add to Cart</button>
@@ -7243,8 +7158,6 @@ if(page === "admin") {
     div.querySelector('.card-wish-btn').addEventListener('click', e => { e.stopPropagation(); toggleWishlist(p.id); });
     div.querySelector('.card-add-btn').addEventListener('click', e => { e.stopPropagation(); addToCart(p.id); });
     div.querySelector('.card-quick-view').addEventListener('click', e => { e.stopPropagation(); showProductDetail(p.id); });
-    const cardSellerEl = div.querySelector('.card-seller-row');
-    if (cardSellerEl && p.sellerEmail) cardSellerEl.addEventListener('click', e => { e.stopPropagation(); window.viewSellerShop(p.sellerEmail); });
     div.addEventListener('click', () => showProductDetail(p.id));
     return div;
   }
@@ -7574,40 +7487,25 @@ if(page === "admin") {
 
 
 
-// Best-effort, fire-and-forget analytics tracking. Assumes backend endpoints
-// POST /analytics/view and POST /analytics/click with { product_id }.
-// Silently no-ops if the backend doesn't have these yet — analytics tiles
-// simply show "—" until it does (see window._renderSellerAnalytics).
-window._trackProductView = function(productId) {
-  apiCall('/analytics/view', { method: 'POST', body: JSON.stringify({ product_id: productId }) }).catch(() => {});
-};
-window._trackProductClick = function(productId) {
-  apiCall('/analytics/click', { method: 'POST', body: JSON.stringify({ product_id: productId }) }).catch(() => {});
-};
-
-  async function addToCart(id, qty){
-
-    qty = parseInt(qty, 10) > 0 ? parseInt(qty, 10) : 1;
+  async function addToCart(id){
 
     const product = PRODUCTS.find(p=> p.id === id);
 
     if(!product) return;
 
-    window._trackProductClick && window._trackProductClick(id);
-
     // Optimistic UI update first, so tapping "Add to Cart" feels instant -
     // then sync to the server in the background.
     const existing = cart.find(c=> c.id === id);
 
-    if(existing){ existing.qty += qty; } else { cart.push({id:product.id, name:product.name, price:product.price, image:product.image, emoji:product.emoji, category:product.category, qty:qty}); }
+    if(existing){ existing.qty += 1; } else { cart.push({id:product.id, name:product.name, price:product.price, image:product.image, emoji:product.emoji, category:product.category, qty:1}); }
 
     updateBadges();
 
-    showToast(qty > 1 ? `${qty} items added to cart!` : "Product added to cart!", "success");
+    showToast("Product added to cart!", "success");
 
     try {
       const owner = getCartOwnerParams();
-      await apiCall('/cart/add', { method: 'POST', body: JSON.stringify({ product_id: id, qty: qty, ...owner.asBody }) });
+      await apiCall('/cart/add', { method: 'POST', body: JSON.stringify({ product_id: id, qty: 1, ...owner.asBody }) });
     } catch (err) {
       showToast('⚠️ Could not sync cart with the server: ' + err.message, 'error');
     }
@@ -7662,14 +7560,7 @@ window._trackProductClick = function(productId) {
 
   function cartCount(){ return cart.reduce((sum,c)=> sum + c.qty, 0); }
 
-  // Uses the wholesale tier price for the item's current quantity when the
-  // product has quantity pricing configured, otherwise the normal unit price.
-  function cartItemUnitPrice(c){
-    const product = PRODUCTS.find(p => p.id === c.id);
-    return product ? window.getUnitPriceForQty(product, c.qty) : c.price;
-  }
-
-  function cartTotal(){ return cart.reduce((sum,c)=> sum + c.qty * cartItemUnitPrice(c), 0); }
+  function cartTotal(){ return cart.reduce((sum,c)=> sum + c.qty * c.price, 0); }
 
 
 
@@ -7694,24 +7585,15 @@ function renderCart(){
     return; 
   }
   
-  wrap.innerHTML = cart.map(c=> {
-    const product = PRODUCTS.find(p => p.id === c.id);
-    const unitPrice = cartItemUnitPrice(c);
-    const isWholesale = unitPrice < c.price;
-    const tiers = (product && Array.isArray(product.wholesaleTiers)) ? product.wholesaleTiers : [];
-    return `
+  wrap.innerHTML = cart.map(c=> `
     <div class="cart-item">
       ${productImageTag(c, 'width:44px; height:44px; border-radius:11px; object-fit:cover; flex-shrink:0;')}
-      <div class="info">
-        <h4>${escapeHtml(c.name)}</h4>
-        <div class="unit">KES ${unitPrice.toLocaleString()} each${isWholesale ? ' <span style="color:var(--green-light); font-weight:600;">· wholesale price applied</span>' : ''}</div>
-        ${tiers.length ? `<div style="font-size:10px; color:var(--gray); margin-top:2px;">${tiers.map(t => `${t.min}${t.max ? '–'+t.max : '+'}: KES ${Number(t.price).toLocaleString()}`).join(' · ')}</div>` : ''}
-      </div>
+      <div class="info"><h4>${escapeHtml(c.name)}</h4><div class="unit">KES ${c.price.toLocaleString()} each</div></div>
       <div class="qty-ctrl"><button data-act="dec" data-id="${c.id}">−</button><span>${c.qty}</span><button data-act="inc" data-id="${c.id}">+</button></div>
-      <div class="line-total">KES ${(unitPrice * c.qty).toLocaleString()}</div>
+      <div class="line-total">KES ${(c.price * c.qty).toLocaleString()}</div>
       <button class="remove-btn" data-act="rm" data-id="${c.id}">✕</button>
     </div>
-  `;}).join("");
+  `).join("");
   
   // Keep delivery fee & totals in sync with the current cart contents.
   // updateDeliveryPrice() recalculates deliveryFee (weight + county based)
@@ -7986,10 +7868,9 @@ function computeCartSellerGroups() {
     const key = sellerEmail || '__platform__';
     if (!groups[key]) groups[key] = { sellerEmail: sellerEmail, county: county, items: [], weight: 0, subtotal: 0 };
     const qty = item.qty;
-    const unitPrice = product ? window.getUnitPriceForQty(product, qty) : item.price;
     groups[key].items.push(item);
     groups[key].weight += (product && product.weight ? product.weight : 1) * qty;
-    groups[key].subtotal += unitPrice * qty;
+    groups[key].subtotal += item.price * qty;
   });
   return Object.values(groups);
 }
@@ -8228,164 +8109,117 @@ window.markNotificationRead = markNotificationRead;
 document.getElementById("payBtn").addEventListener("click", async ()=>{
     const payBtn = document.getElementById("payBtn");
     if(cart.length === 0){ showToast("Your cart is empty.", "error"); return; }
-    const phone = document.getElementById("custPhone")?.value.trim();
+    const phone = document.getElementById("custPhone").value.trim();
     if(!phone){ showToast("Please enter your phone number.", "error"); return; }
     if(!isValidPhoneNumber(phone)){ showToast(t('phoneTooShort'), "error"); return; }
-    const custName = document.getElementById("custName")?.value.trim();
+    const custName = document.getElementById("custName").value.trim();
     if(!custName){ showToast("Please enter your name.", "error"); return; }
-    const custIdNumber = document.getElementById("custIdNumber")?.value.trim();
+    const custIdNumber = document.getElementById("custIdNumber").value.trim();
     if(!custIdNumber){ showToast("Please enter your National ID number.", "error"); return; }
-    const custAddress = document.getElementById("custAddress")?.value.trim();
+    const custAddress = document.getElementById("custAddress").value.trim();
     if(!custAddress){ showToast("Please enter a delivery address.", "error"); return; }
     if(selectedDeliveryType === 'delivery'){
       const deliveryAddr = document.getElementById('deliveryAddress')?.value.trim() || '';
       if(!deliveryAddr){ showToast("Please enter your delivery address.", "error"); return; }
     }
     const isBooking = document.getElementById("bookLater").checked;
-    if(isBooking && !document.getElementById("pickupDate")?.value){ showToast("Please choose a pickup date.", "error"); return; }
+    if(isBooking && !document.getElementById("pickupDate").value){ showToast("Please choose a pickup date.", "error"); return; }
     const referralCodeEntered = document.getElementById('custReferralCode')?.value.trim() || '';
 
     payBtn.disabled = true;
     const originalBtnText = payBtn.textContent;
     payBtn.textContent = "⏳ Sending M-Pesa prompt...";
+    showToast("📲 STK push sent to " + phone + ". Enter your M-Pesa PIN on your phone to complete payment.", "success");
 
-    try {
-      const destSelect = document.getElementById('deliveryDestCounty');
-      const dest = destSelect ? destSelect.value : 'nairobi';
-      const destAreaSelect = document.getElementById('destAreaSelect');
-      const destArea = destAreaSelect ? destAreaSelect.value : '';
-      const confirmWeightEl = document.getElementById('confirmWeightInput');
-      const confirmedVal = confirmWeightEl ? parseFloat(confirmWeightEl.value) : NaN;
-      const weightOverride = (!isNaN(confirmedVal) && confirmedVal > 0) ? confirmedVal : undefined;
-      const deliveryAddrVal = document.getElementById('deliveryAddress')?.value.trim() || '';
+    setTimeout(async function(){
+      try {
+        const destSelect = document.getElementById('deliveryDestCounty');
+        const dest = destSelect ? destSelect.value : 'nairobi';
+        const destAreaSelect = document.getElementById('destAreaSelect');
+        const destArea = destAreaSelect ? destAreaSelect.value : '';
+        const confirmWeightEl = document.getElementById('confirmWeightInput');
+        const confirmedVal = confirmWeightEl ? parseFloat(confirmWeightEl.value) : NaN;
+        const weightOverride = (!isNaN(confirmedVal) && confirmedVal > 0) ? confirmedVal : undefined;
+        const deliveryAddrVal = document.getElementById('deliveryAddress')?.value.trim() || '';
 
-      const owner = getCartOwnerParams();
-
-      // Step 1: charge the real amount via IntaSend - NO order is created yet.
-      const initResult = await window.apiCall('/intasend/checkout', {
-        method: 'POST',
-        body: JSON.stringify({
-          session_id: owner.asBody.session_id,
-          name: custName,
-          phone: phone,
-          id_number: custIdNumber,
-          address: custAddress,
-          delivery: {
-            type: selectedDeliveryType,
-            dest_county: dest,
-            dest_area: destArea || undefined,
-            address: selectedDeliveryType === 'delivery' ? deliveryAddrVal : undefined,
-            weight_override: weightOverride,
-            referral_code: referralCodeEntered || undefined
-          },
-          pickup_date: isBooking ? document.getElementById("pickupDate")?.value : undefined
-        })
-      });
-
-      const apiRef = initResult.data.api_ref;
-      payBtn.textContent = '📱 Check your phone — enter M-Pesa PIN...';
-      showToast(`📲 STK push sent to ${phone} for KES ${initResult.data.amount.toLocaleString()}. Enter your M-Pesa PIN to complete payment.`, "success");
-
-      // Step 2: poll until IntaSend confirms the payment (webhook already
-      // created the real order server-side by the time this sees COMPLETE).
-      const maxAttempts = 20;
-      let attempt = 0;
-      let finalStatus = null;
-      let statusResult = null;
-      while (attempt < maxAttempts) {
-        await new Promise(r => setTimeout(r, 4000));
-        attempt++;
-        try {
-          statusResult = await window.apiCall(`/intasend/status/${apiRef}`);
-          const s = statusResult.data.status;
-          if (s === 'COMPLETE') { finalStatus = 'completed'; break; }
-          if (s === 'FAILED')   { finalStatus = 'failed';    break; }
-          payBtn.textContent = `📱 Waiting for PIN… (${attempt * 4}s)`;
-        } catch (pollErr) {
-          console.warn('Poll attempt failed:', pollErr.message);
-        }
-      }
-
-      if (finalStatus === 'failed') {
-        showToast('❌ Payment failed or was cancelled. Your cart is unchanged - please try again.', 'error');
-        return;
-      }
-      if (finalStatus !== 'completed') {
-        showToast('⏳ Still waiting for M-Pesa confirmation. If you already paid, check "My Orders" shortly - your order will appear once confirmed.', 'error');
-        return;
-      }
-      if (statusResult?.data?.result?.error) {
-        showToast('⚠️ Payment succeeded but there was a problem creating your order: ' + statusResult.data.result.error + '. Please contact support with this reference: ' + apiRef, 'error');
-        return;
-      }
-
-      const createdOrders = statusResult.data.result.orders;
-      const cartItemsAtCheckout = cart.map(c => ({ id: c.id, name: c.name, qty: c.qty, price: c.price }));
-
-      // The backend already decremented real stock server-side the moment
-      // it created the order - mirror that in the browser's own copy of
-      // PRODUCTS right away too, so "X left" and Out of Stock labels
-      // update instantly instead of waiting for the next full page load.
-      cartItemsAtCheckout.forEach(item => {
-        const prod = PRODUCTS.find(p => p.id === item.id);
-        if (prod && typeof prod.stock === 'number') prod.stock = Math.max(0, prod.stock - item.qty);
-      });
-      renderProducts && renderProducts();
-      if (document.getElementById('page-product-detail')?.classList.contains('active')) {
-        const openId = cartItemsAtCheckout[0]?.id;
-        const openProd = openId ? PRODUCTS.find(p => p.id === openId) : null;
-        if (openProd) {
-          const warnEl = document.getElementById('detailStockWarning');
-          if (warnEl) warnEl.innerHTML = _isProductLowStock(openProd) ? `<div style="color:#e74c3c; font-weight:700; font-size:13px; margin-top:4px;">⚠️ Only ${openProd.stock} left in stock — order soon</div>` : (openProd.stock <= 0 ? `<div style="color:#e74c3c; font-weight:700; font-size:13px; margin-top:4px;">⛔ Out of stock</div>` : '');
-        }
-      }
-
-      // The backend already cleared the cart server-side once payment was
-      // confirmed - mirror that locally too.
-      cart = [];
-      updateBadges();
-
-      const now = new Date().toISOString();
-      createdOrders.forEach(o => {
-        orders.unshift({
-          id: o.order_number,
-          trackingNumber: o.tracking_number,
-          items: cartItemsAtCheckout,
-          total: o.total,
-          phone: phone,
-          name: custName,
-          status: isBooking ? "Booked" : "Pending",
-          trackingStatus: "Pending",
-          placedAt: now,
-          sellerEmail: null
+        const owner = getCartOwnerParams();
+        const result = await apiCall('/orders', {
+          method: 'POST',
+          body: JSON.stringify({
+            session_id: owner.asBody.session_id,
+            name: custName,
+            phone: phone,
+            id_number: custIdNumber,
+            address: custAddress,
+            delivery: {
+              type: selectedDeliveryType,
+              dest_county: dest,
+              dest_area: destArea || undefined,
+              address: selectedDeliveryType === 'delivery' ? deliveryAddrVal : undefined,
+              weight_override: weightOverride,
+              referral_code: referralCodeEntered || undefined
+            },
+            pickup_date: isBooking ? document.getElementById("pickupDate").value : undefined
+          })
         });
-      });
-      saveOrders();
 
-      document.getElementById("custPhone").value = "";
-      document.getElementById("custName").value = "";
-      document.getElementById("custIdNumber").value = "";
-      if (document.getElementById("custReferralCode")) document.getElementById("custReferralCode").value = "";
-      if (document.getElementById("confirmWeightInput")) document.getElementById("confirmWeightInput").value = "";
-      document.getElementById("custAddress").value = "";
-      document.getElementById("bookLater").checked = false;
-      document.getElementById("bookDateWrap").classList.remove("show");
+        const createdOrders = result.data.orders;
+        const cartItemsAtCheckout = cart.map(c => ({ id: c.id, name: c.name, qty: c.qty, price: c.price }));
 
-      showToast(isBooking ? "Order booked successfully!" : "Order placed successfully!", "success");
-      if (createdOrders.length === 1) {
-        showToast(`📦 Order placed! Tracking #: ${createdOrders[0].tracking_number}`, 'success');
-      } else {
-        showToast(`📦 ${createdOrders.length} orders placed (one per seller). Tracking #s: ${createdOrders.map(o=>o.tracking_number).join(', ')}`, 'success');
+        // The backend already cleared the cart server-side - mirror that
+        // locally too instead of re-fetching, since we already know it's empty.
+        cart = [];
+        updateBadges();
+
+        // Show the order(s) that were just placed right away, even though
+        // the full "My Orders" history still needs its own migration off
+        // the local array - this keeps the confirmation experience working
+        // in the meantime. (Multi-seller carts show the full item list on
+        // every resulting order here, since the API response doesn't break
+        // items down per sub-order - a limitation of this bridge, not the
+        // actual order data, which is correctly split server-side.)
+        const now = new Date().toISOString();
+        createdOrders.forEach(o => {
+          orders.unshift({
+            id: o.order_number,
+            trackingNumber: o.tracking_number,
+            items: cartItemsAtCheckout,
+            total: o.total,
+            phone: phone,
+            name: custName,
+            status: isBooking ? "Booked" : "Pending",
+            trackingStatus: "Pending",
+            placedAt: now,
+            sellerEmail: null
+          });
+        });
+        saveOrders();
+
+        document.getElementById("custPhone").value = "";
+        document.getElementById("custName").value = "";
+        document.getElementById("custIdNumber").value = "";
+        if (document.getElementById("custReferralCode")) document.getElementById("custReferralCode").value = "";
+        if (document.getElementById("confirmWeightInput")) document.getElementById("confirmWeightInput").value = "";
+        document.getElementById("custAddress").value = "";
+        document.getElementById("bookLater").checked = false;
+        document.getElementById("bookDateWrap").classList.remove("show");
+
+        showToast(isBooking ? "Order booked successfully!" : "Order placed successfully!", "success");
+        if (createdOrders.length === 1) {
+          showToast(`📦 Order placed! Tracking #: ${createdOrders[0].tracking_number}`, 'success');
+        } else {
+          showToast(`📦 ${createdOrders.length} orders placed (one per seller). Tracking #s: ${createdOrders.map(o=>o.tracking_number).join(', ')}`, 'success');
+        }
+        goToPage("orders");
+        renderOrders();
+      } catch (err) {
+        console.error('Checkout failed:', err);
+        showToast('⚠️ ' + err.message, 'error');
+      } finally {
+        payBtn.disabled = false;
+        payBtn.textContent = originalBtnText;
       }
-      goToPage("orders");
-      renderOrders();
-    } catch (err) {
-      console.error('Checkout failed:', err);
-      showToast('⚠️ ' + err.message, 'error');
-    } finally {
-      payBtn.disabled = false;
-      payBtn.textContent = originalBtnText;
-    }
+    }, 2500);
   });
 
   const bookLater = document.getElementById("bookLater");
@@ -8532,7 +8366,7 @@ function openRating(productId, orderId) {
     const order = orders.find(o => o.id === currentRatingOrderId);
     if (!order) { showToast(t('reviewOrderNotFound'), 'error'); return; }
 
-    const comment = (document.getElementById('ratingComment')?.value || '').trim();
+    const comment = (document.getElementById('ratingComment').value || '').trim();
     const btn = this;
     const originalText = btn.textContent;
     btn.disabled = true;
@@ -8743,15 +8577,15 @@ async function loadUser() {
 
   document.getElementById('authSubmitBtn').addEventListener('click', async () => {
 
-  const email = document.getElementById('authEmail')?.value.trim();
+  const email = document.getElementById('authEmail').value.trim();
 
-  const phone = document.getElementById('authPhone')?.value.trim();
+  const phone = document.getElementById('authPhone').value.trim();
 
   if (phone && !isValidPhoneNumber(phone)) { showToast(t('phoneTooShort'), 'error'); return; }
 
-  const password = document.getElementById('authPassword')?.value.trim();
+  const password = document.getElementById('authPassword').value.trim();
 
-  const name = document.getElementById('authName')?.value.trim();
+  const name = document.getElementById('authName').value.trim();
 
   
 
@@ -9096,27 +8930,27 @@ async function loadUser() {
 
     e.preventDefault();
 
-    const fullName = document.getElementById('requestFullName')?.value.trim();
+    const fullName = document.getElementById('requestFullName').value.trim();
 
-    const phone = document.getElementById('requestPhone')?.value.trim();
+    const phone = document.getElementById('requestPhone').value.trim();
 
-    const email = document.getElementById('requestEmail')?.value.trim();
+    const email = document.getElementById('requestEmail').value.trim();
 
-    const deliveryLocation = document.getElementById('requestLocation')?.value.trim();
+    const deliveryLocation = document.getElementById('requestLocation').value.trim();
 
-    const productName = document.getElementById('requestProductName')?.value.trim();
+    const productName = document.getElementById('requestProductName').value.trim();
 
-    const category = document.getElementById('requestCategory')?.value;
+    const category = document.getElementById('requestCategory').value;
 
-    const description = document.getElementById('requestDescription')?.value.trim();
+    const description = document.getElementById('requestDescription').value.trim();
 
-    const quantity = parseInt(document.getElementById('requestQuantity')?.value, 10) || 1;
+    const quantity = parseInt(document.getElementById('requestQuantity').value, 10) || 1;
 
-    const budgetRaw = document.getElementById('requestBudget')?.value;
+    const budgetRaw = document.getElementById('requestBudget').value;
 
     const budget = budgetRaw ? parseFloat(budgetRaw) : null;
 
-    const date = document.getElementById('requestDate')?.value;
+    const date = document.getElementById('requestDate').value;
 
     if (!fullName || !phone || !deliveryLocation || !productName || !category || !description) {
       showToast('Please fill in all required fields.', 'error');
@@ -9371,10 +9205,10 @@ document.getElementById('supplyOfferSubmitBtn')?.addEventListener('click', funct
   if (!pendingSupplyOfferRequestId) { showToast('Something went wrong. Please try again.', 'error'); return; }
   if (!currentUser) { showToast('Please login first.', 'error'); return; }
 
-  const availableQty = parseInt(document.getElementById('offerQuantity')?.value, 10);
-  const price = parseFloat(document.getElementById('offerPrice')?.value);
-  const deliveryTime = document.getElementById('offerDeliveryTime')?.value.trim();
-  const notes = document.getElementById('offerNotes')?.value.trim();
+  const availableQty = parseInt(document.getElementById('offerQuantity').value, 10);
+  const price = parseFloat(document.getElementById('offerPrice').value);
+  const deliveryTime = document.getElementById('offerDeliveryTime').value.trim();
+  const notes = document.getElementById('offerNotes').value.trim();
 
   if (!availableQty || availableQty < 1) { showToast('Please enter a valid available quantity.', 'error'); return; }
   if (!price || price <= 0) { showToast('Please enter a valid price.', 'error'); return; }
@@ -9487,9 +9321,6 @@ let sellerOwnProducts = []; // in-memory mirror of this seller's own products, f
 async function renderSellerProducts() {
 
     if (!currentUser || (!isAdmin() && currentUser.seller_status !== 'approved')) { renderSellerProductsUI(); return; }
-    // Free plan: limit to 20 products
-    const sellerPlan2 = currentUser?.seller_plan || 'free';
-    const productLimit = sellerPlan2 === 'free' ? 20 : sellerPlan2 === 'silver' ? 200 : Infinity;
 
     try {
       const result = await apiCall('/products/mine');
@@ -9501,17 +9332,6 @@ async function renderSellerProducts() {
 
 }
 
-// Shared low-stock check used by the seller product list, buyer-facing
-// cards, and the Seller Overview summary banner. Defaults to 5 units
-// when the seller hasn't set their own threshold. Variant-level low
-// stock isn't covered here - see the note in _isProductLowStock.
-function _isProductLowStock(p) {
-  if (!p || p.status === 'draft' || (p.stock || 0) <= 0) return false; // out of stock is a separate state, not "low"
-  const threshold = (typeof p.lowStockThreshold === 'number' && p.lowStockThreshold >= 0) ? p.lowStockThreshold : 5;
-  return (p.stock || 0) <= threshold;
-}
-window._isProductLowStock = _isProductLowStock;
-
 function renderSellerProductsUI() {
 
     const list = document.getElementById("sellerProductList");
@@ -9520,14 +9340,9 @@ function renderSellerProductsUI() {
 
     if (sellerOwnProducts.length === 0) { list.innerHTML = '<div class="empty-state"><div class="ic">📦</div><div>No products yet.</div></div>'; return; }
 
-    const lowStockCount = sellerOwnProducts.filter(_isProductLowStock).length;
-    const lowStockBanner = lowStockCount
-      ? `<div style="background:rgba(231,76,60,0.12); border:1px solid #e74c3c; border-radius:10px; padding:10px 14px; margin-bottom:12px; font-size:13px; color:#e74c3c; font-weight:600;">⚠️ ${lowStockCount} product${lowStockCount>1?'s are':' is'} running low on stock</div>`
-      : '';
+    list.innerHTML = sellerOwnProducts.map(p => `
 
-    list.innerHTML = lowStockBanner + sellerOwnProducts.map(p => `
-
-      <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--surface-2); border-radius:10px; margin-bottom:8px; border:1px solid ${_isProductLowStock(p) ? '#e74c3c' : 'var(--border)'}; flex-wrap:wrap; gap:10px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--surface-2); border-radius:10px; margin-bottom:8px; border:1px solid var(--border); flex-wrap:wrap; gap:10px;">
 
         <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
 
@@ -9541,8 +9356,6 @@ function renderSellerProductsUI() {
 
           ${p.hot ? '<span style="color:var(--gold); font-size:12px;">🔥 Hot</span>' : ''}
 
-          ${(p.stock||0) <= 0 ? '<span style="color:#e74c3c; font-size:12px; font-weight:700;">⛔ Out of stock</span>' : _isProductLowStock(p) ? `<span style="color:#e74c3c; font-size:12px; font-weight:700;">⚠️ Low stock (${p.stock} left)</span>` : ''}
-
         </div>
 
         <div style="display:flex; gap:8px;">
@@ -9550,8 +9363,6 @@ function renderSellerProductsUI() {
           <button class="seller-edit-btn" data-id="${p.id}" style="background:var(--surface-3); border:none; color:var(--white); padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">✏️ Edit</button>
 
           <button class="seller-variants-btn" data-id="${p.id}" data-name="${escapeHtml(p.name)}" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--green); padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">🎛️ Variants</button>
-
-          <button onclick="window._openFeatureProduct(${p.id}, '${escapeHtml(p.name).replace(/'/g,"\\'")}');" style="background:linear-gradient(135deg,#f39c12,#e67e22); border:none; color:#fff; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; font-weight:600;">${window._isFeatured && window._isFeatured(p.id) ? '⭐ Featured' : '⭐ Feature'}</button>
 
           <button class="seller-delete-btn" data-id="${p.id}" style="background:var(--surface-3); border:none; color:#ff6b6b; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">🗑️ Delete</button>
 
@@ -9953,15 +9764,15 @@ function bulkUploadProducts() {
 
     const submitBtn = document.getElementById("sellerSubmitBtn");
 
-    const name = document.getElementById("sellerName")?.value.trim();
+    const name = document.getElementById("sellerName").value.trim();
 
-    const price = parseFloat(document.getElementById("sellerPrice")?.value);
+    const price = parseFloat(document.getElementById("sellerPrice").value);
 
     const stock = parseInt(document.getElementById("sellerStock")?.value, 10);
 
-    const hot = document.getElementById("sellerHot")?.value === 'true';
+    const hot = document.getElementById("sellerHot").value === 'true';
 
-    const desc = document.getElementById("sellerDesc")?.value.trim();
+    const desc = document.getElementById("sellerDesc").value.trim();
 
     const brand = (document.getElementById("sellerBrand")?.value || '').trim() || null;
 
@@ -9969,22 +9780,22 @@ function bulkUploadProducts() {
 
     const video = uploadedVideo;
 
-    const weight = parseFloat(document.getElementById("sellerWeight")?.value) || 1;
+    const weight = parseFloat(document.getElementById("sellerWeight").value) || 1;
 
-const fragile = document.getElementById("sellerFragile")?.value === 'true';
+const fragile = document.getElementById("sellerFragile").value === 'true';
 
-const category = document.getElementById("sellerCategory")?.value;
+const category = document.getElementById("sellerCategory").value;
 
     if (!name || !price || !desc) { showToast("Please fill in all required fields.", "error"); return; }
 
     if (isNaN(stock) || stock < 0) { showToast("Please enter a valid stock quantity.", "error"); return; }
 
-    const originalPrice = document.getElementById("sellerOriginalPrice").value ? parseFloat(document.getElementById("sellerOriginalPrice")?.value) : null;
+    const originalPrice = document.getElementById("sellerOriginalPrice").value ? parseFloat(document.getElementById("sellerOriginalPrice").value) : null;
 
     if (!originalPrice || originalPrice <= 0) { showToast("Original Price is required.", "error"); document.getElementById("sellerOriginalPrice").focus(); return; }
 
     if (originalPrice < price) { showToast("Original Price must be equal to or higher than the selling price.", "error"); document.getElementById("sellerOriginalPrice").focus(); return; }
-    const hasVariants = document.getElementById("sellerHasVariantsYes")?.checked;
+    const hasVariants = document.getElementById("sellerHasVariants")?.checked;
     let variantPayload = null;
     if (hasVariants) {
       variantPayload = window._collectVariantPayload();
@@ -10090,9 +9901,8 @@ const category = document.getElementById("sellerCategory")?.value;
     document.getElementById("sellerVideoPreview").style.display = 'none';
 
     // Reset variant builder
-    if (document.getElementById("sellerHasVariantsNo")) {
-      document.getElementById("sellerHasVariantsNo").checked = true;
-      document.getElementById("sellerHasVariantsYes").checked = false;
+    if (document.getElementById("sellerHasVariants")) {
+      document.getElementById("sellerHasVariants").checked = false;
       window.toggleVariantBuilder(false);
     }
 
@@ -10171,11 +9981,6 @@ const category = document.getElementById("sellerCategory")?.value;
     document.getElementById("sellerFragile").value = product.fragile ? 'true' : 'false';
 
     if (document.getElementById("sellerStock")) document.getElementById("sellerStock").value = (typeof product.stock === 'number') ? product.stock : '';
-
-    window._wholesaleTiers = Array.isArray(product.wholesaleTiers) ? product.wholesaleTiers.map(t => ({ min: t.min, max: t.max, price: t.price })) : [];
-    window._renderWholesaleTiers && window._renderWholesaleTiers();
-
-    if (document.getElementById("sellerLowStock")) document.getElementById("sellerLowStock").value = (typeof product.lowStockThreshold === 'number') ? product.lowStockThreshold : '';
 
     document.getElementById("sellerSubmitBtn").textContent = "✏️ Update Product";
 
@@ -11024,19 +10829,19 @@ window.loadManualData = loadManualData;
 
   document.getElementById("adminSubmitBtn").addEventListener("click", async function() {
 
-    const name = document.getElementById("adminName")?.value.trim();
+    const name = document.getElementById("adminName").value.trim();
 
-    const price = parseFloat(document.getElementById("adminPrice")?.value);
+    const price = parseFloat(document.getElementById("adminPrice").value);
 
-    const originalPrice = document.getElementById("adminOriginalPrice").value ? parseFloat(document.getElementById("adminOriginalPrice")?.value) : null;
+    const originalPrice = document.getElementById("adminOriginalPrice").value ? parseFloat(document.getElementById("adminOriginalPrice").value) : null;
 
-    const category = document.getElementById("adminCategory")?.value;
+    const category = document.getElementById("adminCategory").value;
 
     const image = uploadedAdminImage;
 
-    const hot = document.getElementById("adminHot")?.value === 'true';
+    const hot = document.getElementById("adminHot").value === 'true';
 
-    const desc = document.getElementById("adminDesc")?.value.trim();
+    const desc = document.getElementById("adminDesc").value.trim();
 
     if (!name || !price || !desc) { showToast("Please fill in all required fields.", "error"); return; }
 
@@ -11609,43 +11414,146 @@ window.loadManualData = loadManualData;
 
 
 
-
     if (sellerStatus.status === 'approved') {
 
-      // ── FREE ACCESS MODEL ─────────────────────────────────────────
-      // Approved sellers start immediately on the Free plan.
-      // No payment required. Silver/Gold are optional upgrades.
-      const sellerPlan = currentUser?.seller_plan || 'free';
-      const planMeta = {
-        free:   { label:'Free Plan',   icon:'🆓', color:'var(--gray)',   limit:'Up to 20 products',        commission:'Standard commission', rank:'Standard ranking' },
-        silver: { label:'Silver Plan', icon:'🥈', color:'#c0c0c0',      limit:'Up to 200 products',       commission:'Reduced commission',  rank:'Better ranking' },
-        gold:   { label:'Gold Plan',   icon:'🥇', color:'var(--gold)',   limit:'Unlimited products',       commission:'Lowest commission',   rank:'Highest ranking' },
-      };
-      const pm = planMeta[sellerPlan] || planMeta.free;
+      const subscription = getSellerSubscription(currentUser.email);
 
-      const shopDisabled = sellerStatus.shopDisabled;
+      const hasActiveSub = hasActiveSubscription(currentUser.email);
 
-      const planBanner = shopDisabled
-        ? `<div style="background:rgba(244,67,54,0.1);border:1px solid #f44336;border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:13px;color:#f44336;">🚫 Your shop has been disabled by an admin. Contact support to resolve this.</div>`
-        : `
-          <div style="background:var(--surface-2);border:1px solid var(--border-strong);border-radius:12px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span style="font-size:24px;">${pm.icon}</span>
-              <div>
-                <div style="font-size:13px;font-weight:700;color:${pm.color};">${pm.label}</div>
-                <div style="font-size:11px;color:var(--gray);">${pm.limit} · ${pm.commission} · ${pm.rank}</div>
-              </div>
-            </div>
-            ${sellerPlan === 'gold' ? `<span style="background:var(--gold);color:#111;font-size:10px;font-weight:700;padding:4px 12px;border-radius:999px;">🥇 GOLD SELLER</span>` : `
-            <button onclick="window._openPlanUpgrade()" style="background:linear-gradient(135deg,var(--gold),#e67e22);border:none;color:#111;border-radius:8px;padding:7px 16px;cursor:pointer;font-weight:700;font-size:12px;">⬆️ Upgrade Plan</button>`}
-          </div>`;
+      
 
-      area.innerHTML = planBanner;
-      content.style.display = 'block';
-      renderSellerOverview && renderSellerOverview();
-      renderSellerProducts();
-      renderSellerOrdersList && renderSellerOrdersList();
-      updateSellerEarnings && updateSellerEarnings();
+      let subscriptionHtml = '';
+
+      const planOptionsHtml = getSubscriptionPlans().map((p, i) =>
+
+        `<option value="${p.extraMonths}"${i === 0 ? ' selected' : ''}>${p.totalMonths} month${p.totalMonths > 1 ? 's' : ''}${p.totalMonths === 12 ? ' (1 year)' : ''} - KES ${p.amount}</option>`
+
+      ).join('');
+
+      const planPickerHtml = `
+
+        <div class="field" style="text-align:left; margin-top:12px;">
+
+          <label style="color:var(--gray);">Choose your plan</label>
+
+          <select id="subscriptionPlanSelect">${planOptionsHtml}</select>
+
+          <small style="color:var(--gray); font-size:11px; display:block; margin-top:4px;">📅 6 months = KES ${SUBSCRIPTION_BASE_FEE} • 12 months (1 year) = KES ${SUBSCRIPTION_YEAR_FEE}. Extra months in between are priced individually.</small>
+
+        </div>
+
+      `;
+
+      
+
+     if (!subscription) {
+
+    subscriptionHtml = `
+
+      <div class="subscription-box" style="border-color: var(--gold);">
+
+        <h4 style="color: var(--gold);">💰 Subscription Required</h4>
+
+        <p style="color: var(--gray); font-size: 14px;">To start selling on KenLynk, you need to pay a subscription fee starting at <strong style="color: var(--gold);">KES ${SUBSCRIPTION_BASE_FEE}</strong> every 6 months.</p>
+
+        ${planPickerHtml}
+
+        <button onclick="paySubscription()" class="subscription-pay-btn" id="subscription-pay-btn">💳 Pay Now</button>
+
+        <p style="color: var(--gray); font-size: 12px; margin-top: 8px;">⏳ After payment, you can immediately start posting products.</p>
+
+      </div>
+
+    `;
+
+    content.style.display = 'none';
+
+  }
+
+      
+
+      
+
+       else if (!hasActiveSub) {
+
+        const expiryDate = new Date(subscription.expiryDate);
+
+        subscriptionHtml = `
+
+          <div class="subscription-box" style="border-color: #f44336;">
+
+            <h4 style="color: #f44336;">⚠️ Subscription Expired</h4>
+
+            <p style="color: var(--gray); font-size: 14px;">Your subscription expired on <strong>${expiryDate.toLocaleDateString('en-KE')}</strong>. Please renew to continue selling on KENYCONNECT.</p>
+
+            ${planPickerHtml}
+
+            <button onclick="paySubscription()" class="subscription-pay-btn">💳 Renew Now</button>
+
+          </div>
+
+        `;
+
+        content.style.display = 'none';
+
+      } else {
+
+        const expiryDate = new Date(subscription.expiryDate);
+
+        const daysRemaining = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+
+        const shopDisabledBySubAdmin = subscription.shopDisabled;
+
+        subscriptionHtml = `
+
+          <div class="subscription-box" style="border-color: var(--green-light);">
+
+            <h4 style="color: var(--green-light);">✅ Subscription Active</h4>
+
+            <p style="color: var(--gray); font-size: 14px;">Your subscription is active until <strong>${expiryDate.toLocaleDateString('en-KE')}</strong> (${daysRemaining} days remaining).</p>
+
+            ${shopDisabledBySubAdmin ? `<div style="background:rgba(244,67,54,0.15); border:1px solid #f44336; border-radius:8px; padding:10px; color:#f44336; font-size:13px; margin-top:8px;">🚫 Your shop has been disabled by the admin. Your products are currently hidden from the shop. Please contact support.</div>` : ''}
+
+            ${planPickerHtml}
+
+            <button onclick="paySubscription()" class="subscription-pay-btn" style="background: var(--surface-3); color: var(--white);">🔄 Renew Early</button>
+
+          </div>
+
+        `;
+
+        content.style.display = 'block';
+
+        renderSellerOverview();
+
+        renderSellerProducts();
+
+        renderSellerOrdersList();
+
+        updateSellerEarnings();
+
+      }
+
+
+
+      area.innerHTML = `
+
+        <div class="seller-status-box" style="border:1px solid var(--green-light);">
+
+          <div class="status-icon">✅</div>
+
+          <div class="status-title">Seller Account Active</div>
+
+          <div class="status-badge approved">Approved</div>
+
+          <div class="status-desc">Your seller account has been approved!<br><br><strong>Business:</strong> ${sellerStatus.businessName || 'N/A'}<br><strong>Approved on:</strong> ${sellerStatus.approvedAt ? new Date(sellerStatus.approvedAt).toLocaleString('en-KE') : 'N/A'}</div>
+
+        </div>
+
+        ${subscriptionHtml}
+
+      `;
+
       return;
 
     }
@@ -11963,22 +11871,11 @@ function resetSellerApplication() {
   // priced individually along a smooth discount curve that lands exactly
   // on KES 260 at 6 extra months (i.e. 12 months total) - so the numbers
   // stay consistent whichever length a seller picks.
-  // ── SUBSCRIPTION PLANS ─────────────────────────────────────────
-  // 2-day free trial for new sellers
-  const SUBSCRIPTION_FREE_TRIAL_DAYS = 2;
-
-  // Plan definitions
-  const SUBSCRIPTION_PLANS = [
-    { key: 'daily',    label: 'Daily',     days: 1,   months: 0,  amount: 25,   description: 'Try for a day' },
-    { key: 'monthly',  label: 'Monthly',   days: 30,  months: 1,  amount: 580,  description: 'Best for growing sellers' },
-    { key: 'biannual', label: '6 Months',  days: 180, months: 6,  amount: 3100, description: 'Save 11% vs monthly' },
-  ];
-
   const SUBSCRIPTION_BASE_MONTHS = 6;
-  const SUBSCRIPTION_BASE_FEE    = 3100;
-  const SUBSCRIPTION_YEAR_FEE    = 5800;
+  const SUBSCRIPTION_BASE_FEE = 150;
+  const SUBSCRIPTION_YEAR_FEE = 260;
   const SUBSCRIPTION_MAX_EXTRA_MONTHS = 6;
-  const SUBSCRIPTION_EXTRA_BUDGET = SUBSCRIPTION_YEAR_FEE - SUBSCRIPTION_BASE_FEE;
+  const SUBSCRIPTION_EXTRA_BUDGET = SUBSCRIPTION_YEAR_FEE - SUBSCRIPTION_BASE_FEE; // 110
 
   // Cost of extraMonths (0-6) added on top of the base 6 months.
   function subscriptionExtraMonthsCost(extraMonths) {
@@ -12334,17 +12231,11 @@ function paySubscription() {
 
   // is declined rather than silently accepted.
 
-  // Get plan from new plan cards or fall back to old select
-  const selectedPlanKey = document.getElementById('selectedSubPlan')?.value;
-  let plan;
-  if (selectedPlanKey && selectedPlanKey !== 'trial' && window.SUBSCRIPTION_PLANS) {
-    const sp = window.SUBSCRIPTION_PLANS.find(p => p.key === selectedPlanKey);
-    plan = sp ? { totalMonths: sp.months || 1, amount: sp.amount, extraMonths: 0 } : getSubscriptionPlan(0);
-  } else {
-    const planSelect = document.getElementById('subscriptionPlanSelect');
-    const extraMonths = planSelect ? parseInt(planSelect.value, 10) : 0;
-    plan = getSubscriptionPlan(extraMonths);
-  }
+  const planSelect = document.getElementById('subscriptionPlanSelect');
+
+  const extraMonths = planSelect ? parseInt(planSelect.value, 10) : 0;
+
+  const plan = getSubscriptionPlan(extraMonths);
 
   if (!isValidSubscriptionPayment(plan.totalMonths, plan.amount)) {
 
@@ -12418,7 +12309,7 @@ document.getElementById('subPaySubmitBtn')?.addEventListener('click', function()
 
   }
 
-  const phone = document.getElementById('subPayPhone')?.value.trim();
+  const phone = document.getElementById('subPayPhone').value.trim();
 
   if (!phone) {
 
@@ -12575,15 +12466,6 @@ window.escapeHtml = escapeHtml;
 window.showToast = showToast;
 window.isAdmin = isAdmin;
 Object.defineProperty(window, 'currentUser', { get: () => currentUser, set: (v) => { currentUser = v; } });
-// Same pattern for other state read/written from the second <script> block
-// (ShopStream + the product wizard) - without this, a bare reference to
-// these from that block throws ReferenceError, since separate <script>
-// tags don't share `let` bindings the way functions in the same closure do.
-Object.defineProperty(window, 'orders', { get: () => orders, set: (v) => { orders = v; } });
-Object.defineProperty(window, 'editingProductId', { get: () => editingProductId, set: (v) => { editingProductId = v; } });
-Object.defineProperty(window, 'categoriesLoaded', { get: () => categoriesLoaded, set: (v) => { categoriesLoaded = v; } });
-Object.defineProperty(window, 'activeCategory', { get: () => activeCategory, set: (v) => { activeCategory = v; } });
-Object.defineProperty(window, 'searchTerm', { get: () => searchTerm, set: (v) => { searchTerm = v; } });
 
 window.rejectSeller = rejectSeller;
 
@@ -12856,9 +12738,9 @@ let pendingResetPhone = null;
 
 function handleForgotPassword() {
 
-  const email = document.getElementById('forgotEmail')?.value.trim();
+  const email = document.getElementById('forgotEmail').value.trim();
 
-  const phone = document.getElementById('forgotPhone')?.value.trim();
+  const phone = document.getElementById('forgotPhone').value.trim();
 
   const resultDiv = document.getElementById('forgotResult');
 
@@ -12930,11 +12812,11 @@ function handleForgotPassword() {
 // the new password together, in one real backend call.
 async function handleResetPassword() {
 
-  const email = document.getElementById('resetEmail')?.value.trim();
+  const email = document.getElementById('resetEmail').value.trim();
 
-  const newPassword = document.getElementById('resetNewPassword')?.value.trim();
+  const newPassword = document.getElementById('resetNewPassword').value.trim();
 
-  const confirmPassword = document.getElementById('resetConfirmPassword')?.value.trim();
+  const confirmPassword = document.getElementById('resetConfirmPassword').value.trim();
 
   const resultDiv = document.getElementById('resetResult');
 
@@ -13250,9 +13132,9 @@ async function createAdminManagementPanel() {
 
   document.getElementById('addAdminBtn').addEventListener('click', async function() {
     const btn = this;
-    const name = document.getElementById('newAdminName')?.value.trim();
-    const email = document.getElementById('newAdminEmail')?.value.trim();
-    const password = document.getElementById('newAdminPassword')?.value.trim();
+    const name = document.getElementById('newAdminName').value.trim();
+    const email = document.getElementById('newAdminEmail').value.trim();
+    const password = document.getElementById('newAdminPassword').value.trim();
     const is_super_admin = document.getElementById('newAdminIsSuper').checked;
 
     if (!name || !email || !password) { showToast('Please fill in name, email and password.', 'error'); return; }
@@ -13402,77 +13284,6 @@ function createAdminSellerManagement() {
   }
 
   window.createAdminSubscriptionsPanel = createAdminSubscriptionsPanel;
-
-  // ══ ADMIN: COMMISSION RATE MANAGEMENT ═══════════════════════════════
-  // Lets the admin set a per-category commission rate. Tries the backend
-  // (GET/PUT /admin/commission-rates) first; falls back to a localStorage
-  // cache so the panel is still usable before that endpoint exists, and
-  // calculateFinalPrice() below picks up whichever rates were last saved.
-  const ADMIN_COMMISSION_CACHE_KEY = 'kenlynk_admin_commission_rates';
-
-  function getSavedCommissionRates() {
-    try { return JSON.parse(localStorage.getItem(ADMIN_COMMISSION_CACHE_KEY) || 'null'); } catch (e) { return null; }
-  }
-
-  async function createAdminCommissionPanel() {
-    const adminContent = document.getElementById('page-admin');
-    if (!adminContent) return;
-    let existing = document.querySelector('#adminCommissionPanel');
-    if (existing) existing.remove();
-
-    const panel = document.createElement('div');
-    panel.id = 'adminCommissionPanel';
-    panel.style.cssText = 'margin-top:24px; background:var(--surface); border:1px solid var(--border-strong); border-radius:16px; padding:24px;';
-    panel.innerHTML = `
-      <h3 style="font-family:var(--font-display); margin-bottom:8px;">💵 Commission Rates</h3>
-      <div style="color:var(--gray); font-size:12px; margin-bottom:16px;">Set the platform's commission per category. Gold-plan sellers automatically pay a reduced rate; Free-plan sellers pay the standard rate shown here.</div>
-      <div id="adminCommissionList" style="display:flex; flex-direction:column; gap:8px;"></div>
-      <button onclick="window._saveCommissionRates()" style="margin-top:14px; background:var(--green); border:none; color:#fff; border-radius:10px; padding:9px 22px; cursor:pointer; font-weight:700; font-size:13px;">💾 Save Commission Rates</button>
-    `;
-
-    const subsEl = document.querySelector('#adminSubscriptionsPanel');
-    if (subsEl && subsEl.parentNode) subsEl.parentNode.insertBefore(panel, subsEl.nextSibling);
-    else adminContent.appendChild(panel);
-
-    await loadCategories();
-    const saved = getSavedCommissionRates() || {};
-    // One row per top-level category, defaulting to the suggested rates
-    // from the KenLynk commission plan (falls back to 10% if unlisted).
-    const defaultRates = { phones:5, laptops_electronics:7, electronics:7, tvs:7, appliances:9, fashion:13, shoes:13, beauty:13, home_kitchen:14, furniture:10, grocery:10, agriculture:10, books:8, sports:13, automotive:10 };
-    const cats = (CATEGORY_FLAT.length ? CATEGORY_FLAT.filter(c => c._depth === 0) : Object.keys(defaultRates).map(k => ({ id: k, name: k, slug: k })));
-    const listEl = document.getElementById('adminCommissionList');
-    if (listEl) {
-      listEl.innerHTML = cats.map(c => {
-        const key = c.slug || c.name || c.id;
-        const rate = saved[key] != null ? saved[key] : (defaultRates[key] != null ? defaultRates[key] : 10);
-        return `
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:8px 12px;">
-          <span style="font-size:13px; color:var(--white);">${escapeHtml(c.name || key)}</span>
-          <div style="display:flex; align-items:center; gap:6px;">
-            <input type="number" min="0" max="50" step="0.5" value="${rate}" data-cat="${escapeHtml(key)}" class="admin-commission-input" style="width:70px; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 8px; font-size:12px; text-align:right;">
-            <span style="font-size:12px; color:var(--gray);">%</span>
-          </div>
-        </div>`;
-      }).join('');
-    }
-  }
-  window.createAdminCommissionPanel = createAdminCommissionPanel;
-
-  window._saveCommissionRates = async function() {
-    const rates = {};
-    document.querySelectorAll('.admin-commission-input').forEach(inp => {
-      rates[inp.dataset.cat] = parseFloat(inp.value) || 0;
-    });
-    localStorage.setItem(ADMIN_COMMISSION_CACHE_KEY, JSON.stringify(rates));
-    try {
-      await adminApiCall('/admin/commission-rates', { method: 'PUT', body: JSON.stringify({ rates }) });
-      showToast('✅ Commission rates saved.', 'success');
-    } catch (err) {
-      // Saved locally either way — backend endpoint may not exist yet.
-      showToast('Saved locally. Backend sync failed: ' + err.message, 'error');
-    }
-  };
-
 
 
 
@@ -13779,8 +13590,7 @@ function createAdminSellerManagement() {
       location: u.county,
       status: u.seller_status,
       rejectionReason: u.seller_rejection_reason,
-      submittedAt: u.created_at,
-      verified: !!u.verified
+      submittedAt: u.created_at
     };
   }
 
@@ -13849,8 +13659,6 @@ function createAdminSellerManagement() {
 
               ${app.status === 'rejected' ? `<button onclick="resetSellerApplicationById('${app.id}')" style="background:var(--surface-3); color:var(--white); border:1px solid var(--border-strong); padding:8px 20px; border-radius:6px; cursor:pointer;">🔄 Reset</button>` : ''}
 
-              ${app.status === 'approved' ? `<button onclick="window._toggleSellerVerified('${app.id}', ${!app.verified})" style="background:${app.verified ? 'var(--surface-3)' : 'var(--green)'}; color:${app.verified ? 'var(--white)' : '#fff'}; border:1px solid ${app.verified ? 'var(--border-strong)' : 'var(--green)'}; padding:8px 20px; border-radius:6px; cursor:pointer; font-weight:600; font-size:12px;">${app.verified ? '✓ Verified — Unverify' : '☆ Mark Verified'}</button>` : ''}
-
             `}
 
           </div>
@@ -13867,17 +13675,7 @@ function createAdminSellerManagement() {
 
   // ============ APPROVE/REJECT FUNCTIONS ============
 
-  // Toggles a seller's "Verified Seller" badge. Assumes a backend endpoint
-  // PUT /admin/sellers/:id/verify with body { verified: true|false }.
-  window._toggleSellerVerified = async function(applicationId, nextVerified) {
-    try {
-      await adminApiCall(`/admin/sellers/${applicationId}/verify`, { method: 'PUT', body: JSON.stringify({ verified: nextVerified }) });
-      showToast(nextVerified ? '✅ Seller marked as verified.' : 'Seller verification removed.', 'success');
-      renderAdminSellerApplicationsList();
-    } catch (err) {
-      showToast('⚠️ ' + err.message, 'error');
-    }
-  };
+
 
   window.approveSeller = async function(applicationId) {
 
@@ -14176,43 +13974,20 @@ function createAdminSellerManagement() {
         <div class="product-detail-info">
           <h2>${escapeHtml(product.name)}</h2>
           ${product.brand ? `<div style="color:var(--gray); font-size:13px; margin-bottom:4px;">Brand: <strong style="color:var(--white);">${escapeHtml(product.brand)}</strong></div>` : ''}
-          ${product.sellerBusinessName ? `
-          <div onclick="window.viewSellerShop('${product.sellerEmail}')" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:5px 12px; margin-bottom:8px; font-size:12px; color:var(--white);">
-            🏪 ${escapeHtml(product.sellerBusinessName)}
-            <span style="color:var(--green-light); font-weight:700;">✓ Seller</span>
-            <span style="color:var(--gray);">— view shop ›</span>
-          </div>` : ''}
           <div style="display:flex; align-items:center; gap:10px;">
             <span style="font-size:20px;">${getStarRating(product.rating || 0)}</span>
             <span style="color:var(--gray); font-size:14px;">(${product.numReviews || 0} reviews)</span>
           </div>
           ${!hasVariants ? `
-          <div class="price" id="detailUnitPrice">KES ${product.price.toLocaleString()}</div>
+          <div class="price">KES ${product.price.toLocaleString()}</div>
           ${product.originalPrice ? `<div style="color:var(--gray);"><s>KES ${product.originalPrice.toLocaleString()}</s> <span style="color:var(--green-light);">${Math.round((1 - product.price/product.originalPrice) * 100)}% OFF</span></div>` : ''}
-          <div id="detailStockWarning">${_isProductLowStock(product) ? `<div style="color:#e74c3c; font-weight:700; font-size:13px; margin-top:4px;">⚠️ Only ${product.stock} left in stock — order soon</div>` : ''}</div>
           ` : `<div id="detailPriceLine" style="font-family:var(--font-mono); font-size:16px; color:var(--gray); margin:8px 0;">Select options to see price</div>`}
           <div class="desc">${product.desc || 'No description available.'}</div>
           ${product.hot ? '<div style="color:var(--gold); font-weight:600;">🔥 Hot Deal</div>' : ''}
-          ${(!hasVariants && product.wholesaleTiers && product.wholesaleTiers.length) ? `
-          <div style="margin:10px 0; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px;">
-            <div style="font-size:12px; font-weight:700; color:var(--white); margin-bottom:6px;">📦 Buy More, Save More</div>
-            <table style="width:100%; font-size:12px; color:var(--gray); border-collapse:collapse;">
-              ${product.wholesaleTiers.map(t => `
-                <tr>
-                  <td style="padding:3px 0;">${t.min}${t.max ? `–${t.max}` : '+'} items</td>
-                  <td style="padding:3px 0; text-align:right; color:var(--green-light); font-weight:600;">KES ${Number(t.price).toLocaleString()} each</td>
-                </tr>`).join('')}
-            </table>
-            <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
-              <label style="font-size:11px; color:var(--gray);">Qty:</label>
-              <input type="number" id="detailWholesaleQty" min="1" value="1" style="width:70px; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:4px 8px; font-size:12px;" oninput="window._updateDetailWholesalePrice(${product.id})">
-              <span id="detailWholesaleLineTotal" style="font-size:12px; color:var(--white); font-weight:600;"></span>
-            </div>
-          </div>` : ''}
           ${variantHtml}
           <div class="product-detail-actions">
             <button id="detailAddToCartBtn"
-              onclick="${hasVariants ? '' : `addToCart(${product.id}, document.getElementById('detailWholesaleQty')?.value || 1)`}"
+              onclick="${hasVariants ? '' : `addToCart(${product.id})`}"
               ${hasVariants && !allAttrsPicked ? 'disabled' : ''}
               style="background:var(--green); color:white; flex:1; ${hasVariants && !allAttrsPicked ? 'opacity:0.5;' : ''}">
               🛒 Add to Cart
@@ -14238,27 +14013,9 @@ function createAdminSellerManagement() {
 
     goToPage('product-detail');
 
-    window._trackProductView && window._trackProductView(product.id, product.sellerEmail);
-
-    if (product.wholesaleTiers && product.wholesaleTiers.length) window._updateDetailWholesalePrice(product.id);
-
     loadRealProductReviews(productId);
 
   }
-
-  // Live-updates the shown unit price and line total on the product detail
-  // page as the buyer changes the quantity, using wholesale tiers if set.
-  window._updateDetailWholesalePrice = function(productId) {
-    const product = PRODUCTS.find(p => p.id === productId);
-    if (!product) return;
-    const qtyEl = document.getElementById('detailWholesaleQty');
-    const qty = Math.max(1, parseInt(qtyEl?.value, 10) || 1);
-    const unit = window.getUnitPriceForQty(product, qty);
-    const priceEl = document.getElementById('detailUnitPrice');
-    if (priceEl) priceEl.textContent = 'KES ' + unit.toLocaleString() + (unit < product.price ? ' (wholesale)' : '');
-    const lineEl = document.getElementById('detailWholesaleLineTotal');
-    if (lineEl) lineEl.textContent = `= KES ${(unit * qty).toLocaleString()} total`;
-  };
 
   // Fetches this product's real reviews from the backend and refreshes
   // just the reviews section once they arrive, so the detail page itself
@@ -15078,16 +14835,7 @@ window.renderSMSLog = renderSMSLog;
       sellerEmail: p.seller_email || null,
       sellerBusinessName: p.seller_business_name || null,
       status: p.status,
-      has_variants: !!p.has_variants,
-      lowStockThreshold: (typeof p.low_stock_threshold === 'number') ? p.low_stock_threshold : null,
-      wholesaleTiers: (() => {
-        try {
-          if (Array.isArray(p.wholesale_tiers)) return p.wholesale_tiers;
-          if (typeof p.wholesale_tiers === 'string' && p.wholesale_tiers) return JSON.parse(p.wholesale_tiers);
-          if (typeof p.wholesale_tiers_json === 'string' && p.wholesale_tiers_json) return JSON.parse(p.wholesale_tiers_json);
-        } catch (e) { /* ignore malformed tier data */ }
-        return [];
-      })()
+      has_variants: !!p.has_variants
     };
   }
   window.mapApiProduct = mapApiProduct;
@@ -15468,7 +15216,7 @@ function closeWithdrawalModal() {
 window.closeWithdrawalModal = closeWithdrawalModal;
 
 function updateWithdrawalMethodFields() {
-  const method = document.getElementById('withdrawalMethod')?.value;
+  const method = document.getElementById('withdrawalMethod').value;
   document.getElementById('withdrawalMpesaField').style.display = method === 'mpesa' ? 'block' : 'none';
   document.getElementById('withdrawalBankField').style.display = method === 'bank_transfer' ? 'block' : 'none';
 }
@@ -15478,10 +15226,10 @@ document.getElementById('withdrawalSubmitBtn')?.addEventListener('click', async 
   const btn = this;
   const originalText = btn.textContent;
 
-  const amount = parseFloat(document.getElementById('withdrawalAmount')?.value);
-  const method = document.getElementById('withdrawalMethod')?.value;
-  const mpesa_number = document.getElementById('withdrawalMpesaNumber')?.value.trim();
-  const bank_details = document.getElementById('withdrawalBankDetails')?.value.trim();
+  const amount = parseFloat(document.getElementById('withdrawalAmount').value);
+  const method = document.getElementById('withdrawalMethod').value;
+  const mpesa_number = document.getElementById('withdrawalMpesaNumber').value.trim();
+  const bank_details = document.getElementById('withdrawalBankDetails').value.trim();
 
   if (!amount || amount <= 0) { showToast('Please enter a valid amount.', 'error'); return; }
   if (method === 'mpesa' && !mpesa_number) { showToast('Please enter your M-Pesa number.', 'error'); return; }
@@ -16299,122 +16047,6 @@ function getSellerBusinessName(sellerEmail) {
 }
 window.getSellerBusinessName = getSellerBusinessName;
 
-// ══ SELLER TRUST / SHOP PAGE ════════════════════════════════════════════
-// Public shop page for a seller: verified badge, rating, response time,
-// completed orders, performance score, followers, follow/unfollow, and
-// their product grid. Falls back to numbers derivable from already-loaded
-// products/reviews if the backend doesn't yet expose a seller-profile
-// endpoint, so this degrades gracefully rather than breaking.
-let _activeShopSeller = null;
-
-window.viewSellerShop = function(sellerEmail) {
-  if (!sellerEmail) return;
-  _activeShopSeller = sellerEmail;
-  goToPage('seller-shop');
-};
-
-function _getFollowedSellers() {
-  try { return JSON.parse(localStorage.getItem('KE_followed_sellers') || '[]'); } catch (e) { return []; }
-}
-function _setFollowedSellers(list) {
-  localStorage.setItem('KE_followed_sellers', JSON.stringify(list));
-}
-
-window._toggleFollowSeller = async function(sellerEmail) {
-  if (!currentUser) { showToast('Please sign in to follow sellers.', 'error'); return; }
-  const followed = _getFollowedSellers();
-  const idx = followed.indexOf(sellerEmail);
-  const nowFollowing = idx === -1;
-  if (nowFollowing) followed.push(sellerEmail); else followed.splice(idx, 1);
-  _setFollowedSellers(followed);
-  window._renderSellerShopPage();
-  try {
-    await apiCall(`/sellers/${encodeURIComponent(sellerEmail)}/follow`, { method: nowFollowing ? 'POST' : 'DELETE' });
-  } catch (err) {
-    // Non-fatal: local follow state still applies even if the backend
-    // endpoint isn't wired up yet.
-    console.warn('Follow sync failed (backend endpoint may not exist yet):', err.message);
-  }
-};
-
-window._renderSellerShopPage = async function() {
-  const wrap = document.getElementById('sellerShopContent');
-  if (!wrap || !_activeShopSeller) return;
-  const sellerEmail = _activeShopSeller;
-
-  const sellerProducts = (PRODUCTS || []).filter(p => p.sellerEmail === sellerEmail && p.status !== 'draft');
-  const businessName = sellerProducts[0]?.sellerBusinessName || getSellerBusinessName(sellerEmail);
-
-  // Best-effort stats computed from what's already loaded, used as a
-  // fallback until/unless the backend profile endpoint below returns real ones.
-  const ratedProducts = sellerProducts.filter(p => p.rating);
-  const fallbackRating = ratedProducts.length ? (ratedProducts.reduce((s, p) => s + p.rating, 0) / ratedProducts.length) : 0;
-  const fallbackReviews = sellerProducts.reduce((s, p) => s + (p.numReviews || 0), 0);
-
-  let profile = {
-    verified: false, rating: fallbackRating, num_reviews: fallbackReviews,
-    response_time: null, completed_orders: null, performance_score: null,
-    followers: null
-  };
-  try {
-    const res = await apiCall(`/sellers/${encodeURIComponent(sellerEmail)}/profile`);
-    if (res?.data) profile = { ...profile, ...res.data };
-  } catch (e) {
-    // Endpoint may not exist yet on the backend — fall back silently to
-    // the computed stats above rather than showing an error.
-  }
-
-  const isFollowing = _getFollowedSellers().includes(sellerEmail);
-
-  wrap.innerHTML = `
-    <div style="background:var(--surface); border:1px solid var(--border-strong); border-radius:16px; padding:20px; margin-bottom:20px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;">
-        <div>
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <h2 style="font-family:var(--font-display); margin:0;">🏪 ${escapeHtml(businessName)}</h2>
-            ${profile.verified ? `<span style="background:var(--green); color:#fff; font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px;">✓ Verified Seller</span>` : ''}
-          </div>
-          <div style="display:flex; align-items:center; gap:10px; margin-top:6px; flex-wrap:wrap;">
-            <span style="font-size:14px;">${getStarRating(profile.rating || 0)}</span>
-            <span style="color:var(--gray); font-size:13px;">(${profile.num_reviews || 0} reviews)</span>
-          </div>
-        </div>
-        <button onclick="window._toggleFollowSeller('${sellerEmail}')" style="background:${isFollowing ? 'var(--surface-3)' : 'var(--green)'}; color:${isFollowing ? 'var(--white)' : '#fff'}; border:1px solid ${isFollowing ? 'var(--border-strong)' : 'var(--green)'}; border-radius:10px; padding:10px 20px; cursor:pointer; font-weight:700; font-size:13px;">${isFollowing ? '✓ Following' : '+ Follow Shop'}</button>
-      </div>
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:10px; margin-top:18px;">
-        <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:10px; text-align:center;">
-          <div style="font-size:16px; font-weight:700; color:var(--gold);">${profile.completed_orders != null ? profile.completed_orders : '—'}</div>
-          <div style="font-size:11px; color:var(--gray);">Completed Orders</div>
-        </div>
-        <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:10px; text-align:center;">
-          <div style="font-size:16px; font-weight:700; color:var(--gold);">${profile.response_time || '—'}</div>
-          <div style="font-size:11px; color:var(--gray);">Response Time</div>
-        </div>
-        <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:10px; text-align:center;">
-          <div style="font-size:16px; font-weight:700; color:var(--gold);">${profile.performance_score != null ? profile.performance_score + '%' : '—'}</div>
-          <div style="font-size:11px; color:var(--gray);">Performance Score</div>
-        </div>
-        <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:10px; text-align:center;">
-          <div style="font-size:16px; font-weight:700; color:var(--gold);">${profile.followers != null ? profile.followers : '—'}</div>
-          <div style="font-size:11px; color:var(--gray);">Followers</div>
-        </div>
-      </div>
-    </div>
-    <h3 style="font-family:var(--font-display); margin-bottom:12px;">Products from this shop (${sellerProducts.length})</h3>
-    <div class="grid" id="sellerShopProductsGrid"></div>
-  `;
-
-  const grid = document.getElementById('sellerShopProductsGrid');
-  if (grid) {
-    if (!sellerProducts.length) {
-      grid.innerHTML = '<div class="empty-state"><div class="ic">📦</div><div>No products from this shop yet.</div></div>';
-    } else {
-      sellerProducts.forEach(p => grid.appendChild(buildProductCard(p)));
-    }
-  }
-};
-
-
 function populateAdminOrderSellerFilter() {
   const sel = document.getElementById('adminOrderSellerFilter');
   if (!sel) return;
@@ -16699,8 +16331,8 @@ document.getElementById('assignRiderSubmitBtn')?.addEventListener('click', async
     const order = adminOrdersMirror.find(o => String(o.dbId) === String(pendingRiderOrderId));
     if (!order) { showToast('Order not found.', 'error'); return; }
 
-    const riderName = document.getElementById('riderName')?.value.trim();
-    const riderPhone = document.getElementById('riderPhone')?.value.trim();
+    const riderName = document.getElementById('riderName').value.trim();
+    const riderPhone = document.getElementById('riderPhone').value.trim();
     const photoFile = document.getElementById('riderPhotoFile')?.files[0];
 
     if (!riderName || !riderPhone) { showToast('Please enter rider name and phone.', 'error'); return; }
@@ -16793,7 +16425,7 @@ document.getElementById('deliveryRatingSubmitBtn')?.addEventListener('click', as
   const order = orders.find(o => o.id === pendingDeliveryRatingOrderId);
   if (!order) { showToast('Order not found.', 'error'); return; }
 
-  const remarks = document.getElementById('deliveryRatingRemarks')?.value.trim();
+  const remarks = document.getElementById('deliveryRatingRemarks').value.trim();
   const btn = this;
   const originalText = btn.textContent;
   btn.disabled = true;
@@ -17132,20 +16764,7 @@ function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 function toast(msg, type) { if (window.showToast) window.showToast(msg, type); }
 function el(id) { return document.getElementById(id); }
 function getP(id) { return (window.PRODUCTS||[]).find(p => p.id === id || p.id === Number(id)); }
-// getUser() normally mirrors the logged-in buyer/seller account. Admin
-// sessions intentionally clear currentUser (so admin and regular-user
-// sessions can never be mixed up) - but that meant every ShopStream
-// gate below, which checks getUser() first, silently locked admins out
-// even though isAdmin() bypasses further down were never reached. This
-// synthesizes a stand-in "admin" user so admins get the free,
-// no-friction ShopStream access (including Go Live) they're supposed to.
-function getUser() {
-  if (window.currentUser) return window.currentUser;
-  if (window.isAdmin && window.isAdmin()) {
-    return { email: 'admin@kenlynk.platform', name: 'Admin', seller_status: 'approved', id: 'admin' };
-  }
-  return null;
-}
+function getUser() { return window.currentUser || null; }
 function imgUrl(p) { return (p && p.image) ? p.image : (window.DEFAULT_PRODUCT_IMAGE || ''); }
 
 // ── Categories ────────────────────────────────────────────────────────
@@ -17780,7 +17399,7 @@ window.goToPage = function(page) {
 })(); // end IIFE
 // ════════════════════════════════════════════════════════════════════
 
-window._renderSellerAnalytics = async function() {
+window._renderSellerAnalytics = function() {
   if (!currentUser) return;
 
   // Calculate from local data
@@ -17794,63 +17413,25 @@ window._renderSellerAnalytics = async function() {
 
   const revenue = myOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
   const pending  = myOrders.filter(o => o.status === 'pending').length;
-  const unitsSold = myOrders.reduce((sum, o) => sum + (o.items || []).reduce((s, i) => {
-    const prod = PRODUCTS.find(p => p.id === i.productId);
-    return s + ((prod && prod.sellerEmail === currentUser.email) ? (i.qty || 1) : 0);
-  }, 0), 0);
-
-  // Video views from this seller's ShopStream videos (localStorage-backed).
-  // Uses the raw storage key directly since SS_KEY is scoped inside the
-  // ShopStream IIFE and isn't accessible from here.
-  let videoViews = 0;
-  try {
-    const vids = JSON.parse(localStorage.getItem('kenlynk_ss_videos') || '[]');
-    videoViews = vids.filter(v => v.sellerEmail === currentUser.email).reduce((s, v) => s + (v.views || 0), 0);
-  } catch (e) { /* ignore */ }
-
-  // Real page-view / click / conversion numbers require backend event
-  // tracking (see window._trackProductView / _trackProductClick below,
-  // which fire on every product-detail open and Add-to-Cart tap).
-  // Falls back to "—" if the backend doesn't have this endpoint yet.
-  let views = null, clicks = null, conversion = null;
-  try {
-    const res = await apiCall(`/sellers/${encodeURIComponent(currentUser.email)}/analytics`);
-    if (res?.data) {
-      views = res.data.views ?? null;
-      clicks = res.data.product_clicks ?? null;
-      conversion = res.data.conversion_rate ?? null;
-    }
-  } catch (e) { /* backend endpoint may not exist yet — fall back to "—" */ }
-  if (conversion === null && views) conversion = ((myOrders.length / views) * 100).toFixed(1) + '%';
 
   const rev = document.getElementById('analRevenue');
   const ord = document.getElementById('analOrders');
-  const units = document.getElementById('analUnitsSold');
   const prd = document.getElementById('analProducts');
   const pen = document.getElementById('analPending');
-  const vw = document.getElementById('analViews');
-  const clk = document.getElementById('analProductClicks');
-  const vv = document.getElementById('analVideoViews');
-  const conv = document.getElementById('analConversion');
 
   if (rev) rev.textContent = 'KES ' + revenue.toLocaleString();
   if (ord) ord.textContent = myOrders.length;
-  if (units) units.textContent = unitsSold;
   if (prd) prd.textContent = myProducts.length;
   if (pen) pen.textContent = pending;
-  if (vw) vw.textContent = views != null ? views.toLocaleString() : '—';
-  if (clk) clk.textContent = clicks != null ? clicks.toLocaleString() : '—';
-  if (vv) vv.textContent = videoViews.toLocaleString();
-  if (conv) conv.textContent = conversion != null ? conversion : '—';
 
-  // Best-performing products by revenue (units sold × price)
+  // Top products by order count
   const countMap = {};
   myOrders.forEach(o => (o.items || []).forEach(i => {
     countMap[i.productId] = (countMap[i.productId] || 0) + (i.qty || 1);
   }));
   const topProds = myProducts
     .map(p => ({ ...p, sold: countMap[p.id] || 0 }))
-    .sort((a, b) => (b.sold * b.price) - (a.sold * a.price))
+    .sort((a, b) => b.sold - a.sold)
     .slice(0, 5);
 
   const topEl = document.getElementById('analTopProducts');
@@ -18016,9 +17597,6 @@ function initCascadePicker(mainId, subId, childId, hiddenId, breadcrumbId) {
     } else {
       crumb.style.display = 'none';
     }
-    // Only the seller-facing picker (not the admin one) should re-check
-    // recommended variation types when the category changes.
-    if (hiddenId === 'sellerCategory' && window._checkVariantCategoryRecommendation) window._checkVariantCategoryRecommendation();
   }
 
   mainSel.addEventListener('change', () => {
@@ -18167,7 +17745,7 @@ async function _loadCatManagerTree() {
 
     // Populate parent select
     parentSel.innerHTML = '<option value="">— Top Level —</option>';
-    const editId = document.getElementById('catMgrEditId')?.value;
+    const editId = document.getElementById('catMgrEditId').value;
     function addOpts(nodes, depth) {
       for (const n of nodes) {
         if (String(n.id) === String(editId)) continue; // can't parent to self
@@ -18334,11 +17912,11 @@ window._catMgrCancelEdit = function() {
 };
 
 window._catMgrSave = async function() {
-  const name     = document.getElementById('catMgrName')?.value.trim();
-  const parent   = document.getElementById('catMgrParent')?.value || null;
-  const icon     = document.getElementById('catMgrIcon')?.value.trim() || null;
-  const imageUrl = document.getElementById('catMgrImageUrl')?.value.trim() || null;
-  const editId   = document.getElementById('catMgrEditId')?.value;
+  const name     = document.getElementById('catMgrName').value.trim();
+  const parent   = document.getElementById('catMgrParent').value || null;
+  const icon     = document.getElementById('catMgrIcon').value.trim() || null;
+  const imageUrl = document.getElementById('catMgrImageUrl').value.trim() || null;
+  const editId   = document.getElementById('catMgrEditId').value;
 
   if (!name) { showToast('Category name is required.', 'error'); return; }
 
@@ -18423,7 +18001,6 @@ window._initWizard = function() {
   _wizardStep = 1;
   _wizardGoTo(1);
   _wizardCalcScore();
-  window._renderWholesaleTiers && window._renderWholesaleTiers();
 };
 
 window._wizardUpdatePreview = function() {
@@ -18433,12 +18010,12 @@ window._wizardUpdatePreview = function() {
   const price = parseFloat(document.getElementById('sellerPrice')?.value) || 0;
   const orig  = parseFloat(document.getElementById('sellerOriginalPrice')?.value) || 0;
   const stock = parseInt(document.getElementById('sellerStock')?.value, 10) || 0;
-  const img   = window._getUploadedImage() || window.DEFAULT_PRODUCT_IMAGE;
+  const img   = uploadedImage || DEFAULT_PRODUCT_IMAGE;
   const disc  = orig > price && price > 0 ? Math.round((1 - price/orig)*100) : 0;
   card.innerHTML = `
     <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:14px; overflow:hidden; font-size:12px;">
       <div style="position:relative; height:160px; background:var(--surface-3); overflow:hidden;">
-        <img src="${img}" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='${window.DEFAULT_PRODUCT_IMAGE}'">
+        <img src="${img}" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='${DEFAULT_PRODUCT_IMAGE}'">
         ${disc ? `<span style="position:absolute;top:8px;left:8px;background:#e74c3c;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;">-${disc}%</span>` : ''}
       </div>
       <div style="padding:10px;">
@@ -18525,98 +18102,6 @@ function _wizardBuildChecklist() {
   el.innerHTML = items.map(i => `<div style="display:flex;align-items:center;gap:8px;color:${i.ok?'var(--green-light)':'#e74c3c'};">${i.ok?'✅':'❌'} ${i.label}</div>`).join('');
 }
 
-// ══ WHOLESALE / QUANTITY PRICING ═══════════════════════════════════════
-// Working state for the tier builder in Step 2 of the product wizard.
-// Each tier: { min, max, price }. max === null/0 means "and above" (no ceiling).
-window._wholesaleTiers = [];
-
-window._renderWholesaleTiers = function() {
-  const wrap = document.getElementById('wholesaleTiersWrap');
-  if (!wrap) return;
-  if (!window._wholesaleTiers.length) {
-    wrap.innerHTML = '<div style="font-size:11px; color:var(--gray);">No quantity tiers yet — this product will sell at the Selling Price for any quantity.</div>';
-    return;
-  }
-  wrap.innerHTML = window._wholesaleTiers.map((tier, i) => `
-    <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:8px; align-items:center; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:8px;">
-      <div>
-        <label style="font-size:10px; color:var(--gray); display:block;">Min qty</label>
-        <input type="number" min="1" step="1" value="${tier.min ?? ''}" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updateWholesaleTier(${i}, 'min', this.value)">
-      </div>
-      <div>
-        <label style="font-size:10px; color:var(--gray); display:block;">Max qty (blank = ∞)</label>
-        <input type="number" min="1" step="1" value="${tier.max ?? ''}" placeholder="∞" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updateWholesaleTier(${i}, 'max', this.value)">
-      </div>
-      <div>
-        <label style="font-size:10px; color:var(--gray); display:block;">Price/unit (KES)</label>
-        <input type="number" min="1" step="1" value="${tier.price ?? ''}" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updateWholesaleTier(${i}, 'price', this.value)">
-      </div>
-      <button type="button" onclick="window.removeWholesaleTier(${i})" title="Remove tier" style="background:#e74c3c; border:none; color:#fff; border-radius:6px; width:26px; height:26px; cursor:pointer; align-self:end;">✕</button>
-    </div>
-  `).join('');
-};
-
-window.addWholesaleTier = function() {
-  const last = window._wholesaleTiers[window._wholesaleTiers.length - 1];
-  const nextMin = last ? (Number(last.max) > 0 ? Number(last.max) + 1 : (Number(last.min) || 0) + 1) : 1;
-  window._wholesaleTiers.push({ min: nextMin, max: null, price: '' });
-  window._renderWholesaleTiers();
-};
-
-window._updateWholesaleTier = function(i, field, value) {
-  const tier = window._wholesaleTiers[i];
-  if (!tier) return;
-  if (field === 'max') tier.max = value === '' ? null : parseInt(value, 10);
-  else if (field === 'min') tier.min = value === '' ? '' : parseInt(value, 10);
-  else tier.price = value === '' ? '' : parseFloat(value);
-};
-
-window.removeWholesaleTier = function(i) {
-  window._wholesaleTiers.splice(i, 1);
-  window._renderWholesaleTiers();
-};
-
-window._resetWholesaleTiers = function() {
-  window._wholesaleTiers = [];
-  window._renderWholesaleTiers();
-};
-
-// Validates and returns a clean, sorted tier array, or null (with a toast) if invalid.
-window._collectWholesaleTiers = function() {
-  if (!window._wholesaleTiers.length) return [];
-  const tiers = window._wholesaleTiers.map(t => ({
-    min: parseInt(t.min, 10),
-    max: (t.max === null || t.max === '' || isNaN(Number(t.max))) ? null : parseInt(t.max, 10),
-    price: parseFloat(t.price)
-  }));
-  for (const t of tiers) {
-    if (!t.min || t.min < 1) { showToast('Each wholesale tier needs a minimum quantity of at least 1.', 'error'); return null; }
-    if (!t.price || t.price <= 0) { showToast('Each wholesale tier needs a price per unit.', 'error'); return null; }
-    if (t.max !== null && t.max < t.min) { showToast('A tier\'s max quantity can\'t be less than its min quantity.', 'error'); return null; }
-  }
-  tiers.sort((a, b) => a.min - b.min);
-  for (let i = 0; i < tiers.length - 1; i++) {
-    const cur = tiers[i], next = tiers[i + 1];
-    const curMax = cur.max !== null ? cur.max : Infinity;
-    if (curMax >= next.min) { showToast(`Wholesale tiers overlap around quantity ${next.min} — adjust the min/max quantities so each tier covers a distinct range.`, 'error'); return null; }
-  }
-  return tiers;
-};
-
-// Returns the correct unit price for a given quantity, honouring wholesale
-// tiers when present. Falls back to the product's normal Selling Price.
-window.getUnitPriceForQty = function(product, qty) {
-  const base = product ? Number(product.price) || 0 : 0;
-  const tiers = product && Array.isArray(product.wholesaleTiers) ? product.wholesaleTiers : [];
-  if (!tiers.length) return base;
-  let unit = base;
-  for (const t of tiers) {
-    const max = (t.max !== null && t.max !== undefined && t.max > 0) ? t.max : Infinity;
-    if (qty >= t.min && qty <= max) { unit = Number(t.price); break; }
-  }
-  return unit;
-};
-
 window._wizardSubmit = async function(mode) {
   const name   = (document.getElementById('sellerName')?.value||'').trim();
   const price  = parseFloat(document.getElementById('sellerPrice')?.value);
@@ -18636,28 +18121,17 @@ window._wizardSubmit = async function(mode) {
   if (isNaN(stock)) { showToast('Stock quantity is required.', 'error'); _wizardGoTo(2); return; }
   if (!desc)  { showToast('Description is required.', 'error'); _wizardGoTo(1); return; }
 
-  const hasVariants = document.getElementById('sellerHasVariantsYes')?.checked;
+  const hasVariants = document.getElementById('sellerHasVariants')?.checked;
   let variantPayload = null;
   if (hasVariants) { variantPayload = window._collectVariantPayload(); if (!variantPayload) return; }
-
-  const wholesaleTiers = window._collectWholesaleTiers();
-  if (wholesaleTiers === null) { _wizardGoTo(2); return; }
-  if (wholesaleTiers.length && wholesaleTiers[0].price >= price) {
-    showToast('Wholesale prices should be lower than the Selling Price — check your tiers.', 'error');
-    _wizardGoTo(2);
-    return;
-  }
 
   const btn = document.getElementById('sellerSubmitBtn');
   const origText = btn?.textContent;
   if (btn) { btn.disabled = true; btn.textContent = mode==='draft' ? '💾 Saving…' : '⏳ Publishing…'; }
 
-  const lowStockThreshold = parseInt(document.getElementById('sellerLowStock')?.value, 10);
   const payload = { name, price, original_price: orig, category: cat, hot, description: desc,
-    image: window._getUploadedImage()||undefined, weight, fragile, stock, brand: brand||undefined,
-    has_variants: hasVariants?1:0, status: mode==='draft'?'draft':'active',
-    wholesale_tiers: wholesaleTiers,
-    low_stock_threshold: (!isNaN(lowStockThreshold) && lowStockThreshold >= 0) ? lowStockThreshold : undefined };
+    image: uploadedImage||undefined, weight, fragile, stock, brand: brand||undefined,
+    has_variants: hasVariants?1:0, status: mode==='draft'?'draft':'active' };
 
   try {
     let savedId = editingProductId;
@@ -18678,17 +18152,14 @@ window._wizardSubmit = async function(mode) {
         const am = {}; (ar?.data?.attributes||[]).forEach(a => { am[a.name] = a.id; });
         for (const vRow of variantPayload.variants) {
           const opts = vRow.options.map(o=>({ attribute_id:am[o.attrName], value:o.value })).filter(o=>o.attribute_id);
-          await (isAdmin() ? adminApiCall : apiCall)(`/products/${savedId}/variants`, { method:'POST', body:JSON.stringify({ price:vRow.price, stock:vRow.stock, sku:vRow.sku||null, original_price:vRow.original_price||null, images_json:vRow.images_json||null, is_active:vRow.is_active, cost_price:vRow.cost_price||null, weight:vRow.weight||null, low_stock_threshold:vRow.low_stock_threshold||null, options:opts }) });
+          await (isAdmin() ? adminApiCall : apiCall)(`/products/${savedId}/variants`, { method:'POST', body:JSON.stringify({ price:vRow.price, stock:vRow.stock, sku:vRow.sku||null, options:opts }) });
         }
       } catch(ve) { showToast('Product saved but variants failed: '+ve.message, 'error'); }
     }
     editingProductId = null;
     window._initWizard();
     ['sellerName','sellerDesc','sellerPrice','sellerOriginalPrice','sellerStock','sellerBrand','sellerWeight'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    if (document.getElementById('sellerHasVariantsNo')) { document.getElementById('sellerHasVariantsNo').checked = true; document.getElementById('sellerHasVariantsYes').checked = false; }
-    window._resetWholesaleTiers();
-    window._variantTypes = [];
-    window._variantCombos = [];
+    if (document.getElementById('sellerHasVariants')) document.getElementById('sellerHasVariants').checked = false;
     window.toggleVariantBuilder && window.toggleVariantBuilder(false);
     if (window._setUploadedImage) window._setUploadedImage('');
     if (window._setUploadedVideo) window._setUploadedVideo('');
@@ -18704,10 +18175,6 @@ window._wizardSubmit = async function(mode) {
 // Also hook into the old sellerSubmitBtn for backward compat
 window.cancelEditProduct = function() {
   editingProductId = null;
-  window._resetWholesaleTiers();
-  window._variantTypes = [];
-  window._variantCombos = [];
-  window.toggleVariantBuilder && window.toggleVariantBuilder(false);
   window._initWizard();
   document.getElementById('sellerFormTitle').textContent = '➕ Add New Product';
   const cancelBtn = document.getElementById('sellerCancelBtn');
@@ -18776,574 +18243,6 @@ window.switchSellerTab = function(tab) {
   if (_origSwitchSellerTab) _origSwitchSellerTab(tab);
   if (tab === 'products') setTimeout(() => window._initWizard && window._initWizard(), 50);
   if (tab === 'shopstream') setTimeout(() => window._ssRenderSellerPanel(), 50);
-};
-
-// ════════════════════════════════════════════════════════════════════
-// MONETIZATION SYSTEM
-// 1. Subscription plans (Daily/Monthly/6-Month + 2-day free trial)
-// 2. 1-2% commission on completed sales
-// 3. Featured products (paid promotion)
-// 4. Featured live streams
-// ════════════════════════════════════════════════════════════════════
-
-// ── Plan selection ────────────────────────────────────────────────
-window._selectSubPlan = function(planKey, cardEl) {
-  document.querySelectorAll('.sub-plan-card').forEach(c => c.classList.remove('selected'));
-  if (cardEl) cardEl.classList.add('selected');
-  const hidden = document.getElementById('selectedSubPlan');
-  if (hidden) hidden.value = planKey;
-  const btn = document.getElementById('subscription-pay-btn');
-  if (btn) {
-    if (planKey === 'trial') {
-      btn.textContent = '🆓 Start Free Trial';
-      btn.style.background = 'var(--green)';
-    } else {
-      const plan = (window.SUBSCRIPTION_PLANS||[]).find(p=>p.key===planKey);
-      btn.textContent = `💳 Pay KES ${plan ? plan.amount.toLocaleString() : ''} & Start Selling`;
-      btn.style.background = '';
-    }
-  }
-};
-
-// Expose SUBSCRIPTION_PLANS to outer scripts
-window.SUBSCRIPTION_PLANS = [
-  { key:'daily',    label:'Daily',    days:1,   months:0, amount:25,   description:'Try for a day' },
-  { key:'monthly',  label:'Monthly',  days:30,  months:1, amount:580,  description:'Best for growing sellers' },
-  { key:'biannual', label:'6 Months', days:180, months:6, amount:3100, description:'Save 11% vs monthly' },
-];
-
-// Override paySubscription to handle free trial and new plans
-const _origPaySubscription = window.paySubscription;
-window.paySubscription = function() {
-  const planKey = document.getElementById('selectedSubPlan')?.value || 'monthly';
-
-  // Free trial — no payment needed
-  if (planKey === 'trial') {
-    window._activateFreeTrial();
-    return;
-  }
-
-  const plan = window.SUBSCRIPTION_PLANS.find(p => p.key === planKey);
-  if (!plan) { window.showToast && window.showToast('Please select a plan.', 'error'); return; }
-
-  // Store selected plan for the payment handler
-  window._pendingSubPlan = plan;
-
-  // Call original payment handler (IntaSend)
-  if (_origPaySubscription) _origPaySubscription();
-};
-
-window._activateFreeTrial = async function() {
-  const btn = document.getElementById('subscription-pay-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Activating…'; }
-  try {
-    // Mark trial as used — set subscription end to 2 days from now
-    const trialEnd = new Date(Date.now() + 2 * 86400000).toISOString();
-    // Call backend to activate trial
-    await apiCall('/auth/activate-trial', { method: 'POST', body: JSON.stringify({ trial_end: trialEnd }) });
-    if (window.currentUser) {
-      window.currentUser.subscription_end = trialEnd;
-      window.currentUser.had_free_trial = true;
-    }
-    window.showToast && window.showToast('🎉 Free trial activated! You have 2 days to try KenLynk.', 'success');
-    if (window.renderSellerRegistration) window.renderSellerRegistration();
-  } catch(e) {
-    // Even if backend fails, give trial locally
-    window.showToast && window.showToast('🎉 Free trial started! Enjoy 2 days of selling.', 'success');
-    if (window.currentUser) window.currentUser.subscription_end = new Date(Date.now() + 2*86400000).toISOString();
-    if (window.renderSellerRegistration) window.renderSellerRegistration();
-  }
-  if (btn) { btn.disabled = false; }
-};
-
-// ── Commission display on product cards ──────────────────────────
-// Commission is collected automatically when order is placed
-// 1% default, 2% for electronics/fragile
-window._getCommissionRate = function(category) {
-  const rates = { electronics:0.02, glassware:0.02, furniture:0.02, automotive:0.02 };
-  return rates[(category||'').toLowerCase()] || 0.01;
-};
-
-window._calcCommission = function(price, category) {
-  return Math.round(price * window._getCommissionRate(category));
-};
-
-// ════════════════════════════════════════════════════════════════════
-// MONETIZATION — Admin Approvals · Live Tracking · Unique Usernames
-// ════════════════════════════════════════════════════════════════════
-
-const FEATURED_STORAGE_KEY = 'kenlynk_featured_products';
-const FEATURED_LIVE_KEY    = 'kenlynk_featured_lives';
-const APPROVAL_QUEUE_KEY   = 'kenlynk_approval_queue';
-const LIVE_NOW_KEY         = 'kenlynk_live_now';
-const USERNAMES_KEY        = 'kenlynk_usernames';
-
-// Storage helpers
-function _getFeatured()    { try { return JSON.parse(localStorage.getItem(FEATURED_STORAGE_KEY)||'[]'); } catch(e){ return []; } }
-function _saveFeatured(l)  { try { localStorage.setItem(FEATURED_STORAGE_KEY, JSON.stringify(l)); } catch(e){} }
-function _getFeaturedLives(){ try { return JSON.parse(localStorage.getItem(FEATURED_LIVE_KEY)||'[]'); } catch(e){ return []; } }
-function _getQueue()       { try { return JSON.parse(localStorage.getItem(APPROVAL_QUEUE_KEY)||'[]'); } catch(e){ return []; } }
-function _saveQueue(q)     { try { localStorage.setItem(APPROVAL_QUEUE_KEY, JSON.stringify(q)); } catch(e){} }
-function _addToQueue(item) { const q=_getQueue(); q.unshift({...item,id:'apq_'+Date.now(),submittedAt:new Date().toISOString(),status:'pending'}); _saveQueue(q); }
-function _getLiveNow()     { try { return JSON.parse(localStorage.getItem(LIVE_NOW_KEY)||'[]'); } catch(e){ return []; } }
-function _saveLiveNow(l)   { try { localStorage.setItem(LIVE_NOW_KEY, JSON.stringify(l)); } catch(e){} }
-
-// ── Unique Username Generator ─────────────────────────────────────
-window._generateUsername = function(businessName, email) {
-  const existing = JSON.parse(localStorage.getItem(USERNAMES_KEY)||'[]');
-  const base = (businessName||email||'seller').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12)||'seller';
-  let candidate = base, i = 1;
-  while (existing.includes(candidate)) { candidate = base + i; i++; }
-  existing.push(candidate);
-  localStorage.setItem(USERNAMES_KEY, JSON.stringify(existing));
-  return '@' + candidate;
-};
-
-// ── Live tracking ─────────────────────────────────────────────────
-function _goLiveRegister(name, email) {
-  const l = _getLiveNow();
-  if (!l.find(x=>x.email===email)) { l.push({name,email,startedAt:new Date().toISOString()}); _saveLiveNow(l); }
-}
-function _endLiveRegister(email) { _saveLiveNow(_getLiveNow().filter(l=>l.email!==email)); }
-
-// Hook GoLive to register live status
-const _origSsGoLive2 = window._ssGoLive;
-window._ssGoLive = function() {
-  const u = window.currentUser;
-  if (u) _goLiveRegister(u.seller_business_name||u.name||'Seller', u.email||'');
-  if (_origSsGoLive2) _origSsGoLive2();
-};
-const _origSsEndLive2 = window._ssEndLive;
-window._ssEndLive = function() {
-  const u = window.currentUser;
-  if (u) _endLiveRegister(u.email||'');
-  if (_origSsEndLive2) _origSsEndLive2();
-};
-
-// ── Featured check ────────────────────────────────────────────────
-window._isFeatured = function(productId) {
-  return _getFeatured().some(f => f.id===productId && f.until>Date.now() && f.approved);
-};
-
-// ── Feature Product — payment → approval queue ────────────────────
-window._openFeatureProduct = function(productId, productName) {
-  let m = document.getElementById('featureProductModal');
-  if (!m) { m=document.createElement('div'); m.id='featureProductModal'; m.style.cssText='display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.88);align-items:center;justify-content:center;padding:20px;'; document.body.appendChild(m); }
-  m.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border-strong);border-radius:18px;padding:24px;max-width:420px;width:100%;position:relative;">
-      <button onclick="document.getElementById('featureProductModal').style.display='none'" style="position:absolute;top:14px;right:14px;background:var(--surface-2);border:1px solid var(--border-strong);color:var(--white);border-radius:8px;padding:5px 12px;cursor:pointer;">✕</button>
-      <h3 style="font-family:var(--font-display);margin-bottom:8px;">⭐ Feature This Product</h3>
-      <p style="color:var(--gray);font-size:13px;margin-bottom:14px;"><strong style="color:var(--white);">${window.escapeHtml?window.escapeHtml(productName):productName}</strong><br>Appears at the top of the shop — more views, more sales!</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
-        <div onclick="window._selFeatDur(1,this)" class="sub-plan-card" style="border:2px solid var(--border-strong);border-radius:12px;padding:14px;cursor:pointer;text-align:center;background:var(--surface-2);">
-          <div style="font-size:22px;">⚡</div><div style="font-weight:700;color:var(--white);font-size:13px;margin:4px 0;">24 Hours</div>
-          <div style="font-size:20px;font-weight:800;color:var(--gold);">KES 100</div>
-        </div>
-        <div onclick="window._selFeatDur(7,this)" class="sub-plan-card selected" style="border:2px solid var(--gold);border-radius:12px;padding:14px;cursor:pointer;text-align:center;background:rgba(255,215,0,0.08);">
-          <div style="font-size:22px;">🏆</div><div style="font-weight:700;color:var(--white);font-size:13px;margin:4px 0;">7 Days</div>
-          <div style="font-size:20px;font-weight:800;color:var(--gold);">KES 500</div>
-        </div>
-      </div>
-      <input type="hidden" id="featDays" value="7"><input type="hidden" id="featProdId" value="${productId}"><input type="hidden" id="featProdName" value="${productName}">
-      <div style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:10px;margin-bottom:12px;font-size:12px;color:var(--gray);">⏳ Admin will review and activate your feature after payment — usually within minutes.</div>
-      <button onclick="window._submitFeatProd()" id="featPayBtn" style="width:100%;background:var(--gold);border:none;color:#111;border-radius:10px;padding:12px;cursor:pointer;font-weight:700;font-size:14px;">💳 Pay KES 500 — Feature for 7 Days</button>
-      <p style="color:var(--gray);font-size:11px;text-align:center;margin-top:8px;">Via M-Pesa · Admin approval required</p>
-    </div>`;
-  m.style.display='flex';
-};
-window._selFeatDur = function(days, el) {
-  document.querySelectorAll('#featureProductModal .sub-plan-card').forEach(c=>c.classList.remove('selected'));
-  if(el) el.classList.add('selected');
-  document.getElementById('featDays').value=days;
-  const price=days===1?100:500;
-  const btn=document.getElementById('featPayBtn');
-  if(btn) btn.textContent=`💳 Pay KES ${price} — Feature for ${days===1?'24 Hours':'7 Days'}`;
-};
-window._submitFeatProd = function() {
-  const days=parseInt(document.getElementById('featDays')?.value||7,10);
-  const id=parseInt(document.getElementById('featProdId')?.value,10);
-  const name=document.getElementById('featProdName')?.value||'Product';
-  const btn=document.getElementById('featPayBtn');
-  if(btn){btn.disabled=true;btn.textContent='⏳ Sending M-Pesa prompt…';}
-  setTimeout(()=>{
-    const u=window.currentUser;
-    _addToQueue({type:'featured_product',productId:id,productName:name,days,price:days===1?100:500,sellerName:u?.seller_business_name||u?.name||'Seller',sellerEmail:u?.email||''});
-    document.getElementById('featureProductModal').style.display='none';
-    window.showToast&&window.showToast('✅ Payment submitted! Admin will activate your feature shortly.','success');
-    if(btn){btn.disabled=false;}
-  },1200);
-};
-
-// ── Feature Live — payment → approval queue ───────────────────────
-window._openFeatureLive = function(videoId, videoTitle) {
-  let m=document.getElementById('featureLiveModal');
-  if(!m){m=document.createElement('div');m.id='featureLiveModal';m.style.cssText='display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.88);align-items:center;justify-content:center;padding:20px;';document.body.appendChild(m);}
-  m.innerHTML=`
-    <div style="background:var(--surface);border:1px solid var(--border-strong);border-radius:18px;padding:24px;max-width:420px;width:100%;position:relative;">
-      <button onclick="document.getElementById('featureLiveModal').style.display='none'" style="position:absolute;top:14px;right:14px;background:var(--surface-2);border:1px solid var(--border-strong);color:var(--white);border-radius:8px;padding:5px 12px;cursor:pointer;">✕</button>
-      <h3 style="font-family:var(--font-display);margin-bottom:8px;">📡 Promote Your Live</h3>
-      <p style="color:var(--gray);font-size:13px;margin-bottom:14px;"><strong style="color:var(--white);">${window.escapeHtml?window.escapeHtml(videoTitle||'Your Live'):(videoTitle||'Your Live')}</strong><br>Promoted lives appear first in ShopStream for 24 hours.</p>
-      <div style="background:var(--surface-2);border:2px solid #e74c3c;border-radius:12px;padding:16px;margin-bottom:12px;text-align:center;">
-        <div style="font-size:32px;">🔴</div>
-        <div style="font-weight:700;color:var(--white);font-size:14px;margin:6px 0;">24-Hour Promotion</div>
-        <div style="font-size:24px;font-weight:800;color:var(--gold);">KES 200</div>
-      </div>
-      <div style="background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.3);border-radius:10px;padding:10px;margin-bottom:12px;font-size:12px;color:var(--gray);">⏳ Admin will review and promote your live after payment — usually within minutes.</div>
-      <button onclick="window._submitFeatLive('${videoId}','${window.escapeHtml?window.escapeHtml(videoTitle||''):(videoTitle||'')}')" style="width:100%;background:#e74c3c;border:none;color:#fff;border-radius:10px;padding:12px;cursor:pointer;font-weight:700;font-size:14px;">💳 Pay KES 200 — Promote Live</button>
-      <p style="color:var(--gray);font-size:11px;text-align:center;margin-top:8px;">Via M-Pesa · Admin approval required</p>
-    </div>`;
-  m.style.display='flex';
-};
-window._submitFeatLive = function(videoId, videoTitle) {
-  const u=window.currentUser;
-  setTimeout(()=>{
-    _addToQueue({type:'featured_live',videoId,videoTitle,price:200,sellerName:u?.seller_business_name||u?.name||'Seller',sellerEmail:u?.email||''});
-    document.getElementById('featureLiveModal').style.display='none';
-    window.showToast&&window.showToast('✅ Payment submitted! Admin will promote your live shortly.','success');
-  },1200);
-};
-
-// ── Admin Approvals Panel ─────────────────────────────────────────
-window._renderAdminApprovals = function() {
-  let m=document.getElementById('adminApprovalsModal');
-  if(!m){m=document.createElement('div');m.id='adminApprovalsModal';m.style.cssText='display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.92);overflow-y:auto;padding:16px;align-items:flex-start;justify-content:center;';document.body.appendChild(m);}
-
-  const queue=_getQueue(), liveNow=_getLiveNow();
-  const pending=queue.filter(q=>q.status==='pending');
-  const recent=queue.filter(q=>q.status!=='pending').slice(0,10);
-  const tLabel={featured_product:'⭐ Featured Product',featured_live:'📡 Featured Live',subscription:'💳 Subscription'};
-  const tColor={featured_product:'var(--gold)',featured_live:'#e74c3c',subscription:'var(--green)'};
-  const esc=window.escapeHtml||(s=>s);
-
-  m.innerHTML=`
-    <div style="background:var(--surface);border:1px solid var(--border-strong);border-radius:18px;padding:22px;max-width:700px;width:100%;margin:auto;margin-top:16px;position:relative;">
-      <button onclick="document.getElementById('adminApprovalsModal').style.display='none'" style="position:absolute;top:14px;right:14px;background:var(--surface-2);border:1px solid var(--border-strong);color:var(--white);border-radius:8px;padding:5px 12px;cursor:pointer;">✕ Close</button>
-      <h3 style="font-family:var(--font-display);margin-bottom:4px;">✅ Approvals & Live Monitor</h3>
-      <p style="color:var(--gray);font-size:13px;margin-bottom:16px;">${pending.length} pending · ${liveNow.length} live now</p>
-
-      <!-- Live Now -->
-      <div style="margin-bottom:18px;padding:14px;background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.3);border-radius:12px;">
-        <div style="font-weight:700;color:#e74c3c;font-size:14px;margin-bottom:10px;">🔴 Live Right Now (${liveNow.length})</div>
-        ${liveNow.length?liveNow.map(l=>`
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);flex-wrap:wrap;">
-            <span style="background:#e74c3c;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;animation:pulse 1.5s infinite;">🔴 LIVE</span>
-            <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:var(--white);">${esc(l.name)}</div><div style="font-size:11px;color:var(--gray);">${l.email} · ${new Date(l.startedAt).toLocaleTimeString('en-KE')}</div></div>
-            <button onclick="window._adminEndLive('${l.email}')" style="background:#e74c3c;border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:600;">End Live</button>
-          </div>`).join(''):'<div style="color:var(--gray);font-size:13px;">No one is live right now.</div>'}
-      </div>
-
-      <!-- Pending -->
-      <div style="font-weight:700;color:var(--white);font-size:14px;margin-bottom:10px;">⏳ Pending Approvals (${pending.length})</div>
-      ${pending.length?pending.map(item=>`
-        <div style="background:var(--surface-2);border:1px solid var(--border-strong);border-radius:12px;padding:14px;margin-bottom:10px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-            <span style="background:${tColor[item.type]||'var(--gray)'};color:${item.type==='subscription'?'#fff':'#111'};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;">${tLabel[item.type]||item.type}</span>
-            <span style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--gold);">KES ${(item.price||0).toLocaleString()}</span>
-            <span style="font-size:11px;color:var(--gray);">${new Date(item.submittedAt).toLocaleString('en-KE')}</span>
-          </div>
-          <div style="font-size:13px;color:var(--white);margin-bottom:4px;">
-            <strong>${esc(item.sellerName||'')}</strong>
-            ${item.username?`<span style="color:var(--green-light);font-size:11px;margin-left:6px;">${esc(item.username)}</span>`:''}
-          </div>
-          <div style="font-size:12px;color:var(--gray);margin-bottom:10px;">${item.sellerEmail}
-            ${item.productName?` · Product: <strong style="color:var(--white);">${esc(item.productName)}</strong> (${item.days} day${item.days>1?'s':''})`:''}
-            ${item.videoTitle?` · Live: <strong style="color:var(--white);">${esc(item.videoTitle)}</strong>`:''}
-          </div>
-          <div style="display:flex;gap:8px;">
-            <button onclick="window._adminApprove('${item.id}')" style="flex:1;background:var(--green);border:none;color:#fff;border-radius:8px;padding:8px;cursor:pointer;font-weight:700;font-size:13px;">✅ Approve & Activate</button>
-            <button onclick="window._adminReject('${item.id}')" style="flex:1;background:#e74c3c;border:none;color:#fff;border-radius:8px;padding:8px;cursor:pointer;font-weight:600;font-size:13px;">❌ Reject</button>
-          </div>
-        </div>`).join(''):'<div style="color:var(--gray);font-size:13px;padding:12px 0;">No pending approvals 🎉</div>'}
-
-      <!-- Recent -->
-      ${recent.length?`<div style="margin-top:16px;"><div style="font-weight:700;color:var(--gray);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Recently Processed</div>
-      ${recent.map(item=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--gray);">
-        <span style="color:${item.status==='approved'?'var(--green-light)':'#e74c3c'};font-weight:700;">${item.status==='approved'?'✅':'❌'}</span>
-        <span style="color:var(--white);">${esc(item.sellerName||'')}</span>
-        <span>${tLabel[item.type]||item.type}</span>
-        <span style="color:var(--gold);">KES ${(item.price||0).toLocaleString()}</span>
-      </div>`).join('')}</div>`:''}
-    </div>`;
-  m.style.display='flex';
-};
-
-window._adminApprove = function(itemId) {
-  const q=_getQueue(), item=q.find(i=>i.id===itemId);
-  if(!item) return;
-  item.status='approved'; item.approvedAt=new Date().toISOString();
-  if(item.type==='featured_product') {
-    const f=_getFeatured(), until=Date.now()+item.days*86400000;
-    const idx=f.findIndex(x=>x.id===item.productId);
-    if(idx>=0) f[idx]={...f[idx],until,approved:true};
-    else f.push({id:item.productId,until,days:item.days,price:item.price,approved:true});
-    _saveFeatured(f);
-    window.renderProducts&&window.renderProducts();
-    window.renderShopCollections&&window.renderShopCollections();
-  } else if(item.type==='featured_live') {
-    const l=_getFeaturedLives();
-    l.push({id:item.videoId,until:Date.now()+86400000,price:item.price,approved:true});
-    localStorage.setItem(FEATURED_LIVE_KEY,JSON.stringify(l));
-    window._ssRender&&window._ssRender();
-  } else if(item.type==='subscription' && item.plan) {
-    // Upgrade seller plan in the UI (backend would persist this in real scenario)
-    window.showToast&&window.showToast(`✅ ${item.sellerName} upgraded to ${item.plan.toUpperCase()} plan!`,'success');
-  }
-  _saveQueue(q);
-  window.showToast&&window.showToast('✅ Approved and activated!','success');
-  window._renderAdminApprovals(); window._renderRevenuePanel&&window._renderRevenuePanel();
-};
-
-window._adminReject = function(itemId) {
-  if(!confirm('Reject this payment request?')) return;
-  const q=_getQueue(), item=q.find(i=>i.id===itemId);
-  if(item){item.status='rejected';item.rejectedAt=new Date().toISOString();}
-  _saveQueue(q);
-  window.showToast&&window.showToast('❌ Request rejected.','error');
-  window._renderAdminApprovals();
-};
-
-window._adminEndLive = function(email) {
-  _endLiveRegister(email);
-  window.showToast&&window.showToast('Live session ended by admin.','success');
-  window._renderAdminApprovals();
-};
-
-// ── Sort featured products first ──────────────────────────────────
-const _origGetFP = window.getFilteredProducts;
-window.getFilteredProducts = function() {
-  const list=_origGetFP?_origGetFP():(window.PRODUCTS||[]);
-  const now=Date.now();
-  const fIds=_getFeatured().filter(f=>f.until>now&&f.approved).map(f=>f.id);
-  if(!fIds.length) return list;
-  return [...list].sort((a,b)=>(fIds.includes(b.id)?1:0)-(fIds.includes(a.id)?1:0));
-};
-
-// ── Revenue Panel ─────────────────────────────────────────────────
-window._renderRevenuePanel = function() {
-  const panel=document.getElementById('adminRevenuePanel');
-  if(!panel) return;
-  const q=_getQueue(), liveNow=_getLiveNow();
-  const approved=q.filter(x=>x.status==='approved');
-  const pending=q.filter(x=>x.status==='pending');
-  const featRev=approved.filter(x=>x.type==='featured_product').reduce((s,x)=>s+(x.price||0),0);
-  const liveRev=approved.filter(x=>x.type==='featured_live').reduce((s,x)=>s+(x.price||0),0);
-  const subRev=approved.filter(x=>x.type==='subscription').reduce((s,x)=>s+(x.price||0),0);
-  panel.innerHTML=`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-      <h4 style="font-family:var(--font-display);font-size:15px;margin:0;">💰 Revenue & Approvals</h4>
-      <button onclick="window._renderAdminApprovals()" style="background:${pending.length?'#e74c3c':'var(--surface-2)'};border:none;color:#fff;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px;">
-        ${pending.length?`⏳ ${pending.length} Pending`:'✅ Approvals'}${liveNow.length?` · 🔴 ${liveNow.length} Live`:''}
-      </button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:12px;">
-      <div style="background:var(--surface-2);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border);"><div style="font-size:18px;">⭐</div><div style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--gold);">KES ${featRev.toLocaleString()}</div><div style="font-size:10px;color:var(--gray);">Featured Products</div></div>
-      <div style="background:var(--surface-2);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border);"><div style="font-size:18px;">📡</div><div style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--gold);">KES ${liveRev.toLocaleString()}</div><div style="font-size:10px;color:var(--gray);">Featured Lives</div></div>
-      <div style="background:var(--surface-2);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border);"><div style="font-size:18px;">💳</div><div style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--gold);">KES ${subRev.toLocaleString()}</div><div style="font-size:10px;color:var(--gray);">Subscriptions</div></div>
-      <div style="background:var(--surface-2);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border);"><div style="font-size:18px;">🔴</div><div style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:#e74c3c;">${liveNow.length}</div><div style="font-size:10px;color:var(--gray);">Live Now</div></div>
-    </div>
-    <div style="font-size:12px;color:var(--gray);padding:10px;background:var(--surface-2);border-radius:8px;">💡 Commission (1-2%) auto-collected on every completed order. Click <strong style="color:var(--white);">Approvals</strong> to review pending payments.</div>`;
-};
-
-// ════════════════════════════════════════════════════════════════════
-// SELLER PLAN SYSTEM — Free / Silver / Gold
-// ════════════════════════════════════════════════════════════════════
-
-const SELLER_PLANS = {
-  free: {
-    key:'free', label:'Free', icon:'🆓', price:0, priceLabel:'Free forever',
-    color:'var(--gray)', features:[
-      '✅ Immediate access after approval',
-      '✅ Up to 20 products',
-      '✅ Basic seller shop page',
-      '✅ Standard search ranking',
-      '✅ Access to orders & earnings',
-      '✅ Commission only after successful sales',
-      '❌ No analytics dashboard',
-      '❌ No marketing tools',
-      '❌ Standard commission rate',
-    ]
-  },
-  silver: {
-    key:'silver', label:'Silver', icon:'🥈', price:580, priceLabel:'KES 580/month',
-    color:'#c0c0c0', features:[
-      '✅ Everything in Free',
-      '✅ Up to 200 products',
-      '✅ Better search ranking',
-      '✅ Seller analytics dashboard',
-      '✅ Discount & coupon tools',
-      '✅ Priority customer support',
-      '✅ Slightly reduced commission',
-      '❌ No featured seller badge',
-      '❌ No homepage promotion',
-    ]
-  },
-  gold: {
-    key:'gold', label:'Gold', icon:'🥇', price:1200, priceLabel:'KES 1,200/month',
-    color:'var(--gold)', features:[
-      '✅ Everything in Silver',
-      '✅ Unlimited products',
-      '✅ 🥇 Featured Seller badge',
-      '✅ Homepage promotion',
-      '✅ Advanced analytics & reports',
-      '✅ Highest search ranking',
-      '✅ Priority support (same day)',
-      '✅ Lowest commission rate',
-      '✅ Flash sale & campaign tools',
-    ]
-  }
-};
-
-window._openPlanUpgrade = function() {
-  let m = document.getElementById('planUpgradeModal');
-  if (!m) {
-    m = document.createElement('div');
-    m.id = 'planUpgradeModal';
-    m.style.cssText = 'display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.92);overflow-y:auto;padding:16px;align-items:flex-start;justify-content:center;';
-    document.body.appendChild(m);
-  }
-
-  const current = window.currentUser?.seller_plan || 'free';
-
-  m.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border-strong);border-radius:18px;padding:24px;max-width:780px;width:100%;margin:auto;margin-top:16px;position:relative;">
-      <button onclick="document.getElementById('planUpgradeModal').style.display='none'"
-        style="position:absolute;top:14px;right:14px;background:var(--surface-2);border:1px solid var(--border-strong);color:var(--white);border-radius:8px;padding:5px 12px;cursor:pointer;">✕ Close</button>
-      <h3 style="font-family:var(--font-display);margin-bottom:4px;">⬆️ Upgrade Your Plan</h3>
-      <p style="color:var(--gray);font-size:13px;margin-bottom:20px;">Grow your business on KenLynk. Upgrade anytime — downgrade anytime.</p>
-
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:20px;">
-        ${Object.values(SELLER_PLANS).map(p => `
-          <div style="border:2px solid ${p.key===current?p.color:'var(--border-strong)'};border-radius:14px;padding:18px;background:${p.key===current?'rgba(255,255,255,0.04)':'var(--surface-2)'};position:relative;">
-            ${p.key===current?`<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:${p.color};color:${p.key==='gold'?'#111':'#fff'};font-size:9px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap;">YOUR PLAN</div>`:''}
-            <div style="text-align:center;margin-bottom:12px;">
-              <div style="font-size:32px;">${p.icon}</div>
-              <div style="font-size:16px;font-weight:800;color:${p.color};margin:4px 0;">${p.label}</div>
-              <div style="font-size:18px;font-weight:700;color:var(--white);">${p.priceLabel}</div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px;">
-              ${p.features.map(f=>`<div style="font-size:11px;color:${f.startsWith('✅')?'var(--white)':'var(--gray)'};">${f}</div>`).join('')}
-            </div>
-            ${p.key === current
-              ? `<button disabled style="width:100%;background:var(--surface-3);border:1px solid var(--border-strong);color:var(--gray);border-radius:8px;padding:9px;font-size:13px;cursor:default;">Current Plan</button>`
-              : p.key === 'free'
-              ? `<button onclick="window._downgradePlan('free')" style="width:100%;background:var(--surface-2);border:1px solid var(--border-strong);color:var(--gray);border-radius:8px;padding:9px;font-size:12px;cursor:pointer;">Downgrade to Free</button>`
-              : `<button onclick="window._upgradePlan('${p.key}',${p.price})" style="width:100%;background:${p.color};border:none;color:${p.key==='gold'?'#111':'#fff'};border-radius:8px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;">💳 Upgrade to ${p.label}</button>`
-            }
-          </div>`).join('')}
-      </div>
-
-      <div style="background:var(--surface-2);border-radius:10px;padding:12px;font-size:12px;color:var(--gray);">
-        💡 <strong style="color:var(--white);">Commission rates:</strong> Free sellers pay standard commission · Silver pay 10% less · Gold pay 20% less than standard rates. Commission is only charged when a buyer successfully completes an order.
-      </div>
-    </div>`;
-  m.style.display = 'flex';
-};
-
-// Real payment flow: opens a small phone-number modal, calls the actual
-// IntaSend endpoint, and polls for confirmation - replaces the previous
-// version of this function, which only added the request to a local
-// "approval queue" and never contacted IntaSend at all.
-window._upgradePlan = function(planKey, price) {
-  const user = window.currentUser;
-  if (!user) return;
-
-  let m = document.getElementById('planPayModal');
-  if (!m) {
-    m = document.createElement('div');
-    m.id = 'planPayModal';
-    m.style.cssText = 'display:none;position:fixed;inset:0;z-index:3100;background:rgba(0,0,0,0.92);align-items:center;justify-content:center;padding:16px;';
-    document.body.appendChild(m);
-  }
-  const planLabel = planKey.charAt(0).toUpperCase() + planKey.slice(1);
-  m.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border-strong);border-radius:16px;padding:22px;max-width:360px;width:100%;">
-      <h3 style="font-family:var(--font-display);margin-bottom:6px;">💳 Upgrade to ${planLabel}</h3>
-      <div style="color:var(--gray);font-size:13px;margin-bottom:16px;">KES ${price.toLocaleString()}/month · billed via M-Pesa (IntaSend)</div>
-      <label style="font-size:12px;color:var(--gray); display:block; margin-bottom:6px;">M-Pesa phone number</label>
-      <input type="tel" id="planPayPhone" placeholder="07XXXXXXXX" value="${escapeHtml(user.phone || '')}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:10px; font-size:14px; margin-bottom:14px;">
-      <div style="display:flex; gap:8px;">
-        <button onclick="document.getElementById('planPayModal').style.display='none'" style="flex:1; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:10px; cursor:pointer;">Cancel</button>
-        <button id="planPaySubmitBtn" style="flex:2; background:var(--green); border:none; color:#fff; border-radius:8px; padding:10px; font-weight:700; cursor:pointer;">Send Payment Prompt</button>
-      </div>
-    </div>`;
-  m.style.display = 'flex';
-
-  document.getElementById('planPaySubmitBtn').onclick = async function() {
-    const phone = document.getElementById('planPayPhone')?.value.trim();
-    if (!phone) { window.showToast && window.showToast('Please enter your M-Pesa phone number.', 'error'); return; }
-
-    const btn = this;
-    const originalText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = '⏳ Sending M-Pesa prompt...';
-
-    try {
-      const initResult = await window.apiCall('/intasend/subscribe', {
-        method: 'POST',
-        body: JSON.stringify({ plan: planKey, phone })
-      });
-      const apiRef = initResult.data.api_ref;
-      btn.textContent = '📱 Check your phone — enter M-Pesa PIN...';
-      window.showToast && window.showToast('✅ M-Pesa prompt sent! Check your phone and enter your PIN.', 'success');
-
-      const maxAttempts = 20;
-      let attempt = 0;
-      let finalStatus = null;
-      while (attempt < maxAttempts) {
-        await new Promise(r => setTimeout(r, 4000));
-        attempt++;
-        try {
-          const statusResult = await window.apiCall(`/intasend/status/${apiRef}`);
-          const s = statusResult.data.status;
-          if (s === 'COMPLETE') { finalStatus = 'completed'; break; }
-          if (s === 'FAILED')   { finalStatus = 'failed';    break; }
-          btn.textContent = `📱 Waiting for PIN… (${attempt * 4}s)`;
-        } catch (pollErr) {
-          console.warn('Poll attempt failed:', pollErr.message);
-        }
-      }
-
-      btn.disabled = false;
-      btn.textContent = originalText;
-
-      if (finalStatus === 'completed') {
-        const meResult = await window.apiCall('/auth/me');
-        window.currentUser = meResult.data.user;
-        m.style.display = 'none';
-        window.showToast && window.showToast(`✅ Payment successful! You're now on the ${planLabel} plan.`, 'success');
-        window.renderSellerRegistration && window.renderSellerRegistration();
-      } else if (finalStatus === 'failed') {
-        window.showToast && window.showToast('❌ Payment failed or cancelled. Please try again.', 'error');
-      } else {
-        window.showToast && window.showToast('⏳ Still waiting for confirmation. If you already paid, check back shortly.', 'error');
-      }
-    } catch (error) {
-      console.error('IntaSend plan upgrade error:', error);
-      btn.disabled = false;
-      btn.textContent = originalText;
-      window.showToast && window.showToast('❌ ' + (error.message || 'Payment failed. Please try again.'), 'error');
-    }
-  };
-};
-
-window._downgradePlan = function(planKey) {
-  if (!confirm('Downgrade to Free plan? You will lose access to premium features at the end of your current billing period.')) return;
-  if (window.currentUser) window.currentUser.seller_plan = planKey;
-  document.getElementById('planUpgradeModal').style.display = 'none';
-  window.showToast && window.showToast('Plan downgraded to Free.', 'success');
-  window.renderSellerRegistration && window.renderSellerRegistration();
-};
-
-// Admin: activate plan after payment confirmed
-window._adminActivatePlan = function(itemId) {
-  const q = _getQueue ? _getQueue() : [];
-  const item = q.find(i => i.id === itemId);
-  if (!item || item.type !== 'subscription') return;
-  item.status = 'approved';
-  item.approvedAt = new Date().toISOString();
-  _saveQueue && _saveQueue(q);
-  window.showToast && window.showToast(`✅ ${item.sellerName} upgraded to ${item.plan?.toUpperCase()} plan!`, 'success');
-  window._renderAdminApprovals && window._renderAdminApprovals();
 };
 
 // ════════════════════════════════════════════════════════════════════
@@ -19582,376 +18481,120 @@ window.getFilteredProducts = function() {
 
 // ════════════════════════════════════════════════════════════════════
 
-// ════════════════════════════════════════════════════════════════════
-// SMART VARIANT GENERATOR
-// State: pick option TYPES (Colour, Size...), pick VALUES for each,
-// then every combination is generated automatically as an editable row
-// - the seller never manually types "Black / S" as free text.
-// ════════════════════════════════════════════════════════════════════
-
-const VARIANT_TYPE_PRESETS = ['Colour','Size','Storage','RAM','Material','Weight','Flavour','Model','Capacity','Other'];
-const VARIANT_VALUE_PRESETS = {
-  'Colour':  ['Black','White','Blue','Red','Green','Grey','Gold','Silver','Pink','Purple','Brown','Beige'],
-  'Size':    ['XS','S','M','L','XL','XXL','XXXL'],
-  'Storage': ['16GB','32GB','64GB','128GB','256GB','512GB','1TB'],
-  'RAM':     ['2GB','3GB','4GB','6GB','8GB','12GB','16GB'],
-  'Material':['Cotton','Leather','Plastic','Metal','Wood','Glass','Rubber','Denim'],
-  'Capacity':['0.5L','1L','1.5L','2L','5L','10L','20L']
-};
-// name -> array of variation types to recommend, matched by substring
-// against the seller's chosen category name (case-insensitive).
-const VARIANT_CATEGORY_RECOMMENDATIONS = [
-  { match: ['shoe','shoes','footwear','sneaker','boot'], types: ['Size','Colour'] },
-  { match: ['phone','smartphone','mobile','tablet'],     types: ['Storage','RAM','Colour'] },
-  { match: ['cloth','fashion','apparel','shirt','dress','wear'], types: ['Size','Colour','Material'] },
-  { match: ['furniture','sofa','chair','table','bed'],   types: ['Colour','Material','Size'] }
-];
-
-window._variantTypes  = [];  // [{ name, values: [...] }]
-window._variantCombos = [];  // [{ key, options:{name:value}, price, stock, sku, image, salePrice, costPrice, weight, lowStock, available, advancedOpen }]
-
 window.toggleVariantBuilder = function(enabled) {
   const body = document.getElementById('variantBuilderBody');
   if (!body) return;
   body.style.display = enabled ? 'block' : 'none';
-  if (enabled) {
-    window._renderVariantTypePicker();
-    window._renderVariantTypesWrap();
-    window._checkVariantCategoryRecommendation();
-    window._regenerateVariantCombos();
+  if (enabled && document.getElementById('attrInputsWrap')?.children.length === 0) {
+    window.addAttributeInput();
   }
 };
 
-window._renderVariantTypePicker = function() {
-  const wrap = document.getElementById('variantTypePicker');
+window.addAttributeInput = function() {
+  const wrap = document.getElementById('attrInputsWrap');
   if (!wrap) return;
-  const chosen = window._variantTypes.map(t => t.name);
-  wrap.innerHTML = VARIANT_TYPE_PRESETS.map(name => {
-    const isChosen = chosen.includes(name);
-    return `<button type="button" onclick="window._toggleVariantType('${name}')" style="background:${isChosen ? 'var(--green)' : 'var(--surface-3)'}; color:${isChosen ? '#fff' : 'var(--white)'}; border:1px solid ${isChosen ? 'var(--green)' : 'var(--border-strong)'}; padding:7px 14px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:600;">${isChosen ? '✓ ' : ''}${name}</button>`;
-  }).join('');
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex; align-items:center; gap:4px;';
+  div.innerHTML = `
+    <input type="text" placeholder="e.g. Colour"
+           class="variant-attr-input"
+           style="background:var(--surface-3); border:1px solid var(--border-strong);
+                  color:var(--white); border-radius:8px; padding:6px 10px; font-size:12px; width:130px;"
+           oninput="window._syncVariantRowHeaders()">
+    <button type="button" onclick="this.parentElement.remove(); window._syncVariantRowHeaders();"
+            style="background:#e74c3c; border:none; color:#fff; border-radius:6px;
+                   padding:4px 8px; cursor:pointer; font-size:11px;">✕</button>
+  `;
+  wrap.appendChild(div);
+  div.querySelector('input').focus();
+  window._syncVariantRowHeaders();
 };
 
-window._toggleVariantType = function(name) {
-  const idx = window._variantTypes.findIndex(t => t.name === name);
-  if (idx === -1) {
-    window._variantTypes.push({ name, values: [] });
-  } else {
-    window._variantTypes.splice(idx, 1);
+window._syncVariantRowHeaders = function() {
+  const attrNames = _getAttrNames();
+  const header = document.getElementById('variantRowsHeader');
+  if (header) {
+    let html = `<div style="display:flex; gap:6px; font-size:11px; color:var(--gray); font-weight:600;
+        text-transform:uppercase; padding:0 4px; margin-bottom:6px; flex-wrap:wrap;">`;
+    for (const n of attrNames) html += `<div style="min-width:100px; flex:1;">${n||'Option'}</div>`;
+    html += `<div style="width:80px;">Price*</div><div style="width:60px;">Stock*</div><div style="width:80px;">SKU</div><div style="width:36px;"></div></div>`;
+    header.innerHTML = html;
   }
-  window._renderVariantTypePicker();
-  window._renderVariantTypesWrap();
-  window._regenerateVariantCombos();
-};
-
-window._renderVariantTypesWrap = function() {
-  const wrap = document.getElementById('variantTypesWrap');
-  if (!wrap) return;
-  wrap.innerHTML = window._variantTypes.map(type => {
-    const presets = VARIANT_VALUE_PRESETS[type.name] || [];
-    const presetChips = presets.map(v => {
-      const on = type.values.includes(v);
-      return `<button type="button" onclick="window._toggleVariantValue('${type.name}','${v}')" style="background:${on ? 'var(--green)' : 'var(--surface-3)'}; color:${on ? '#fff' : 'var(--white)'}; border:1px solid ${on ? 'var(--green)' : 'var(--border-strong)'}; padding:5px 10px; border-radius:8px; cursor:pointer; font-size:11px;">${on ? '✓ ' : ''}${v}</button>`;
-    }).join('');
-    const customChips = type.values.filter(v => !presets.includes(v)).map(v =>
-      `<button type="button" onclick="window._toggleVariantValue('${type.name}','${v}')" style="background:var(--green); color:#fff; border:1px solid var(--green); padding:5px 10px; border-radius:8px; cursor:pointer; font-size:11px;">✓ ${escapeHtml(v)}</button>`
-    ).join('');
-    const sizeNumbersBtn = type.name === 'Size'
-      ? `<button type="button" onclick="window._addSizeNumbers1to50()" style="background:var(--surface-3); color:var(--gold); border:1px solid var(--gold); padding:5px 10px; border-radius:8px; cursor:pointer; font-size:11px;">🔢 Add numbers 1–50</button>`
-      : '';
-    return `
-      <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:10px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-          <span style="font-size:13px; font-weight:700; color:var(--white);">${type.name}</span>
-          <button type="button" onclick="window._toggleVariantType('${type.name}')" style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:12px;">✕ Remove</button>
-        </div>
-        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">${presetChips}${customChips}${sizeNumbersBtn}</div>
-        <div style="display:flex; gap:6px;">
-          <input type="text" id="variantCustomValue_${type.name}" placeholder="Add a custom value…" style="flex:1; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 10px; font-size:12px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); window._addCustomVariantValue('${type.name}');}">
-          <button type="button" onclick="window._addCustomVariantValue('${type.name}')" style="background:var(--surface-3); color:var(--green); border:1px solid var(--green); padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;">+ Add value</button>
-        </div>
-      </div>`;
-  }).join('');
-
-  const addAnother = document.getElementById('variantAddAnotherWrap');
-  if (addAnother) {
-    const remaining = VARIANT_TYPE_PRESETS.filter(n => !window._variantTypes.some(t => t.name === n));
-    addAnother.innerHTML = remaining.length
-      ? `<div style="font-size:11px; color:var(--gray);">Tap another type above to add it — e.g. ${remaining.slice(0,3).join(', ')}.</div>`
-      : '';
-  }
-};
-
-window._toggleVariantValue = function(typeName, value) {
-  const type = window._variantTypes.find(t => t.name === typeName);
-  if (!type) return;
-  const idx = type.values.indexOf(value);
-  if (idx === -1) type.values.push(value); else type.values.splice(idx, 1);
-  window._renderVariantTypesWrap();
-  window._regenerateVariantCombos();
-};
-
-window._addCustomVariantValue = function(typeName) {
-  const input = document.getElementById('variantCustomValue_' + typeName);
-  const value = input?.value.trim();
-  if (!value) return;
-  const type = window._variantTypes.find(t => t.name === typeName);
-  if (!type) return;
-  if (!type.values.includes(value)) type.values.push(value);
-  input.value = '';
-  window._renderVariantTypesWrap();
-  window._regenerateVariantCombos();
-};
-
-window._addSizeNumbers1to50 = function() {
-  const type = window._variantTypes.find(t => t.name === 'Size');
-  if (!type) return;
-  for (let i = 1; i <= 50; i++) {
-    const v = String(i);
-    if (!type.values.includes(v)) type.values.push(v);
-  }
-  window._renderVariantTypesWrap();
-  window._regenerateVariantCombos();
-};
-
-// Cartesian product of every type's chosen values. Preserves existing
-// price/stock/sku/etc for combinations that still exist after a type or
-// value is added/removed, so the seller never loses work they already did.
-window._regenerateVariantCombos = function() {
-  const activeTypes = window._variantTypes.filter(t => t.values.length);
-  let combos = [{ options: {} }];
-  activeTypes.forEach(type => {
-    const next = [];
-    combos.forEach(c => {
-      type.values.forEach(v => next.push({ options: { ...c.options, [type.name]: v } }));
-    });
-    combos = next;
+  document.querySelectorAll('.variant-data-row').forEach(row => {
+    _refreshVariantRowCells(row, attrNames);
   });
-  if (!activeTypes.length) combos = [];
-
-  const prevByKey = {};
-  window._variantCombos.forEach(c => { prevByKey[c.key] = c; });
-
-  window._variantCombos = combos.map(c => {
-    const key = Object.values(c.options).join(' / ');
-    const prev = prevByKey[key];
-    return prev || {
-      key, options: c.options, price: '', stock: '', sku: '', image: '',
-      salePrice: '', costPrice: '', weight: '', lowStock: '', available: true, advancedOpen: false
-    };
-  });
-
-  window._renderVariantComboTable();
 };
 
-window._renderVariantComboTable = function() {
-  const countEl = document.getElementById('variantComboCount');
-  const toolbar = document.getElementById('variantBulkToolbar');
-  const tableWrap = document.getElementById('variantComboTableWrap');
-  if (!tableWrap) return;
+function _getAttrNames() {
+  return [...document.querySelectorAll('.variant-attr-input')]
+    .map(i => i.value.trim()).filter(Boolean);
+}
 
-  const n = window._variantCombos.length;
-  if (countEl) countEl.textContent = n + (n === 1 ? ' variant generated' : ' variants generated');
-  if (toolbar) toolbar.style.display = n ? 'block' : 'none';
-
-  if (!n) {
-    tableWrap.innerHTML = '<div style="font-size:12px; color:var(--gray); padding:10px 0;">Choose at least one variation type and value above to generate variants.</div>';
-    return;
+function _refreshVariantRowCells(row, attrNames) {
+  const optionCells = row.querySelector('.option-cells');
+  if (!optionCells) return;
+  const existing = {};
+  optionCells.querySelectorAll('input[data-attr]').forEach(i => { existing[i.dataset.attr] = i.value; });
+  let html = '';
+  for (const n of attrNames) {
+    html += `<input type="text" data-attr="${n}" placeholder="${n}" value="${(existing[n]||'').replace(/"/g,'&quot;')}"
+      style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white);
+             border-radius:6px; padding:5px 8px; font-size:12px; min-width:100px; flex:1;">`;
   }
+  optionCells.innerHTML = html;
+}
 
-  const samePriceOn = document.getElementById('variantSamePriceToggle')?.checked;
-
-  tableWrap.innerHTML = `
-    <table style="width:100%; border-collapse:collapse; font-size:12px;">
-      <thead>
-        <tr style="text-align:left; color:var(--gray); border-bottom:1px solid var(--border);">
-          <th style="padding:6px 4px;">Variation</th>
-          <th style="padding:6px 4px;">Price</th>
-          <th style="padding:6px 4px;">Stock</th>
-          <th style="padding:6px 4px;">SKU</th>
-          <th style="padding:6px 4px;">Image</th>
-          <th style="padding:6px 4px;"></th>
-        </tr>
-      </thead>
-      <tbody>
-        ${window._variantCombos.map((c, i) => `
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:6px 4px; color:var(--white); font-weight:600; white-space:nowrap;">${escapeHtml(c.key)}</td>
-            <td style="padding:6px 4px;">
-              <input type="number" min="0" placeholder="KSh —" value="${c.price}" ${samePriceOn ? 'disabled' : ''} oninput="window._updateVariantCombo(${i},'price',this.value)" style="width:80px; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--gold); border-radius:6px; padding:5px 6px; font-size:12px;">
-            </td>
-            <td style="padding:6px 4px;">
-              <input type="number" min="0" placeholder="—" value="${c.stock}" oninput="window._updateVariantCombo(${i},'stock',this.value)" style="width:60px; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;">
-            </td>
-            <td style="padding:6px 4px;">
-              <input type="text" placeholder="Auto" value="${escapeHtml(c.sku)}" oninput="window._updateVariantCombo(${i},'sku',this.value)" style="width:90px; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--gray); border-radius:6px; padding:5px 6px; font-size:12px;">
-            </td>
-            <td style="padding:6px 4px; text-align:center;">
-              <label style="cursor:pointer;">
-                ${c.image ? `<img src="${c.image}" style="width:28px; height:28px; object-fit:cover; border-radius:6px; display:block;">` : '📷'}
-                <input type="file" accept="image/*" style="display:none;" onchange="window._setVariantImage(${i}, this.files[0])">
-              </label>
-            </td>
-            <td style="padding:6px 4px; white-space:nowrap;">
-              <button type="button" onclick="window._toggleVariantAdvanced(${i})" title="Advanced settings" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:4px 7px; cursor:pointer; font-size:11px;">⚙</button>
-              <button type="button" onclick="window._removeVariantCombo(${i})" title="Delete this variant" style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:13px;">✕</button>
-            </td>
-          </tr>
-          ${c.advancedOpen ? `
-          <tr style="border-bottom:1px solid var(--border); background:var(--surface);">
-            <td colspan="6" style="padding:10px;">
-              <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px;">
-                <div><label style="font-size:10px; color:var(--gray); display:block;">Cost price</label><input type="number" min="0" value="${c.costPrice}" oninput="window._updateVariantCombo(${i},'costPrice',this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;"></div>
-                <div><label style="font-size:10px; color:var(--gray); display:block;">Sale price</label><input type="number" min="0" value="${c.salePrice}" oninput="window._updateVariantCombo(${i},'salePrice',this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;"></div>
-                <div><label style="font-size:10px; color:var(--gray); display:block;">Weight (kg)</label><input type="number" min="0" step="0.1" value="${c.weight}" oninput="window._updateVariantCombo(${i},'weight',this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;"></div>
-                <div><label style="font-size:10px; color:var(--gray); display:block;">Low-stock alert</label><input type="number" min="0" value="${c.lowStock}" oninput="window._updateVariantCombo(${i},'lowStock',this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;"></div>
-                <div style="display:flex; align-items:end;"><label style="font-size:11px; color:var(--white); display:flex; align-items:center; gap:6px;"><input type="checkbox" ${c.available ? 'checked' : ''} onchange="window._updateVariantCombo(${i},'available',this.checked)"> Available for sale</label></div>
-              </div>
-            </td>
-          </tr>` : ''}
-        `).join('')}
-      </tbody>
-    </table>`;
-};
-
-window._updateVariantCombo = function(i, field, value) {
-  const c = window._variantCombos[i];
-  if (!c) return;
-  c[field] = value;
-  // Only fields that change what a row LOOKS like need a full re-render;
-  // plain typing (price/stock/sku/etc) would lose focus if we did.
-};
-
-window._toggleVariantAdvanced = function(i) {
-  const c = window._variantCombos[i];
-  if (!c) return;
-  c.advancedOpen = !c.advancedOpen;
-  window._renderVariantComboTable();
-};
-
-window._removeVariantCombo = function(i) {
-  window._variantCombos.splice(i, 1);
-  window._renderVariantComboTable();
-};
-
-window._setVariantImage = async function(i, file) {
-  if (!file) return;
-  try {
-    const dataUrl = await readFileAsDataURL(await compressImageFile(file));
-    window._variantCombos[i].image = dataUrl;
-    window._renderVariantComboTable();
-  } catch (e) {
-    showToast('⚠️ Could not process that photo.', 'error');
+window.addVariantRow = function() {
+  const rowsWrap = document.getElementById('variantRowsWrap');
+  if (!rowsWrap) return;
+  const attrNames = _getAttrNames();
+  if (!document.getElementById('variantRowsHeader')) {
+    const h = document.createElement('div'); h.id = 'variantRowsHeader'; rowsWrap.prepend(h);
   }
+  const row = document.createElement('div');
+  row.className = 'variant-data-row';
+  row.style.cssText = 'display:flex; align-items:center; gap:6px; margin-bottom:8px; flex-wrap:wrap; padding:8px; background:var(--surface); border-radius:8px; border:1px solid var(--border);';
+  const optionCellsDiv = document.createElement('div');
+  optionCellsDiv.className = 'option-cells';
+  optionCellsDiv.style.cssText = 'display:flex; gap:6px; flex:1; min-width:0; flex-wrap:wrap;';
+  row.appendChild(optionCellsDiv);
+  row.insertAdjacentHTML('beforeend', `
+    <input type="number" class="vr-price" placeholder="Price" min="0"
+      style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--gold);
+             border-radius:6px; padding:5px 8px; font-size:12px; width:80px;">
+    <input type="number" class="vr-stock" placeholder="Stock" min="0" value="0"
+      style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white);
+             border-radius:6px; padding:5px 8px; font-size:12px; width:60px;">
+    <input type="text" class="vr-sku" placeholder="SKU (opt)"
+      style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--gray);
+             border-radius:6px; padding:5px 8px; font-size:12px; width:80px;">
+    <button type="button" onclick="this.closest('.variant-data-row').remove();"
+      style="background:#e74c3c; border:none; color:#fff; border-radius:6px; padding:5px 8px; cursor:pointer; font-size:13px;">✕</button>
+  `);
+  rowsWrap.appendChild(row);
+  _refreshVariantRowCells(row, attrNames);
+  window._syncVariantRowHeaders();
 };
 
-window._toggleSamePriceForAll = function(checked) {
-  const wrap = document.getElementById('variantSamePriceWrap');
-  if (wrap) wrap.style.display = checked ? 'block' : 'none';
-  window._renderVariantComboTable();
-};
-
-window._applySamePriceToAll = function(value) {
-  window._variantCombos.forEach(c => { c.price = value; });
-};
-
-window._bulkVariantAction = function(action) {
-  if (!window._variantCombos.length) { showToast('No variants to edit yet.', 'error'); return; }
-  if (action === 'price') {
-    const v = prompt('Set price (KES) for every variant:');
-    if (v === null || v === '') return;
-    window._variantCombos.forEach(c => { c.price = v; });
-  } else if (action === 'stock') {
-    const v = prompt('Set stock quantity for every variant:');
-    if (v === null || v === '') return;
-    window._variantCombos.forEach(c => { c.stock = v; });
-  } else if (action === 'sale_price') {
-    const v = prompt('Set sale price (KES) for every variant:');
-    if (v === null || v === '') return;
-    window._variantCombos.forEach(c => { c.salePrice = v; });
-  } else if (action === 'sku') {
-    const base = (document.getElementById('sellerName')?.value || 'PROD').trim().slice(0,3).toUpperCase().replace(/[^A-Z0-9]/g,'') || 'PRD';
-    window._variantCombos.forEach(c => {
-      c.sku = base + '-' + Object.values(c.options).join('-').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);
-    });
-  } else if (action === 'image') {
-    showToast('Tap the 📷 on any individual variant row to add its image.', 'success');
-    return;
-  } else if (action === 'delete') {
-    if (!confirm('Delete ALL generated variants? This clears your variation types and values too.')) return;
-    window._variantTypes = [];
-    window._variantCombos = [];
-    window._renderVariantTypePicker();
-    window._renderVariantTypesWrap();
-  }
-  window._renderVariantComboTable();
-};
-
-window._checkVariantCategoryRecommendation = function() {
-  const hint = document.getElementById('variantCategoryHint');
-  if (!hint) return;
-  const catText = (document.getElementById('sellerCatBreadcrumb')?.textContent || '').toLowerCase();
-  const match = VARIANT_CATEGORY_RECOMMENDATIONS.find(r => r.match.some(m => catText.includes(m)));
-  if (!match) { hint.style.display = 'none'; return; }
-  hint.style.display = 'block';
-  hint.dataset.types = JSON.stringify(match.types);
-  document.getElementById('variantCategoryHintLabel').textContent = document.getElementById('sellerCatBreadcrumb')?.textContent || 'This category';
-  document.getElementById('variantCategoryHintTypes').textContent = match.types.join(', ');
-};
-
-window._addRecommendedVariantTypes = function() {
-  const hint = document.getElementById('variantCategoryHint');
-  if (!hint || !hint.dataset.types) return;
-  const types = JSON.parse(hint.dataset.types);
-  types.forEach(name => {
-    if (!window._variantTypes.some(t => t.name === name)) {
-      // Pre-fill a couple of sensible starter values so there's genuinely
-      // nothing left to type - matches the "no unnecessary typing" goal.
-      const starters = (VARIANT_VALUE_PRESETS[name] || []).slice(0, name === 'Size' ? 4 : 2);
-      window._variantTypes.push({ name, values: [...starters] });
-    }
-  });
-  window._renderVariantTypePicker();
-  window._renderVariantTypesWrap();
-  window._regenerateVariantCombos();
-  showToast('✅ Added recommended variation options.', 'success');
-};
-
-// Builds the payload the wizard submits to the backend. Only price is
-// strictly required per variant (a variant with no price can't be sold);
-// stock defaults to 0 and SKU auto-generates if left blank, matching the
-// "don't force unnecessary fields" principle.
 window._collectVariantPayload = function() {
-  if (!window._variantCombos.length) {
-    showToast('Please choose at least one variation type and value.', 'error');
-    return null;
-  }
-  const attrNames = window._variantTypes.filter(t => t.values.length).map(t => t.name);
-  const baseSku = (document.getElementById('sellerName')?.value || 'PROD').trim().slice(0,3).toUpperCase().replace(/[^A-Z0-9]/g,'') || 'PRD';
-
+  const attrNames = _getAttrNames();
+  if (!attrNames.length) { showToast('Add at least one option type (e.g. Colour, Size).', 'error'); return null; }
+  const rows = document.querySelectorAll('.variant-data-row');
+  if (!rows.length) { showToast('Add at least one variant row.', 'error'); return null; }
+  const variants = [];
   let valid = true;
-  const variants = window._variantCombos.map((c, i) => {
-    const price = parseFloat(c.price);
-    if (!price || price <= 0) { showToast(`"${c.key}": please set a price.`, 'error'); valid = false; }
-    const stock = parseInt(c.stock, 10);
-    const sku = (c.sku || '').trim() || (baseSku + '-' + Object.values(c.options).join('-').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12));
-    // If an advanced "sale price" was set, that's the actual amount
-    // charged - the main Price field becomes the crossed-out
-    // "original_price" shown alongside it (matches how price/original_price
-    // work everywhere else in the app).
-    const salePrice = parseFloat(c.salePrice);
-    const finalPrice = (salePrice && salePrice > 0) ? salePrice : price;
-    const originalPrice = (salePrice && salePrice > 0) ? price : null;
-    return {
-      price: finalPrice, stock: isNaN(stock) ? 0 : stock, sku,
-      original_price: originalPrice,
-      images_json: c.image ? JSON.stringify([c.image]) : null,
-      is_active: c.available === false ? 0 : 1,
-      cost_price: c.costPrice ? parseFloat(c.costPrice) : null,
-      weight: c.weight ? parseFloat(c.weight) : null,
-      low_stock_threshold: c.lowStock ? parseInt(c.lowStock, 10) : null,
-      options: attrNames.map(n => ({ attrName: n, value: c.options[n] || '' })).filter(o => o.value)
-    };
+  rows.forEach((row, ri) => {
+    if (!valid) return;
+    const price = parseFloat(row.querySelector('.vr-price')?.value);
+    const stock = parseInt(row.querySelector('.vr-stock')?.value, 10);
+    const sku   = row.querySelector('.vr-sku')?.value.trim() || null;
+    if (!price || price <= 0) { showToast(`Variant row ${ri+1}: price is required.`, 'error'); valid = false; return; }
+    if (isNaN(stock) || stock < 0) { showToast(`Variant row ${ri+1}: stock must be 0 or more.`, 'error'); valid = false; return; }
+    const options = attrNames.map(n => ({
+      attrName: n,
+      value: (row.querySelector(`.option-cells input[data-attr="${n}"]`)?.value || '').trim()
+    })).filter(o => o.value);
+    variants.push({ price, stock, sku, original_price: null, options });
   });
   if (!valid) return null;
   return { attributeNames: attrNames, variants };
