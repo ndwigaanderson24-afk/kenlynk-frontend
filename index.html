@@ -10122,11 +10122,22 @@ async function renderAdminProducts() {
 
           ${p.hot ? '<span style="color:var(--gold); font-size:12px;">🔥 Hot</span>' : ''}
 
+          ${(p.hot && p.flashDealEndsAt && new Date(p.flashDealEndsAt).getTime() > Date.now())
+            ? `<span data-flash-deal-ends="${escapeHtml(p.flashDealEndsAt)}" style="color:#e74c3c; font-size:12px; font-weight:700;">⏳ ${escapeHtml(formatFlashDealCountdown(p.flashDealEndsAt) || '')}</span>`
+            : ''}
+
           ${p.status === 'inactive' ? '<span style="color:#f44336; font-size:12px;">🚫 Hidden</span>' : ''}
 
         </div>
 
-        <div style="display:flex; gap:8px;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+
+          <button class="admin-flashsale-btn" data-id="${p.id}" style="background:var(--surface-3); border:1px solid var(--gold); color:var(--gold); padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; font-weight:600;">
+            ⚡ ${(p.hot && p.flashDealEndsAt && new Date(p.flashDealEndsAt).getTime() > Date.now()) ? 'Reset' : 'Start'} 1h 30m
+          </button>
+          ${(p.hot && p.flashDealEndsAt && new Date(p.flashDealEndsAt).getTime() > Date.now())
+            ? `<button class="admin-flashsale-end-btn" data-id="${p.id}" style="background:var(--surface-3); border:1px solid var(--border-strong); color:#ff6b6b; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">✖ End Sale</button>`
+            : ''}
 
           ${p.status === 'inactive'
             ? `<button class="admin-unhide-btn" data-id="${p.id}" style="background:var(--green); border:none; color:white; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">👁️ Unhide</button>`
@@ -10141,6 +10152,35 @@ async function renderAdminProducts() {
       </div>
 
     `).join("");
+
+    // Starts (or restarts) a flash sale on this product, ending exactly
+    // 1h30m from the moment this is clicked - the whole point is a
+    // one-click way to run a flash sale without picking a date/time,
+    // and re-clicking on an already-active one simply restarts the
+    // countdown fresh from now.
+    list.querySelectorAll(".admin-flashsale-btn").forEach(btn => btn.addEventListener("click", async function() {
+      const id = this.dataset.id;
+      const endsAt = new Date(Date.now() + 90 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+      try {
+        await adminApiCall(`/products/admin/${id}`, { method: 'PUT', body: JSON.stringify({ hot: true, flash_deal_ends_at: endsAt }) });
+        showToast('⚡ Flash sale started - ends in 1h 30m.', 'success');
+        renderAdminProducts();
+      } catch (err) {
+        showToast('⚠️ ' + err.message, 'error');
+      }
+    }));
+
+    list.querySelectorAll(".admin-flashsale-end-btn").forEach(btn => btn.addEventListener("click", async function() {
+      const id = this.dataset.id;
+      if (!confirm('End this flash sale now?')) return;
+      try {
+        await adminApiCall(`/products/admin/${id}`, { method: 'PUT', body: JSON.stringify({ hot: false, flash_deal_ends_at: null }) });
+        showToast('Flash sale ended.', 'success');
+        renderAdminProducts();
+      } catch (err) {
+        showToast('⚠️ ' + err.message, 'error');
+      }
+    }));
 
     list.querySelectorAll(".admin-hide-btn").forEach(btn => btn.addEventListener("click", async function() {
       const id = this.dataset.id;
