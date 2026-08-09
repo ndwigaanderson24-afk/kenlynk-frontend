@@ -2829,14 +2829,17 @@
               <p style="color:var(--gray); font-size:13px; margin:0;">Upload videos, go live, and sell to thousands of buyers.</p>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button onclick="window._ssGoLive()"
+              <button id="sellerDashGoLiveBtn" onclick="window._ssGoLive()"
                 style="background:#e74c3c; border:none; color:#fff; border-radius:10px; padding:10px 18px; cursor:pointer; font-weight:700; font-size:13px; animation:pulse 2s infinite;">
                 🔴 Go Live
               </button>
-              <button onclick="window._ssOpenUpload()"
+              <button id="sellerDashUploadBtn" onclick="window._ssOpenUpload()"
                 style="background:var(--green); border:none; color:#fff; border-radius:10px; padding:10px 18px; cursor:pointer; font-weight:700; font-size:13px;">
                 📹 Upload Video
               </button>
+            </div>
+            <div id="sellerDashGoLiveLockedNote" style="display:none; width:100%; background:rgba(255,193,7,0.12); border:1px solid rgba(255,193,7,0.35); border-radius:10px; padding:10px 14px; font-size:12.5px; color:var(--gray); margin-top:8px;">
+              🔒 Go Live and video uploads unlock once your seller application is approved.
             </div>
           </div>
 
@@ -18470,6 +18473,19 @@ window.cancelEditProduct = function() {
 // Seller ShopStream management tab
 window._ssRenderSellerPanel = function() {
   if (!currentUser) return;
+
+  // Go Live / Upload are only shown once the seller's application has been
+  // approved (or for admins, who always have frictionless access) - matches
+  // the same gating already applied on the public ShopStream page via
+  // window._ssUpdateSellerButtons().
+  const _ssDashEligible = !!(window.isAdmin && window.isAdmin()) || currentUser.seller_status === 'approved';
+  const _ssDashGoLiveBtn = document.getElementById('sellerDashGoLiveBtn');
+  const _ssDashUploadBtn = document.getElementById('sellerDashUploadBtn');
+  const _ssDashLockedNote = document.getElementById('sellerDashGoLiveLockedNote');
+  if (_ssDashGoLiveBtn) _ssDashGoLiveBtn.style.display = _ssDashEligible ? '' : 'none';
+  if (_ssDashUploadBtn) _ssDashUploadBtn.style.display = _ssDashEligible ? '' : 'none';
+  if (_ssDashLockedNote) _ssDashLockedNote.style.display = _ssDashEligible ? 'none' : 'block';
+
   try { _ssVideos = JSON.parse(localStorage.getItem(SS_KEY)||'[]'); } catch(e){ _ssVideos=[]; }
   const myVids = _ssVideos.filter(v => v.sellerEmail === currentUser.email);
 
