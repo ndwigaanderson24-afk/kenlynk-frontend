@@ -2311,12 +2311,12 @@
                    color:#fff; border-radius:999px; padding:5px 12px; font-size:11px; cursor:pointer; font-weight:600; backdrop-filter:blur(8px);">
             📂 All
           </button>
-          <button onclick="window._ssGoLive()"
+          <button id="ssGoLiveBtn" onclick="window._ssGoLive()"
             style="background:#e74c3c; border:none; color:#fff; border-radius:999px;
                    padding:5px 12px; font-size:11px; cursor:pointer; font-weight:700; animation: pulse 2s infinite;">
             🔴 Go Live
           </button>
-          <button onclick="window._ssOpenUpload()"
+          <button id="ssUploadBtn" onclick="window._ssOpenUpload()"
             style="background:var(--green); border:none; color:#fff; border-radius:999px;
                    padding:5px 14px; font-size:11px; cursor:pointer; font-weight:700;">
             + Upload
@@ -2346,7 +2346,7 @@
         <div style="font-size:56px; margin-bottom:16px;">▶️</div>
         <div style="font-size:22px; font-weight:800; font-family:var(--font-display); margin-bottom:8px;">ShopStream is live!</div>
         <div style="font-size:14px; color:rgba(255,255,255,0.55); margin-bottom:24px; line-height:1.6;">Be the first seller to upload a product video<br>and get discovered by thousands of buyers.</div>
-        <button onclick="window._ssOpenUpload()" style="background:var(--green); border:none; color:#fff; border-radius:14px; padding:14px 32px; font-size:15px; font-weight:700; cursor:pointer;">📹 Upload First Video</button>
+        <button id="ssUploadFirstBtn" onclick="window._ssOpenUpload()" style="background:var(--green); border:none; color:#fff; border-radius:14px; padding:14px 32px; font-size:15px; font-weight:700; cursor:pointer;">📹 Upload First Video</button>
       </div>
 
       <!-- Upload modal -->
@@ -6612,6 +6612,8 @@ function escapeHtml(str) {
     if(page === "cart") renderCart();
 
     if(page === "seller-shop") { window._renderSellerShopPage && window._renderSellerShopPage(); }
+
+    if(page === "shopstream") { window._ssUpdateSellerButtons && window._ssUpdateSellerButtons(); }
 
     if(page === "shop") {
       loadProductsFromApi();
@@ -17419,6 +17421,19 @@ function ssOpenAnalytics() {
     </div>`;
   m.style.display = 'flex';
 }
+
+// Hides the Go Live / Upload buttons for anyone who isn't an approved
+// seller (or admin) - these actions were already blocked server-side and
+// client-side for non-sellers, but showing a button just to immediately
+// error on click is bad UX. Buyers now simply don't see them at all.
+window._ssUpdateSellerButtons = function() {
+  const user = window.currentUser;
+  const eligible = !!(window.isAdmin && window.isAdmin()) || (user && user.seller_status === 'approved');
+  ['ssGoLiveBtn', 'ssUploadBtn', 'ssUploadFirstBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = eligible ? '' : 'none';
+  });
+};
 
 // ── Seller panel (ShopStream tab in seller dashboard) ─────────────────
 window._ssRenderSellerPanel = function() {
