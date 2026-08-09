@@ -6762,7 +6762,20 @@ if(page === "admin") {
 
     const catRow = document.getElementById("catRow");
 
-    if (!catRow) return;
+    // catRow belonged to an older category-browser layout that no longer
+    // exists in the current page - but this function is also the only
+    // place that refreshes the real, currently-used tab bar (catTabBar /
+    // subTabStrip) once categories load from the backend. Previously the
+    // whole function returned early here whenever catRow was missing
+    // (i.e. always, on the current layout), which silently prevented
+    // that refresh from ever running - the Shop page never showed any
+    // category tab beyond the initial placeholder "All". The catRow-only
+    // rendering below is skipped when it's absent, but the tab-bar
+    // refresh at the bottom of this function must still run regardless.
+    if (!catRow) {
+      loadCategories().then(() => { window._renderCatTabBar && window._renderCatTabBar(); window._renderSubTabStrip && window._renderSubTabStrip(); });
+      return;
+    }
 
     catRow.innerHTML = "";
 
