@@ -7054,6 +7054,16 @@ if(page === "admin") {
 
   }
 
+  // Converts a UTC Date/ISO string into the "YYYY-MM-DDTHH:MM" format a
+  // <input type="datetime-local"> field expects, in the browser's own
+  // local time - the inverse of the local->UTC conversion done when a
+  // seller/admin picks a date in that same field before saving.
+  function toLocalDatetimeInputValue(utcIsoString) {
+    const d = new Date(utcIsoString);
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 16);
+  }
+
   // Whether a hot-deal product's flash deal is still running - a hot
   // deal with no end time set runs indefinitely (matches the original
   // behaviour before end times existed); one with an end time in the
@@ -10031,7 +10041,7 @@ window._simpleProductSubmit = async function(mode) {
     const sellerFlashWrap = document.getElementById("sellerFlashDealWrap");
     if (sellerFlashWrap) sellerFlashWrap.style.display = product.hot ? '' : 'none';
     const sellerFlashInput = document.getElementById("sellerFlashDealEndsAt");
-    if (sellerFlashInput) sellerFlashInput.value = product.flashDealEndsAt ? new Date(product.flashDealEndsAt).toISOString().slice(0, 16) : '';
+    if (sellerFlashInput) sellerFlashInput.value = product.flashDealEndsAt ? toLocalDatetimeInputValue(product.flashDealEndsAt) : '';
     document.getElementById("sellerWeight").value = product.weight || 1;
     if (document.getElementById("sellerStock")) document.getElementById("sellerStock").value = (typeof product.stock === 'number') ? product.stock : '';
     if (document.getElementById("sellerLowStock")) document.getElementById("sellerLowStock").value = (typeof product.lowStockThreshold === 'number') ? product.lowStockThreshold : '';
@@ -10282,7 +10292,7 @@ async function renderAdminProducts() {
       const adminFlashWrap = document.getElementById("adminFlashDealWrap");
       if (adminFlashWrap) adminFlashWrap.style.display = product.hot ? '' : 'none';
       const adminFlashInput = document.getElementById("adminFlashDealEndsAt");
-      if (adminFlashInput) adminFlashInput.value = product.flashDealEndsAt ? new Date(product.flashDealEndsAt).toISOString().slice(0, 16) : '';
+      if (adminFlashInput) adminFlashInput.value = product.flashDealEndsAt ? toLocalDatetimeInputValue(product.flashDealEndsAt) : '';
 
       document.getElementById("adminSubmitBtn").textContent = "✏️ Update Product";
 
@@ -15019,7 +15029,16 @@ window.renderSMSLog = renderSMSLog;
       stock: p.stock,
       county: p.county,
       hot: !!p.hot,
-      flashDealEndsAt: p.flash_deal_ends_at || null,
+      // MySQL returns DATETIME values as "YYYY-MM-DD HH:MM:SS" (space,
+      // no timezone marker) - it's genuinely UTC (that's what got
+      // stored, via toISOString() at save time), but new Date() on that
+      // exact space-separated format is parsed inconsistently across
+      // browsers, and Chrome/V8 in particular reads it as LOCAL time
+      // instead of UTC. Converting it to unambiguous ISO 8601 ("T" +
+      // "Z") here, once, means every place that reads flashDealEndsAt
+      // downstream (countdown badges, the Flash Deals tab filter, the
+      // admin row) parses it correctly without needing to remember this.
+      flashDealEndsAt: p.flash_deal_ends_at ? p.flash_deal_ends_at.replace(' ', 'T') + 'Z' : null,
       rating: Number(p.rating) || 0,
       numReviews: p.num_reviews || 0,
       sellerEmail: p.seller_email || null,
