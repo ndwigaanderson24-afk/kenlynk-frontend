@@ -6943,6 +6943,30 @@ if(page === "admin") {
 
   const productGrid = document.getElementById("productGrid");
 
+  // All descendant category ids of a given id, including itself - e.g.
+  // for "Phones" this returns [Phones, Smartphones, Feature Phones, ...].
+  // Mirrors Category.getDescendantIds() on the backend, so clicking a
+  // parent category tab in the Shop shows products filed under any of
+  // its subcategories too, not just ones tagged with that exact id.
+  function getCategoryDescendantIds(id) {
+    const numericId = Number(id);
+    function findNode(nodes) {
+      for (const n of nodes) {
+        if (n.id === numericId) return n;
+        const found = findNode(n.children || []);
+        if (found) return found;
+      }
+      return null;
+    }
+    function collectIds(node) {
+      let ids = [node.id];
+      for (const child of (node.children || [])) ids.push(...collectIds(child));
+      return ids;
+    }
+    const node = findNode(CATEGORY_TREE);
+    return node ? collectIds(node) : [numericId];
+  }
+
   function getFilteredProducts(){
 
     return PRODUCTS.filter(p=>{
@@ -6952,11 +6976,16 @@ if(page === "admin") {
         : activeCategory.startsWith('cat:')
           ? (() => {
               const catId = Number(activeCategory.slice(4));
-              // Match by category_id (new) or fall back to slug/name match (legacy)
-              if (p.category_id) return p.category_id === catId;
-              // Legacy string category — find the category node and match by slug/name
-              const node = CATEGORY_FLAT.find(c => c.id === catId);
-              return node ? (p.category === node.slug || p.category === node.name.toLowerCase()) : false;
+              const descendantIds = getCategoryDescendantIds(catId);
+              // Match by category_id (new) - includes the clicked category
+              // and everything under it.
+              if (p.category_id) return descendantIds.includes(p.category_id);
+              // Legacy string category - match against the slug/name of
+              // the clicked category OR any of its descendants.
+              return descendantIds.some(id => {
+                const node = CATEGORY_FLAT.find(c => c.id === id);
+                return node ? (p.category === node.slug || p.category === node.name.toLowerCase()) : false;
+              });
             })()
           : p.category === activeCategory;
 
@@ -9817,7 +9846,7 @@ window._simpleProductSubmit = async function(mode) {
   if (btn) { btn.disabled = true; btn.textContent = mode === 'draft' ? '💾 Saving…' : '⏳ Publishing…'; }
 
   const payload = {
-    name, description: desc, category: cat, price, original_price: orig,
+    name, description: desc, category: cat, category_id: catId ? Number(catId) : undefined, price, original_price: orig,
     stock: isNaN(stock) ? 0 : stock, weight, brand: brand || undefined, hot,
     image: window._getUploadedImage() || undefined,
     status: mode === 'draft' ? 'draft' : 'active',
@@ -10783,7 +10812,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall(`/products/admin/${editingProductId}`, {
           method: 'PUT',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, ...(image ? { image } : {}), hot, description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, ...(image ? { image } : {}), hot, description: desc })
         });
         showToast("Product updated successfully!", "success");
 
@@ -10799,7 +10828,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall('/products/admin', {
           method: 'POST',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, image, hot, description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, image, hot, description: desc })
         });
         showToast("Product added successfully!", "success");
 
