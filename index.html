@@ -2743,7 +2743,11 @@
             <div class="field"><label>Stock Quantity *</label><input type="number" id="sellerStock" min="0" placeholder="0"></div>
             <div class="field"><label>Low Stock Alert (optional)</label><input type="number" id="sellerLowStock" min="0" placeholder="5"></div>
             <div class="field"><label>Weight (kg)</label><input type="number" id="sellerWeight" min="0" step="0.1" value="1"></div>
-            <div class="field" style="display:flex; align-items:end;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);"><input type="checkbox" id="sellerHot" style="width:16px; height:16px;"> 🔥 Mark as Hot Deal</label></div>
+            <div class="field" style="display:flex; align-items:end;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);"><input type="checkbox" id="sellerHot" style="width:16px; height:16px;" onchange="window._toggleFlashDealField && window._toggleFlashDealField('seller')"> 🔥 Mark as Hot Deal</label></div>
+            <div class="field" id="sellerFlashDealWrap" style="display:none;">
+              <label>Flash Deal Ends At (optional)</label>
+              <input type="datetime-local" id="sellerFlashDealEndsAt">
+            </div>
 
             <div class="field" style="grid-column:1/-1;">
               <label>Product Photo *</label>
@@ -3277,7 +3281,11 @@
             </div>
           </div>
 
-          <div class="field"><label>Hot Deal</label><select id="adminHot"><option value="false">No</option><option value="true">Yes 🔥</option></select></div>
+          <div class="field"><label>Hot Deal</label><select id="adminHot" onchange="window._toggleFlashDealField && window._toggleFlashDealField('admin')"><option value="false">No</option><option value="true">Yes 🔥</option></select></div>
+          <div class="field" id="adminFlashDealWrap" style="display:none;">
+            <label>Flash Deal Ends At (optional)</label>
+            <input type="datetime-local" id="adminFlashDealEndsAt">
+          </div>
 
         </div>
 
@@ -6982,10 +6990,20 @@ if(page === "admin") {
 
   function getFilteredProducts(){
 
-    return PRODUCTS.filter(p=>{
+    let list = PRODUCTS.filter(p=>{
 
-      const matchesCat = activeCategory === "all" ? true
-        : activeCategory === "hotdeals" ? !!p.hot
+      // Marketplace collection tabs (Flash Deals, New Arrivals, Under
+      // KSh 500, Best Rated, Made in Kenya) use the exact same criteria
+      // as their homepage preview rows - see renderShopCollections() -
+      // just applied to the full catalog instead of a 12-item slice.
+      const matchesCat =
+          activeCategory === "all" ? true
+        : activeCategory === "hotdeals" ? isFlashDealActive(p)
+        : activeCategory === "flash" ? isFlashDealActive(p)
+        : activeCategory === "new" ? true
+        : activeCategory === "under500" ? Number(p.price) < 500
+        : activeCategory === "bestrated" ? Number(p.rating) >= 4
+        : activeCategory === "kenya" ? !!(p.brand || p.county)
         : activeCategory.startsWith('cat:')
           ? (() => {
               const catId = Number(activeCategory.slice(4));
@@ -7012,6 +7030,13 @@ if(page === "admin") {
 
     });
 
+    // These two collections are ordered, not just filtered - mirrors
+    // the homepage rows' sort order exactly.
+    if (activeCategory === 'new')       list = [...list].sort((a, b) => b.id - a.id);
+    if (activeCategory === 'bestrated') list = [...list].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+    return list;
+
   }
 
 
@@ -7028,6 +7053,47 @@ if(page === "admin") {
 
   }
 
+  // Whether a hot-deal product's flash deal is still running - a hot
+  // deal with no end time set runs indefinitely (matches the original
+  // behaviour before end times existed); one with an end time in the
+  // past has expired and should stop appearing as a Flash Deal even
+  // though the seller/admin never manually turned "Hot Deal" back off.
+  function isFlashDealActive(p) {
+    if (!p.hot) return false;
+    if (!p.flashDealEndsAt) return true;
+    return new Date(p.flashDealEndsAt).getTime() > Date.now();
+  }
+
+  // Human-readable "time left" string for a flash deal countdown badge,
+  // e.g. "2d 5h left" / "3h 12m left" / "45m left" / "Ending soon" -
+  // returns null once expired, so callers know to drop the badge.
+  function formatFlashDealCountdown(endsAt) {
+    if (!endsAt) return null;
+    const msLeft = new Date(endsAt).getTime() - Date.now();
+    if (msLeft <= 0) return null;
+    const minutes = Math.floor(msLeft / 60000);
+    const days = Math.floor(minutes / 1440);
+    const hours = Math.floor((minutes % 1440) / 60);
+    const mins = minutes % 60;
+    if (days > 0) return `${days}d ${hours}h left`;
+    if (hours > 0) return `${hours}h ${mins}m left`;
+    if (mins > 0) return `${mins}m left`;
+    return 'Ending soon';
+  }
+
+  // Keeps every visible countdown badge on the page up to date without
+  // needing a full re-render - runs every 30s, which is plenty precise
+  // for a "time left" display. Badges that expire while visible collapse
+  // themselves; the product will actually drop out of the Flash Deals
+  // list on the next re-render (tab switch, search, etc).
+  setInterval(() => {
+    document.querySelectorAll('[data-flash-deal-ends]').forEach(el => {
+      const text = formatFlashDealCountdown(el.dataset.flashDealEnds);
+      if (text) { el.textContent = '⏳ ' + text; el.style.display = ''; }
+      else { el.style.display = 'none'; }
+    });
+  }, 30000);
+
 
 
   // ════════════════════════════════════════════════════════════
@@ -7040,6 +7106,7 @@ if(page === "admin") {
     const disc  = p.originalPrice && p.originalPrice > p.price
       ? Math.round((1 - p.price / p.originalPrice) * 100) : 0;
     const inWish = wishlist.includes(p.id);
+    const countdownText = (p.hot && p.flashDealEndsAt) ? formatFlashDealCountdown(p.flashDealEndsAt) : null;
 
     if (compact) {
       // Horizontal scroll card (.pcard)
@@ -7059,6 +7126,7 @@ if(page === "admin") {
           ${p.rating ? `<div class="pcard-rating">${'★'.repeat(Math.round(p.rating))}${'☆'.repeat(5-Math.round(p.rating))} <span style="color:var(--gray)">(${p.numReviews||0})</span></div>` : ''}
           <div class="pcard-price">KES ${p.price.toLocaleString()}</div>
           ${p.originalPrice ? `<div class="pcard-original">KES ${p.originalPrice.toLocaleString()}</div>` : ''}
+          ${countdownText ? `<div class="pcard-countdown" data-flash-deal-ends="${escapeHtml(p.flashDealEndsAt)}" style="font-size:10px; color:#e74c3c; font-weight:700; margin-top:2px;">⏳ ${countdownText}</div>` : ''}
           ${(p.wholesaleTiers && p.wholesaleTiers.length) ? `<div style="font-size:10px; color:var(--green-light); font-weight:600; margin-top:2px;">📦 Buy ${p.wholesaleTiers[0].min}+ from KES ${Math.min(...p.wholesaleTiers.map(t=>Number(t.price))).toLocaleString()}</div>` : ''}
           ${_isProductLowStock(p) ? `<div style="font-size:10px; color:#e74c3c; font-weight:700; margin-top:2px;">⚠️ Only ${p.stock} left</div>` : ''}
           <button class="pcard-add" data-id="${p.id}">🛒 Add</button>
@@ -7096,6 +7164,7 @@ if(page === "admin") {
           ${p.originalPrice ? `<span class="card-original">KES ${p.originalPrice.toLocaleString()}</span>` : ''}
           ${disc ? `<span class="card-discount-pct">${disc}% off</span>` : ''}
         </div>
+        ${countdownText ? `<div class="card-countdown" data-flash-deal-ends="${escapeHtml(p.flashDealEndsAt)}" style="font-size:11px; color:#e74c3c; font-weight:700; margin-top:2px;">⏳ ${countdownText}</div>` : ''}
         ${(p.wholesaleTiers && p.wholesaleTiers.length) ? `<div style="font-size:11px; color:var(--green-light); font-weight:600; margin-top:2px;">📦 Buy ${p.wholesaleTiers[0].min}+ from KES ${Math.min(...p.wholesaleTiers.map(t=>Number(t.price))).toLocaleString()} each</div>` : ''}
         ${_isProductLowStock(p) ? `<div style="font-size:11px; color:#e74c3c; font-weight:700; margin-top:2px;">⚠️ Only ${p.stock} left in stock</div>` : ''}
         <div class="card-delivery">📦 ${p.county ? escapeHtml(p.county) : 'Kenya-wide'} delivery</div>
@@ -7180,7 +7249,7 @@ if(page === "admin") {
 
     // Collection mode filters
     if (_collectionMode === 'hotdeals' || activeCategory === 'hotdeals') {
-      out = out.filter(p => p.hot);
+      out = out.filter(p => isFlashDealActive(p));
     } else if (_collectionMode === 'new') {
       out = [...out].sort((a,b) => b.id - a.id).slice(0, 40);
     } else if (_collectionMode === 'under500' || _filterPrice === 'under500') {
@@ -7235,7 +7304,7 @@ if(page === "admin") {
     const cols = document.getElementById('shopCollections');
     if (!cols) return;
 
-    _renderCollectionRow('flashDealsRow',  PRODUCTS.filter(p => p.hot), 12);
+    _renderCollectionRow('flashDealsRow',  PRODUCTS.filter(p => isFlashDealActive(p)), 12);
     _renderCollectionRow('newArrivalsRow', [...PRODUCTS].sort((a,b)=>b.id-a.id), 12);
     _renderCollectionRow('budgetRow',      PRODUCTS.filter(p=>p.price<500), 12);
     _renderCollectionRow('bestRatedRow',   PRODUCTS.filter(p=>p.rating>=4).sort((a,b)=>(b.rating||0)-(a.rating||0)), 12);
@@ -9824,6 +9893,21 @@ function bulkUploadProducts() {
 // the product itself saves, all sharing the product's own price/stock -
 // sellers can fine-tune individual variants afterwards via the existing
 // 🎛️ Variants panel (window.loadSellerVariants).
+// Shows/hides the Flash Deal end-time field based on whether Hot Deal
+// is currently checked (seller form) or set to Yes (admin form) - the
+// end time only makes sense once a product is actually a hot deal.
+window._toggleFlashDealField = function(which) {
+  if (which === 'seller') {
+    const on = document.getElementById('sellerHot')?.checked;
+    const wrap = document.getElementById('sellerFlashDealWrap');
+    if (wrap) wrap.style.display = on ? '' : 'none';
+  } else {
+    const on = document.getElementById('adminHot')?.value === 'true';
+    const wrap = document.getElementById('adminFlashDealWrap');
+    if (wrap) wrap.style.display = on ? '' : 'none';
+  }
+};
+
 window._simpleProductSubmit = async function(mode) {
   const name = document.getElementById('sellerName')?.value.trim();
   const desc = document.getElementById('sellerDesc')?.value.trim();
@@ -9844,6 +9928,12 @@ window._simpleProductSubmit = async function(mode) {
   const weight = parseFloat(document.getElementById('sellerWeight')?.value) || 1;
   const brand = document.getElementById('sellerBrand')?.value.trim();
   const hot = document.getElementById('sellerHot')?.checked;
+  // datetime-local gives "YYYY-MM-DDTHH:MM" in the browser's local time,
+  // with no timezone info - new Date() on that parses it as local time,
+  // and toISOString() converts it to the UTC instant MySQL should store,
+  // so the countdown reads correctly regardless of where seller/buyer are.
+  const flashDealEndsAtRaw = document.getElementById('sellerFlashDealEndsAt')?.value;
+  const flashDealEndsAt = (hot && flashDealEndsAtRaw) ? new Date(flashDealEndsAtRaw).toISOString().slice(0, 19).replace('T', ' ') : null;
 
   if (mode === 'publish') {
     if (!name) { showToast('Please enter a product name.', 'error'); return; }
@@ -9860,7 +9950,7 @@ window._simpleProductSubmit = async function(mode) {
 
   const payload = {
     name, description: desc, category: cat, category_id: catId ? Number(catId) : undefined, price, original_price: orig,
-    stock: isNaN(stock) ? 0 : stock, weight, brand: brand || undefined, hot,
+    stock: isNaN(stock) ? 0 : stock, weight, brand: brand || undefined, hot, flash_deal_ends_at: flashDealEndsAt,
     image: window._getUploadedImage() || undefined,
     status: mode === 'draft' ? 'draft' : 'active',
     low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined
@@ -9937,6 +10027,10 @@ window._simpleProductSubmit = async function(mode) {
     document.getElementById("sellerDesc").value = product.desc || '';
     if (document.getElementById("sellerBrand")) document.getElementById("sellerBrand").value = product.brand || '';
     document.getElementById("sellerHot").checked = !!product.hot;
+    const sellerFlashWrap = document.getElementById("sellerFlashDealWrap");
+    if (sellerFlashWrap) sellerFlashWrap.style.display = product.hot ? '' : 'none';
+    const sellerFlashInput = document.getElementById("sellerFlashDealEndsAt");
+    if (sellerFlashInput) sellerFlashInput.value = product.flashDealEndsAt ? new Date(product.flashDealEndsAt).toISOString().slice(0, 16) : '';
     document.getElementById("sellerWeight").value = product.weight || 1;
     if (document.getElementById("sellerStock")) document.getElementById("sellerStock").value = (typeof product.stock === 'number') ? product.stock : '';
     if (document.getElementById("sellerLowStock")) document.getElementById("sellerLowStock").value = (typeof product.lowStockThreshold === 'number') ? product.lowStockThreshold : '';
@@ -10108,7 +10202,7 @@ async function renderAdminProducts() {
 
       document.getElementById("adminOriginalPrice").value = product.originalPrice || '';
 
-      document.getElementById("adminCategory").value = product.category;
+      document.getElementById("adminCategory").value = product.category_id || '';
 
       if (product.image) {
         uploadedAdminImage = product.image;
@@ -10121,6 +10215,11 @@ async function renderAdminProducts() {
       document.getElementById("adminDesc").value = product.desc || '';
 
       document.getElementById("adminHot").value = product.hot ? 'true' : 'false';
+
+      const adminFlashWrap = document.getElementById("adminFlashDealWrap");
+      if (adminFlashWrap) adminFlashWrap.style.display = product.hot ? '' : 'none';
+      const adminFlashInput = document.getElementById("adminFlashDealEndsAt");
+      if (adminFlashInput) adminFlashInput.value = product.flashDealEndsAt ? new Date(product.flashDealEndsAt).toISOString().slice(0, 16) : '';
 
       document.getElementById("adminSubmitBtn").textContent = "✏️ Update Product";
 
@@ -10809,6 +10908,10 @@ window.loadManualData = loadManualData;
 
     const hot = document.getElementById("adminHot")?.value === 'true';
 
+    const flashDealEndsAtRaw = document.getElementById("adminFlashDealEndsAt")?.value;
+
+    const flashDealEndsAt = (hot && flashDealEndsAtRaw) ? new Date(flashDealEndsAtRaw).toISOString().slice(0, 19).replace('T', ' ') : null;
+
     const desc = document.getElementById("adminDesc")?.value.trim();
 
     if (!name || !price || !desc) { showToast("Please fill in all required fields.", "error"); return; }
@@ -10825,7 +10928,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall(`/products/admin/${editingProductId}`, {
           method: 'PUT',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, ...(image ? { image } : {}), hot, description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, ...(image ? { image } : {}), hot, flash_deal_ends_at: flashDealEndsAt, description: desc })
         });
         showToast("Product updated successfully!", "success");
 
@@ -10841,7 +10944,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall('/products/admin', {
           method: 'POST',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, image, hot, description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, image, hot, flash_deal_ends_at: flashDealEndsAt, description: desc })
         });
         showToast("Product added successfully!", "success");
 
@@ -10866,6 +10969,9 @@ window.loadManualData = loadManualData;
     document.getElementById("adminDesc").value = "";
 
     document.getElementById("adminHot").value = "false";
+
+    const adminFlashDealField1 = document.getElementById("adminFlashDealEndsAt"); if (adminFlashDealField1) adminFlashDealField1.value = "";
+    const adminFlashDealWrap1 = document.getElementById("adminFlashDealWrap"); if (adminFlashDealWrap1) adminFlashDealWrap1.style.display = "none";
 
     await loadProductsFromApi();
 
@@ -10900,6 +11006,9 @@ window.loadManualData = loadManualData;
     document.getElementById("adminDesc").value = "";
 
     document.getElementById("adminHot").value = "false";
+
+    const adminFlashDealField2 = document.getElementById("adminFlashDealEndsAt"); if (adminFlashDealField2) adminFlashDealField2.value = "";
+    const adminFlashDealWrap2 = document.getElementById("adminFlashDealWrap"); if (adminFlashDealWrap2) adminFlashDealWrap2.style.display = "none";
 
   });
 
@@ -14834,6 +14943,7 @@ window.renderSMSLog = renderSMSLog;
       name: p.name,
       desc: p.description,
       category: p.category,
+      category_id: p.category_id || null,
       brand: p.brand || null,
       price: Number(p.price),
       originalPrice: p.original_price ? Number(p.original_price) : null,
@@ -14846,6 +14956,7 @@ window.renderSMSLog = renderSMSLog;
       stock: p.stock,
       county: p.county,
       hot: !!p.hot,
+      flashDealEndsAt: p.flash_deal_ends_at || null,
       rating: Number(p.rating) || 0,
       numReviews: p.num_reviews || 0,
       sellerEmail: p.seller_email || null,
@@ -18500,6 +18611,8 @@ window.cancelEditProduct = function() {
   });
   const weightEl = document.getElementById('sellerWeight'); if (weightEl) weightEl.value = '1';
   const hotEl = document.getElementById('sellerHot'); if (hotEl) hotEl.checked = false;
+  const flashDealEl = document.getElementById('sellerFlashDealEndsAt'); if (flashDealEl) flashDealEl.value = '';
+  const flashDealWrapEl = document.getElementById('sellerFlashDealWrap'); if (flashDealWrapEl) flashDealWrapEl.style.display = 'none';
   const catMain = document.getElementById('sellerCatMain'); if (catMain) catMain.value = '';
   const catSub = document.getElementById('sellerCatSub'); if (catSub) { catSub.style.display = 'none'; catSub.innerHTML = ''; }
   const catChild = document.getElementById('sellerCatChild'); if (catChild) { catChild.style.display = 'none'; catChild.innerHTML = ''; }
@@ -19311,6 +19424,35 @@ window._renderCatTabBar = function() {
     window.renderShopCollections && window.renderShopCollections();
   };
   bar.appendChild(allBtn);
+
+  // Marketplace collections (Flash Deals, New Arrivals, Under KSh 500,
+  // Best Rated, Made in Kenya) - these aren't real categories from the
+  // category tree, they're the same curated slices already shown as
+  // homepage preview rows (see renderShopCollections), just promoted
+  // into the tab bar itself so buyers can browse the FULL list for
+  // each one instead of only the 12-item homepage preview.
+  const SHOP_COLLECTION_TABS = [
+    { key: 'flash',     icon: '⚡', label: 'Flash Deals' },
+    { key: 'new',       icon: '🆕', label: 'New Arrivals' },
+    { key: 'under500',  icon: '💰', label: 'Under KSh 500' },
+    { key: 'bestrated', icon: '⭐', label: 'Best Rated' },
+    { key: 'kenya',     icon: '🇰🇪', label: 'Made in Kenya' }
+  ];
+  for (const col of SHOP_COLLECTION_TABS) {
+    const btn = document.createElement('button');
+    btn.className = 'cat-tab' + (_activeTab === col.key ? ' active' : '');
+    btn.innerHTML = `<span class="tab-ic">${col.icon}</span><span>${col.label}</span>`;
+    btn.onclick = () => {
+      _activeTab = col.key;
+      _activeSubTab = null;
+      window._renderCatTabBar();
+      window._renderSubTabStrip();
+      activeCategory = col.key;
+      window._syncShopSections && window._syncShopSections();
+      window.renderProducts && window.renderProducts();
+    };
+    bar.appendChild(btn);
+  }
 
   for (const cat of CATEGORY_TREE) {
     const btn = document.createElement('button');
