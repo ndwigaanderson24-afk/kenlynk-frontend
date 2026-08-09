@@ -647,7 +647,17 @@
     }
     .trend-chip:hover{ color:var(--white); border-color:var(--green); }
 
-    /* ── Mobile: 2-column product grid like top Kenyan marketplaces ── */
+    /* ── Product grid: automatically fits as many equal-width columns
+       as the available width allows on tablet/desktop - no manual row
+       building, adding/removing products just reflows the grid on its
+       own. Forced to exactly 2 equal columns on mobile below. ── */
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
+      gap:16px;
+    }
+
+    /* ── Mobile: exactly 2 columns, like top Kenyan marketplaces ── */
     @media (max-width:640px){
       .grid{ grid-template-columns:1fr 1fr; gap:8px; padding:0 2px; }
     }
