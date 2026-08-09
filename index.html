@@ -6310,6 +6310,7 @@ async function adminApiCall(endpoint, options = {}) {
   if (!res.ok) throw new Error(data.message || `Request failed (${res.status})`);
   return data;
 }
+window.adminApiCall = adminApiCall;
 
 let isLoginMode = true;
 
