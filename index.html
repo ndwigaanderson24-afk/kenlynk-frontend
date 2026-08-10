@@ -2783,6 +2783,16 @@
                 </div>
               </div>
             </div>
+            <div class="field" style="grid-column:1/-1; background:var(--surface-2); border-radius:10px; padding:14px;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white); font-weight:600; margin-bottom:8px;">
+                <input type="checkbox" id="sellerHasWholesale" onchange="window._toggleWholesaleWrap && window._toggleWholesaleWrap('seller')"> 📦 Sell in bulk (wholesale pricing)
+              </label>
+              <div id="sellerWholesaleWrap" style="display:none;">
+                <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">Offer a lower price per unit when a buyer orders a larger quantity. Add one or more quantity tiers below - each needs a minimum quantity and a price per unit for that range.</div>
+                <div id="sellerWholesaleTiersWrap" style="display:flex; flex-direction:column; gap:8px; margin-bottom:8px;"></div>
+                <button type="button" onclick="window.addWholesaleTier('seller')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Tier</button>
+              </div>
+            </div>
           </div>
 
           <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;">
@@ -3303,6 +3313,17 @@
         </div>
 
         <div class="field"><label>Product Photos * (add at least 1 - 3 to 5 recommended)</label><div style="display:flex; gap:10px; flex-wrap:wrap;"><label style="flex:1; min-width:140px; background:var(--surface-2); border:1px solid var(--border-strong); border-radius:10px; padding:10px; text-align:center; cursor:pointer; color:var(--white);">🖼️ Choose from Gallery<input type="file" id="adminImageFile" accept="image/*" multiple style="display:none;"></label><label style="flex:1; min-width:140px; background:var(--surface-2); border:1px solid var(--border-strong); border-radius:10px; padding:10px; text-align:center; cursor:pointer; color:var(--white);">📷 Take Photo<input type="file" id="adminImageCameraFile" accept="image/*" capture="environment" style="display:none;"></label></div><div id="adminImagePreview" style="margin-top:10px; display:none; flex-wrap:wrap; gap:8px; flex-direction:row;"></div><div style="font-size:12px; color:var(--gray); margin-top:6px;" id="adminImageCount">0 of 5 added - at least 1 required</div></div>
+
+        <div class="field" style="background:var(--surface-2); border-radius:10px; padding:14px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white); font-weight:600; margin-bottom:8px;">
+            <input type="checkbox" id="adminHasWholesale" onchange="window._toggleWholesaleWrap && window._toggleWholesaleWrap('admin')"> 📦 Sell in bulk (wholesale pricing)
+          </label>
+          <div id="adminWholesaleWrap" style="display:none;">
+            <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">Offer a lower price per unit when a buyer orders a larger quantity. Add one or more quantity tiers below - each needs a minimum quantity and a price per unit for that range.</div>
+            <div id="adminWholesaleTiersWrap" style="display:flex; flex-direction:column; gap:8px; margin-bottom:8px;"></div>
+            <button type="button" onclick="window.addWholesaleTier('admin')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Tier</button>
+          </div>
+        </div>
 
         <div class="field"><label>Description *</label><textarea id="adminDesc" placeholder="Product description" style="min-height:60px;"></textarea></div>
 
@@ -7062,6 +7083,7 @@ if(page === "admin") {
         : activeCategory === "under500" ? Number(p.price) < 500
         : activeCategory === "bestrated" ? Number(p.rating) >= 4
         : activeCategory === "kenya" ? !!(p.brand || p.county)
+        : activeCategory === "wholesale" ? !!(p.wholesaleTiers && p.wholesaleTiers.length)
         : activeCategory.startsWith('cat:')
           ? (() => {
               const catId = Number(activeCategory.slice(4));
@@ -9543,6 +9565,8 @@ function renderSellerProductsUI() {
 
           ${p.hot ? '<span style="color:var(--gold); font-size:12px;">🔥 Hot</span>' : ''}
 
+          ${(p.wholesaleTiers && p.wholesaleTiers.length) ? `<span style="color:var(--green-light); font-size:12px;">📦 Wholesale (${p.wholesaleTiers.length} tier${p.wholesaleTiers.length > 1 ? 's' : ''})</span>` : ''}
+
           ${(p.stock||0) <= 0 ? '<span style="color:#e74c3c; font-size:12px; font-weight:700;">⛔ Out of stock</span>' : _isProductLowStock(p) ? `<span style="color:#e74c3c; font-size:12px; font-weight:700;">⚠️ Low stock (${p.stock} left)</span>` : ''}
 
         </div>
@@ -10012,6 +10036,13 @@ window._simpleProductSubmit = async function(mode) {
     if (window._getUploadedImages().length === 0) { showToast('Please add at least one product photo.', 'error'); return; }
   }
 
+  const wholesaleTiers = window._collectWholesaleTiers('seller');
+  if (wholesaleTiers === null) return;
+  if (wholesaleTiers.length && wholesaleTiers[0].price >= price) {
+    showToast('Wholesale prices should be lower than the Selling Price - check your tiers.', 'error');
+    return;
+  }
+
   const btn = document.getElementById('sellerSubmitBtn');
   const origText = btn?.textContent;
   if (btn) { btn.disabled = true; btn.textContent = mode === 'draft' ? '💾 Saving…' : '⏳ Publishing…'; }
@@ -10020,6 +10051,7 @@ window._simpleProductSubmit = async function(mode) {
     name, description: desc, category: cat, category_id: catId ? Number(catId) : undefined, price, original_price: orig,
     stock: isNaN(stock) ? 0 : stock, weight, brand: brand || undefined, hot, flash_deal_ends_at: flashDealEndsAt,
     images: window._getUploadedImages(),
+    wholesale_tiers: wholesaleTiers,
     status: mode === 'draft' ? 'draft' : 'active',
     low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined
   };
@@ -10109,6 +10141,13 @@ window._simpleProductSubmit = async function(mode) {
     uploadedImages = (product.images && product.images.length) ? [...product.images] : (product.image ? [product.image] : []);
     renderImageThumbnails(uploadedImages, 'sellerImagePreview', 'sellerImageCount', 'removeImageAt');
 
+    window._wholesaleTiersState.seller = (product.wholesaleTiers && product.wholesaleTiers.length) ? product.wholesaleTiers.map(t => ({ ...t })) : [];
+    const sellerHasWholesaleEl = document.getElementById('sellerHasWholesale');
+    if (sellerHasWholesaleEl) sellerHasWholesaleEl.checked = window._wholesaleTiersState.seller.length > 0;
+    const sellerWholesaleWrapEl = document.getElementById('sellerWholesaleWrap');
+    if (sellerWholesaleWrapEl) sellerWholesaleWrapEl.style.display = window._wholesaleTiersState.seller.length ? '' : 'none';
+    window._renderWholesaleTiers('seller');
+
     if (product.categoryId && window._setCat_sellerCategory) window._setCat_sellerCategory(product.categoryId);
     else if (document.getElementById("sellerCategory")) document.getElementById("sellerCategory").value = product.category || '';
 
@@ -10188,6 +10227,8 @@ async function renderAdminProducts() {
           <span style="color:var(--gray); font-size:12px; background:var(--surface-3); padding:2px 8px; border-radius:4px;">${p.category}</span>
 
           ${p.hot ? '<span style="color:var(--gold); font-size:12px;">🔥 Hot</span>' : ''}
+
+          ${(p.wholesaleTiers && p.wholesaleTiers.length) ? `<span style="color:var(--green-light); font-size:12px;">📦 Wholesale (${p.wholesaleTiers.length} tier${p.wholesaleTiers.length > 1 ? 's' : ''})</span>` : ''}
 
           ${(p.hot && p.flashDealEndsAt && new Date(p.flashDealEndsAt).getTime() > Date.now())
             ? `<span data-flash-deal-ends="${escapeHtml(p.flashDealEndsAt)}" style="color:#e74c3c; font-size:12px; font-weight:700;">⏳ ${escapeHtml(formatFlashDealCountdown(p.flashDealEndsAt) || '')}</span>`
@@ -10340,6 +10381,13 @@ async function renderAdminProducts() {
 
       uploadedAdminImages = (product.images && product.images.length) ? [...product.images] : (product.image ? [product.image] : []);
       renderImageThumbnails(uploadedAdminImages, 'adminImagePreview', 'adminImageCount', 'removeAdminImageAt');
+
+      window._wholesaleTiersState.admin = (product.wholesaleTiers && product.wholesaleTiers.length) ? product.wholesaleTiers.map(t => ({ ...t })) : [];
+      const adminHasWholesaleEl = document.getElementById('adminHasWholesale');
+      if (adminHasWholesaleEl) adminHasWholesaleEl.checked = window._wholesaleTiersState.admin.length > 0;
+      const adminWholesaleWrapEl = document.getElementById('adminWholesaleWrap');
+      if (adminWholesaleWrapEl) adminWholesaleWrapEl.style.display = window._wholesaleTiersState.admin.length ? '' : 'none';
+      window._renderWholesaleTiers('admin');
 
       document.getElementById("adminDesc").value = product.desc || '';
 
@@ -11057,6 +11105,13 @@ window.loadManualData = loadManualData;
 
     if (originalPrice < price) { showToast("Original Price must be equal to or higher than the selling price.", "error"); document.getElementById("adminOriginalPrice").focus(); return; }
 
+    const wholesaleTiers = window._collectWholesaleTiers('admin');
+    if (wholesaleTiers === null) return;
+    if (wholesaleTiers.length && wholesaleTiers[0].price >= price) {
+      showToast('Wholesale prices should be lower than the Selling Price - check your tiers.', 'error');
+      return;
+    }
+
     const submitBtn = this;
     submitBtn.disabled = true;
 
@@ -11065,7 +11120,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall(`/products/admin/${editingProductId}`, {
           method: 'PUT',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, description: desc })
         });
         showToast("Product updated successfully!", "success");
 
@@ -11081,7 +11136,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall('/products/admin', {
           method: 'POST',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, description: desc })
         });
         showToast("Product added successfully!", "success");
 
@@ -11101,6 +11156,8 @@ window.loadManualData = loadManualData;
     document.getElementById("adminOriginalPrice").value = "";
 
     if (document.getElementById("adminStock")) document.getElementById("adminStock").value = "";
+
+    window._resetWholesaleTiers('admin');
 
     if (document.getElementById("adminLowStock")) document.getElementById("adminLowStock").value = "";
 
@@ -11143,6 +11200,8 @@ window.loadManualData = loadManualData;
     document.getElementById("adminOriginalPrice").value = "";
 
     if (document.getElementById("adminStock")) document.getElementById("adminStock").value = "";
+
+    window._resetWholesaleTiers('admin');
 
     if (document.getElementById("adminLowStock")) document.getElementById("adminLowStock").value = "";
 
@@ -18579,63 +18638,87 @@ function _wizardBuildChecklist() {
 // ══ WHOLESALE / QUANTITY PRICING ═══════════════════════════════════════
 // Working state for the tier builder in Step 2 of the product wizard.
 // Each tier: { min, max, price }. max === null/0 means "and above" (no ceiling).
-window._wholesaleTiers = [];
+// Separate tier state per form (seller / admin), so both Add Product
+// forms can build their own wholesale tiers independently without
+// stepping on each other - each form has its own wrap element id
+// ('sellerWholesaleTiersWrap' / 'adminWholesaleTiersWrap').
+window._wholesaleTiersState = { seller: [], admin: [] };
 
-window._renderWholesaleTiers = function() {
-  const wrap = document.getElementById('wholesaleTiersWrap');
+window._toggleWholesaleWrap = function(which) {
+  const on = document.getElementById(which + 'HasWholesale')?.checked;
+  const wrap = document.getElementById(which + 'WholesaleWrap');
+  if (wrap) wrap.style.display = on ? '' : 'none';
+};
+
+window._renderWholesaleTiers = function(which) {
+  which = which || 'seller';
+  const wrap = document.getElementById(which + 'WholesaleTiersWrap');
   if (!wrap) return;
-  if (!window._wholesaleTiers.length) {
-    wrap.innerHTML = '<div style="font-size:11px; color:var(--gray);">No quantity tiers yet — this product will sell at the Selling Price for any quantity.</div>';
+  const tiers = window._wholesaleTiersState[which];
+  if (!tiers.length) {
+    wrap.innerHTML = '<div style="font-size:11px; color:var(--gray);">No quantity tiers yet - add at least one below.</div>';
     return;
   }
-  wrap.innerHTML = window._wholesaleTiers.map((tier, i) => `
+  wrap.innerHTML = tiers.map((tier, i) => `
     <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:8px; align-items:center; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:8px;">
       <div>
         <label style="font-size:10px; color:var(--gray); display:block;">Min qty</label>
-        <input type="number" min="1" step="1" value="${tier.min ?? ''}" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updateWholesaleTier(${i}, 'min', this.value)">
+        <input type="number" min="1" step="1" value="${tier.min ?? ''}" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updateWholesaleTier('${which}', ${i}, 'min', this.value)">
       </div>
       <div>
         <label style="font-size:10px; color:var(--gray); display:block;">Max qty (blank = ∞)</label>
-        <input type="number" min="1" step="1" value="${tier.max ?? ''}" placeholder="∞" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updateWholesaleTier(${i}, 'max', this.value)">
+        <input type="number" min="1" step="1" value="${tier.max ?? ''}" placeholder="∞" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updateWholesaleTier('${which}', ${i}, 'max', this.value)">
       </div>
       <div>
         <label style="font-size:10px; color:var(--gray); display:block;">Price/unit (KES)</label>
-        <input type="number" min="1" step="1" value="${tier.price ?? ''}" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updateWholesaleTier(${i}, 'price', this.value)">
+        <input type="number" min="1" step="1" value="${tier.price ?? ''}" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updateWholesaleTier('${which}', ${i}, 'price', this.value)">
       </div>
-      <button type="button" onclick="window.removeWholesaleTier(${i})" title="Remove tier" style="background:#e74c3c; border:none; color:#fff; border-radius:6px; width:26px; height:26px; cursor:pointer; align-self:end;">✕</button>
+      <button type="button" onclick="window.removeWholesaleTier('${which}', ${i})" title="Remove tier" style="background:#e74c3c; border:none; color:#fff; border-radius:6px; width:26px; height:26px; cursor:pointer; align-self:end;">✕</button>
     </div>
   `).join('');
 };
 
-window.addWholesaleTier = function() {
-  const last = window._wholesaleTiers[window._wholesaleTiers.length - 1];
+window.addWholesaleTier = function(which) {
+  which = which || 'seller';
+  const tiers = window._wholesaleTiersState[which];
+  const last = tiers[tiers.length - 1];
   const nextMin = last ? (Number(last.max) > 0 ? Number(last.max) + 1 : (Number(last.min) || 0) + 1) : 1;
-  window._wholesaleTiers.push({ min: nextMin, max: null, price: '' });
-  window._renderWholesaleTiers();
+  tiers.push({ min: nextMin, max: null, price: '' });
+  window._renderWholesaleTiers(which);
 };
 
-window._updateWholesaleTier = function(i, field, value) {
-  const tier = window._wholesaleTiers[i];
+window._updateWholesaleTier = function(which, i, field, value) {
+  const tier = window._wholesaleTiersState[which][i];
   if (!tier) return;
   if (field === 'max') tier.max = value === '' ? null : parseInt(value, 10);
   else if (field === 'min') tier.min = value === '' ? '' : parseInt(value, 10);
   else tier.price = value === '' ? '' : parseFloat(value);
 };
 
-window.removeWholesaleTier = function(i) {
-  window._wholesaleTiers.splice(i, 1);
-  window._renderWholesaleTiers();
+window.removeWholesaleTier = function(which, i) {
+  window._wholesaleTiersState[which].splice(i, 1);
+  window._renderWholesaleTiers(which);
 };
 
-window._resetWholesaleTiers = function() {
-  window._wholesaleTiers = [];
-  window._renderWholesaleTiers();
+window._resetWholesaleTiers = function(which) {
+  which = which || 'seller';
+  window._wholesaleTiersState[which] = [];
+  window._renderWholesaleTiers(which);
+  const checkbox = document.getElementById(which + 'HasWholesale');
+  if (checkbox) checkbox.checked = false;
+  const wrap = document.getElementById(which + 'WholesaleWrap');
+  if (wrap) wrap.style.display = 'none';
 };
 
-// Validates and returns a clean, sorted tier array, or null (with a toast) if invalid.
-window._collectWholesaleTiers = function() {
-  if (!window._wholesaleTiers.length) return [];
-  const tiers = window._wholesaleTiers.map(t => ({
+// Validates and returns a clean, sorted tier array, or null (with a
+// toast) if invalid. Returns [] untouched when the seller/admin never
+// checked "Sell in bulk" for this product at all.
+window._collectWholesaleTiers = function(which) {
+  which = which || 'seller';
+  const enabled = document.getElementById(which + 'HasWholesale')?.checked;
+  const list = window._wholesaleTiersState[which];
+  if (!enabled || !list.length) return [];
+  const tiers = list.map(t => ({
     min: parseInt(t.min, 10),
     max: (t.max === null || t.max === '' || isNaN(Number(t.max))) ? null : parseInt(t.max, 10),
     price: parseFloat(t.price)
@@ -18649,7 +18732,7 @@ window._collectWholesaleTiers = function() {
   for (let i = 0; i < tiers.length - 1; i++) {
     const cur = tiers[i], next = tiers[i + 1];
     const curMax = cur.max !== null ? cur.max : Infinity;
-    if (curMax >= next.min) { showToast(`Wholesale tiers overlap around quantity ${next.min} — adjust the min/max quantities so each tier covers a distinct range.`, 'error'); return null; }
+    if (curMax >= next.min) { showToast(`Wholesale tiers overlap around quantity ${next.min} - adjust the min/max quantities so each tier covers a distinct range.`, 'error'); return null; }
   }
   return tiers;
 };
@@ -18778,6 +18861,8 @@ window.cancelEditProduct = function() {
   uploadedImages = [];
   const imgFile = document.getElementById('sellerImageFile'); if (imgFile) imgFile.value = '';
   renderImageThumbnails(uploadedImages, 'sellerImagePreview', 'sellerImageCount', 'removeImageAt');
+
+  window._resetWholesaleTiers('seller');
 };
 
 // Seller ShopStream management tab
@@ -19590,7 +19675,8 @@ window._renderCatTabBar = function() {
     { key: 'new',       icon: '🆕', label: 'New Arrivals' },
     { key: 'under500',  icon: '💰', label: 'Under KSh 500' },
     { key: 'bestrated', icon: '⭐', label: 'Best Rated' },
-    { key: 'kenya',     icon: '🇰🇪', label: 'Made in Kenya' }
+    { key: 'kenya',     icon: '🇰🇪', label: 'Made in Kenya' },
+    { key: 'wholesale', icon: '📦', label: 'Wholesale' }
   ];
   for (const col of SHOP_COLLECTION_TABS) {
     const btn = document.createElement('button');
