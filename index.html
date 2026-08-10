@@ -2760,14 +2760,15 @@
             </div>
 
             <div class="field" style="grid-column:1/-1;">
-              <label>Product Photo *</label>
-              <input type="file" id="sellerImageFile" accept="image/*" style="display:none;">
+              <label>Product Photos * (add at least 1 - 3 to 5 recommended)</label>
+              <input type="file" id="sellerImageFile" accept="image/*" multiple style="display:none;">
               <input type="file" id="sellerImageCameraFile" accept="image/*" capture="environment" style="display:none;">
-              <div id="sellerImagePreview" style="display:none; margin-bottom:8px;">
-                <img id="sellerImagePreviewImg" style="width:90px; height:90px; object-fit:cover; border-radius:10px; display:block;">
-                <button type="button" onclick="removeImage()" style="margin-top:6px; background:#e74c3c; border:none; color:#fff; border-radius:6px; padding:4px 12px; cursor:pointer; font-size:12px;">✕ Remove</button>
+              <div id="sellerImagePreview" style="display:none; margin-bottom:8px; flex-wrap:wrap; gap:8px; flex-direction:row;"></div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <button type="button" onclick="document.getElementById('sellerImageFile').click()" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:8px 16px; cursor:pointer; font-size:13px;">📷 Choose Photos</button>
+                <button type="button" onclick="document.getElementById('sellerImageCameraFile').click()" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:8px 16px; cursor:pointer; font-size:13px;">📸 Take Photo</button>
+                <span id="sellerImageCount" style="font-size:12px; color:var(--gray);">0 of 5 added - at least 1 required</span>
               </div>
-              <button type="button" onclick="document.getElementById('sellerImageFile').click()" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:8px 16px; cursor:pointer; font-size:13px;">📷 Choose Photo</button>
             </div>
 
             <div class="field" style="grid-column:1/-1; background:var(--surface-2); border-radius:10px; padding:14px;">
@@ -3299,7 +3300,7 @@
 
         </div>
 
-        <div class="field"><label>Product Image (optional - a relevant photo is shown automatically until you upload one)</label><div style="display:flex; gap:10px; flex-wrap:wrap;"><label style="flex:1; min-width:140px; background:var(--surface-2); border:1px solid var(--border-strong); border-radius:10px; padding:10px; text-align:center; cursor:pointer; color:var(--white);">🖼️ Choose from Gallery<input type="file" id="adminImageFile" accept="image/*" style="display:none;"></label><label style="flex:1; min-width:140px; background:var(--surface-2); border:1px solid var(--border-strong); border-radius:10px; padding:10px; text-align:center; cursor:pointer; color:var(--white);">📷 Take Photo<input type="file" id="adminImageCameraFile" accept="image/*" capture="environment" style="display:none;"></label></div><div id="adminImagePreview" style="margin-top:10px; display:none;"><img id="adminImagePreviewImg" src="#" alt="Preview" style="max-width:200px; max-height:200px; border-radius:10px; border:1px solid var(--border-strong); object-fit:cover;"><button onclick="removeAdminImage()" style="background:#ff6b6b; border:none; color:white; padding:4px 10px; border-radius:6px; cursor:pointer; margin-top:5px;">✕ Remove</button></div></div>
+        <div class="field"><label>Product Photos * (add at least 1 - 3 to 5 recommended)</label><div style="display:flex; gap:10px; flex-wrap:wrap;"><label style="flex:1; min-width:140px; background:var(--surface-2); border:1px solid var(--border-strong); border-radius:10px; padding:10px; text-align:center; cursor:pointer; color:var(--white);">🖼️ Choose from Gallery<input type="file" id="adminImageFile" accept="image/*" multiple style="display:none;"></label><label style="flex:1; min-width:140px; background:var(--surface-2); border:1px solid var(--border-strong); border-radius:10px; padding:10px; text-align:center; cursor:pointer; color:var(--white);">📷 Take Photo<input type="file" id="adminImageCameraFile" accept="image/*" capture="environment" style="display:none;"></label></div><div id="adminImagePreview" style="margin-top:10px; display:none; flex-wrap:wrap; gap:8px; flex-direction:row;"></div><div style="font-size:12px; color:var(--gray); margin-top:6px;" id="adminImageCount">0 of 5 added - at least 1 required</div></div>
 
         <div class="field"><label>Description *</label><textarea id="adminDesc" placeholder="Product description" style="min-height:60px;"></textarea></div>
 
@@ -6326,68 +6327,111 @@ let isLoginMode = true;
 
 let editingProductId = null;
 
-let uploadedImage = '';
+let uploadedImages = [];      // seller form - array of compressed data URLs, max 5
 let uploadedVideo = '';
-let uploadedAdminImage = '';
+let uploadedAdminImages = []; // admin form - same idea
 
-// Expose on window so outer script blocks (wizard, ShopStream) can access them
-window._getUploadedImage    = () => uploadedImage;
-window._setUploadedImage    = (v) => { uploadedImage = v; };
+const MAX_PRODUCT_IMAGES = 5;
+
+// Backward-compat single-image accessors - several older call sites
+// (the retired product wizard, some validation summaries) only ever
+// dealt with one image and still expect these. They now just read/set
+// the first entry of the array, so nothing else needs to change.
+window._getUploadedImage    = () => uploadedImages[0] || '';
+window._setUploadedImage    = (v) => { uploadedImages = v ? [v] : []; };
+window._getUploadedImages   = () => uploadedImages;
 window._getUploadedVideo    = () => uploadedVideo;
 window._setUploadedVideo    = (v) => { uploadedVideo = v; };
 
-// Reads and compresses a chosen/captured product photo, then shows the
-// preview. This is the actual fix for the bug where selecting a file never
-// updated the preview or the saved product - previously nothing was
-// listening for this input's change event at all.
-async function handleProductImageSelected(file, previewImgId, previewWrapId, setter) {
-  if (!file) return;
-  try {
-    const compressed = await compressImageFile(file, 900, 0.8);
-    if (!compressed) { showToast('Could not read that image. Please try a different photo.', 'error'); return; }
-    setter(compressed);
-    const img = document.getElementById(previewImgId);
-    const wrap = document.getElementById(previewWrapId);
-    if (img) img.src = compressed;
-    if (wrap) wrap.style.display = 'block';
-  } catch (err) {
-    console.error('Product image upload failed:', err);
-    showToast('⚠️ Could not process that photo. Please try again.', 'error');
+// Renders the thumbnail strip for a multi-image field, each with its
+// own remove button, plus updates the "X of 5 added" counter text.
+function renderImageThumbnails(images, previewWrapId, countElId, removeFn) {
+  const wrap = document.getElementById(previewWrapId);
+  if (wrap) {
+    wrap.style.display = images.length ? 'flex' : 'none';
+    wrap.innerHTML = images.map((src, i) => `
+      <div style="position:relative; width:80px; height:80px;">
+        <img src="${src}" style="width:80px; height:80px; object-fit:cover; border-radius:10px; display:block; border:1px solid var(--border-strong);">
+        <button type="button" onclick="${removeFn}(${i})" style="position:absolute; top:-6px; right:-6px; width:22px; height:22px; background:#e74c3c; border:none; color:#fff; border-radius:50%; cursor:pointer; font-size:12px; line-height:1; display:flex; align-items:center; justify-content:center;">✕</button>
+        ${i === 0 ? `<span style="position:absolute; bottom:2px; left:2px; background:rgba(0,0,0,0.7); color:#fff; font-size:9px; padding:1px 5px; border-radius:4px;">Main</span>` : ''}
+      </div>
+    `).join('');
   }
+  const countEl = document.getElementById(countElId);
+  if (countEl) countEl.textContent = images.length
+    ? `${images.length} of ${MAX_PRODUCT_IMAGES} added${images.length < 3 ? ' - 3 to 5 recommended' : ''}`
+    : `0 of ${MAX_PRODUCT_IMAGES} added - at least 1 required`;
+}
+
+// Reads and compresses one or more chosen/captured product photos, adds
+// them to the given array (capped at MAX_PRODUCT_IMAGES), then
+// re-renders the thumbnail strip. Accepts a FileList or single File.
+async function handleProductImagesSelected(files, arraySetter, arrayGetter, previewWrapId, countElId, removeFn) {
+  if (!files || !files.length) return;
+  const current = arrayGetter();
+  const room = MAX_PRODUCT_IMAGES - current.length;
+  if (room <= 0) { showToast(`You can add up to ${MAX_PRODUCT_IMAGES} photos.`, 'error'); return; }
+  const toProcess = Array.from(files).slice(0, room);
+  for (const file of toProcess) {
+    try {
+      const compressed = await compressImageFile(file, 900, 0.8);
+      if (compressed) current.push(compressed);
+    } catch (err) {
+      console.error('Product image upload failed:', err);
+    }
+  }
+  arraySetter(current);
+  renderImageThumbnails(current, previewWrapId, countElId, removeFn);
+  if (files.length > toProcess.length) showToast(`Only added ${toProcess.length} - up to ${MAX_PRODUCT_IMAGES} photos allowed.`, 'error');
 }
 
 document.getElementById('sellerImageFile')?.addEventListener('change', function(e) {
-  handleProductImageSelected(e.target.files[0], 'sellerImagePreviewImg', 'sellerImagePreview', (v) => { uploadedImage = v; });
+  handleProductImagesSelected(e.target.files, (v) => { uploadedImages = v; }, () => uploadedImages, 'sellerImagePreview', 'sellerImageCount', 'removeImageAt');
+  e.target.value = '';
 });
 document.getElementById('sellerImageCameraFile')?.addEventListener('change', function(e) {
-  handleProductImageSelected(e.target.files[0], 'sellerImagePreviewImg', 'sellerImagePreview', (v) => { uploadedImage = v; });
+  handleProductImagesSelected(e.target.files, (v) => { uploadedImages = v; }, () => uploadedImages, 'sellerImagePreview', 'sellerImageCount', 'removeImageAt');
+  e.target.value = '';
 });
 document.getElementById('adminImageFile')?.addEventListener('change', function(e) {
-  handleProductImageSelected(e.target.files[0], 'adminImagePreviewImg', 'adminImagePreview', (v) => { uploadedAdminImage = v; });
+  handleProductImagesSelected(e.target.files, (v) => { uploadedAdminImages = v; }, () => uploadedAdminImages, 'adminImagePreview', 'adminImageCount', 'removeAdminImageAt');
+  e.target.value = '';
 });
 document.getElementById('adminImageCameraFile')?.addEventListener('change', function(e) {
-  handleProductImageSelected(e.target.files[0], 'adminImagePreviewImg', 'adminImagePreview', (v) => { uploadedAdminImage = v; });
+  handleProductImagesSelected(e.target.files, (v) => { uploadedAdminImages = v; }, () => uploadedAdminImages, 'adminImagePreview', 'adminImageCount', 'removeAdminImageAt');
+  e.target.value = '';
 });
 
+function removeAdminImageAt(index) {
+  uploadedAdminImages.splice(index, 1);
+  renderImageThumbnails(uploadedAdminImages, 'adminImagePreview', 'adminImageCount', 'removeAdminImageAt');
+}
+window.removeAdminImageAt = removeAdminImageAt;
+
 function removeAdminImage() {
-  uploadedAdminImage = '';
+  uploadedAdminImages = [];
   const fileInput = document.getElementById('adminImageFile');
   if (fileInput) fileInput.value = '';
   const cameraInput = document.getElementById('adminImageCameraFile');
   if (cameraInput) cameraInput.value = '';
-  const preview = document.getElementById('adminImagePreview');
-  if (preview) preview.style.display = 'none';
+  renderImageThumbnails(uploadedAdminImages, 'adminImagePreview', 'adminImageCount', 'removeAdminImageAt');
 }
 window.removeAdminImage = removeAdminImage;
 
-// Clears the selected product image/video from the seller's add-product
-// form. Referenced by the "✕ Remove" buttons next to each preview.
+function removeImageAt(index) {
+  uploadedImages.splice(index, 1);
+  renderImageThumbnails(uploadedImages, 'sellerImagePreview', 'sellerImageCount', 'removeImageAt');
+}
+window.removeImageAt = removeImageAt;
+
+// Clears every selected product image from the seller's add-product
+// form. Kept for backward compatibility with older call sites that
+// expect a "clear everything" reset.
 function removeImage() {
-  uploadedImage = '';
+  uploadedImages = [];
   const fileInput = document.getElementById('sellerImageFile');
   if (fileInput) fileInput.value = '';
-  const preview = document.getElementById('sellerImagePreview');
-  if (preview) preview.style.display = 'none';
+  renderImageThumbnails(uploadedImages, 'sellerImagePreview', 'sellerImageCount', 'removeImageAt');
 }
 window.removeImage = removeImage;
 
@@ -6397,6 +6441,7 @@ function removeVideo() {
   if (fileInput) fileInput.value = '';
   const preview = document.getElementById('sellerVideoPreview');
   if (preview) preview.style.display = 'none';
+
 }
 window.removeVideo = removeVideo;
 
@@ -9962,7 +10007,7 @@ window._simpleProductSubmit = async function(mode) {
     if (!catId) { showToast('Please choose a category.', 'error'); return; }
     if (!price || price <= 0) { showToast('Please enter a valid price.', 'error'); return; }
     if (isNaN(stock) || stock < 0) { showToast('Please enter a stock quantity.', 'error'); return; }
-    if (!editingProductId && !window._getUploadedImage()) { showToast('Please add a product photo.', 'error'); return; }
+    if (window._getUploadedImages().length === 0) { showToast('Please add at least one product photo.', 'error'); return; }
   }
 
   const btn = document.getElementById('sellerSubmitBtn');
@@ -9972,7 +10017,7 @@ window._simpleProductSubmit = async function(mode) {
   const payload = {
     name, description: desc, category: cat, category_id: catId ? Number(catId) : undefined, price, original_price: orig,
     stock: isNaN(stock) ? 0 : stock, weight, brand: brand || undefined, hot, flash_deal_ends_at: flashDealEndsAt,
-    image: window._getUploadedImage() || undefined,
+    images: window._getUploadedImages(),
     status: mode === 'draft' ? 'draft' : 'active',
     low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined
   };
@@ -10056,11 +10101,11 @@ window._simpleProductSubmit = async function(mode) {
     if (document.getElementById("sellerStock")) document.getElementById("sellerStock").value = (typeof product.stock === 'number') ? product.stock : '';
     if (document.getElementById("sellerLowStock")) document.getElementById("sellerLowStock").value = (typeof product.lowStockThreshold === 'number') ? product.lowStockThreshold : '';
 
-    window._setUploadedImage && window._setUploadedImage(product.image || '');
-    if (product.image) {
-      document.getElementById('sellerImagePreviewImg').src = product.image;
-      document.getElementById('sellerImagePreview').style.display = 'block';
-    }
+    // Prefer the full gallery if the product has one; fall back to just
+    // the single legacy image field for older products saved before
+    // multi-image support existed.
+    uploadedImages = (product.images && product.images.length) ? [...product.images] : (product.image ? [product.image] : []);
+    renderImageThumbnails(uploadedImages, 'sellerImagePreview', 'sellerImageCount', 'removeImageAt');
 
     if (product.categoryId && window._setCat_sellerCategory) window._setCat_sellerCategory(product.categoryId);
     else if (document.getElementById("sellerCategory")) document.getElementById("sellerCategory").value = product.category || '';
@@ -10287,13 +10332,8 @@ async function renderAdminProducts() {
 
       document.getElementById("adminCategory").value = product.category_id || '';
 
-      if (product.image) {
-        uploadedAdminImage = product.image;
-        document.getElementById('adminImagePreviewImg').src = product.image;
-        document.getElementById('adminImagePreview').style.display = 'block';
-      } else {
-        removeAdminImage();
-      }
+      uploadedAdminImages = (product.images && product.images.length) ? [...product.images] : (product.image ? [product.image] : []);
+      renderImageThumbnails(uploadedAdminImages, 'adminImagePreview', 'adminImageCount', 'removeAdminImageAt');
 
       document.getElementById("adminDesc").value = product.desc || '';
 
@@ -10987,7 +11027,7 @@ window.loadManualData = loadManualData;
 
     const category = document.getElementById("adminCategory")?.value;
 
-    const image = uploadedAdminImage;
+    // (uploadedAdminImages is used directly below when building the request body)
 
     const hot = document.getElementById("adminHot")?.value === 'true';
 
@@ -10998,6 +11038,8 @@ window.loadManualData = loadManualData;
     const desc = document.getElementById("adminDesc")?.value.trim();
 
     if (!name || !price || !desc) { showToast("Please fill in all required fields.", "error"); return; }
+
+    if (uploadedAdminImages.length === 0) { showToast("Please add at least one product photo.", "error"); return; }
 
     if (!originalPrice || originalPrice <= 0) { showToast("Original Price is required.", "error"); document.getElementById("adminOriginalPrice").focus(); return; }
 
@@ -11011,7 +11053,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall(`/products/admin/${editingProductId}`, {
           method: 'PUT',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, ...(image ? { image } : {}), hot, flash_deal_ends_at: flashDealEndsAt, description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, description: desc })
         });
         showToast("Product updated successfully!", "success");
 
@@ -11027,7 +11069,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall('/products/admin', {
           method: 'POST',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, image, hot, flash_deal_ends_at: flashDealEndsAt, description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, description: desc })
         });
         showToast("Product added successfully!", "success");
 
@@ -18713,9 +18755,9 @@ window.cancelEditProduct = function() {
   const simpleVariants = document.getElementById('sellerSimpleHasVariants'); if (simpleVariants) simpleVariants.checked = false;
   const simpleVariantsWrap = document.getElementById('sellerSimpleVariantsWrap'); if (simpleVariantsWrap) simpleVariantsWrap.style.display = 'none';
 
-  window._setUploadedImage && window._setUploadedImage('');
+  uploadedImages = [];
   const imgFile = document.getElementById('sellerImageFile'); if (imgFile) imgFile.value = '';
-  const imgPreview = document.getElementById('sellerImagePreview'); if (imgPreview) imgPreview.style.display = 'none';
+  renderImageThumbnails(uploadedImages, 'sellerImagePreview', 'sellerImageCount', 'removeImageAt');
 };
 
 // Seller ShopStream management tab
