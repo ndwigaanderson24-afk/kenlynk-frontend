@@ -2795,12 +2795,12 @@
             </div>
             <div class="field" style="grid-column:1/-1; background:var(--surface-2); border-radius:10px; padding:14px;">
               <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white); font-weight:600; margin-bottom:8px;">
-                <input type="checkbox" id="sellerHasPhotoOptions" onchange="window._togglePhotoOptionsWrap && window._togglePhotoOptionsWrap('seller')"> 📸 This product has different options, each with its own photo, price and stock
+                <input type="checkbox" id="sellerHasPhotoOptions" onchange="window._togglePhotoOptionsWrap && window._togglePhotoOptionsWrap('seller')"> 🎨 This product has colour variants
               </label>
               <div id="sellerPhotoOptionsWrap" style="display:none;">
-                <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">For example, different styles or colours that each need their own price and stock. Add one option per photo below.</div>
+                <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">Add each colour separately - its own name, photo, price, stock and SKU. Buyers pick a colour on the product page before adding to cart.</div>
                 <div id="sellerPhotoOptionsListWrap" style="display:flex; flex-direction:column; gap:10px; margin-bottom:8px;"></div>
-                <button type="button" onclick="window.addPhotoOption('seller')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Option</button>
+                <button type="button" onclick="window.addPhotoOption('seller')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Colour</button>
               </div>
             </div>
           </div>
@@ -3337,12 +3337,12 @@
 
         <div class="field" style="background:var(--surface-2); border-radius:10px; padding:14px;">
           <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white); font-weight:600; margin-bottom:8px;">
-            <input type="checkbox" id="adminHasPhotoOptions" onchange="window._togglePhotoOptionsWrap && window._togglePhotoOptionsWrap('admin')"> 📸 This product has different options, each with its own photo, price and stock
+            <input type="checkbox" id="adminHasPhotoOptions" onchange="window._togglePhotoOptionsWrap && window._togglePhotoOptionsWrap('admin')"> 🎨 This product has colour variants
           </label>
           <div id="adminPhotoOptionsWrap" style="display:none;">
-            <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">For example, different styles or colours that each need their own price and stock. Add one option per photo below.</div>
+            <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">Add each colour separately - its own name, photo, price, stock and SKU. Buyers pick a colour on the product page before adding to cart.</div>
             <div id="adminPhotoOptionsListWrap" style="display:flex; flex-direction:column; gap:10px; margin-bottom:8px;"></div>
-            <button type="button" onclick="window.addPhotoOption('admin')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Option</button>
+            <button type="button" onclick="window.addPhotoOption('admin')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Colour</button>
           </div>
         </div>
 
@@ -10180,18 +10180,22 @@ window._simpleProductSubmit = async function(mode) {
 
     // Photo options are stored as variant rows with no attribute options -
     // fetch the product's actual variants (not part of the product object
-    // itself) and treat any that have zero options as a photo option.
+    // itself) and treat any that have a Colour attribute option as a
+    // colour variant to edit.
     window._photoOptionsState.seller = [];
     window._photoOptionsOriginalIds.seller = [];
     if (product.has_variants) {
       try {
         const vRes = await apiCall(`/products/${id}/variants`);
-        const photoVariants = (vRes.data.variants || []).filter(v => !v.options || v.options.length === 0);
-        window._photoOptionsState.seller = photoVariants.map(v => ({
-          id: v.id, image: (v.images && v.images.length) ? v.images[0] : '', price: v.price, stock: v.stock
+        const colourVariants = (vRes.data.variants || []).filter(v => v.options && v.options.some(o => o.attribute_name === 'Colour'));
+        window._photoOptionsState.seller = colourVariants.map(v => ({
+          id: v.id,
+          name: (v.options.find(o => o.attribute_name === 'Colour') || {}).value || '',
+          image: (v.images && v.images.length) ? v.images[0] : '',
+          price: v.price, stock: v.stock, sku: v.sku || ''
         }));
-        window._photoOptionsOriginalIds.seller = photoVariants.map(v => v.id);
-      } catch (e) { /* non-fatal - just shows no photo options to edit */ }
+        window._photoOptionsOriginalIds.seller = colourVariants.map(v => v.id);
+      } catch (e) { /* non-fatal - just shows no colours to edit */ }
     }
     const sellerHasPhotoOptionsEl = document.getElementById('sellerHasPhotoOptions');
     if (sellerHasPhotoOptionsEl) sellerHasPhotoOptionsEl.checked = window._photoOptionsState.seller.length > 0;
@@ -10446,12 +10450,15 @@ async function renderAdminProducts() {
       if (product.has_variants) {
         try {
           const vRes = await adminApiCall(`/admin/products/${id}/variants`);
-          const photoVariants = (vRes.data.variants || []).filter(v => !v.options || v.options.length === 0);
-          window._photoOptionsState.admin = photoVariants.map(v => ({
-            id: v.id, image: (v.images && v.images.length) ? v.images[0] : '', price: v.price, stock: v.stock
+          const colourVariants = (vRes.data.variants || []).filter(v => v.options && v.options.some(o => o.attribute_name === 'Colour'));
+          window._photoOptionsState.admin = colourVariants.map(v => ({
+            id: v.id,
+            name: (v.options.find(o => o.attribute_name === 'Colour') || {}).value || '',
+            image: (v.images && v.images.length) ? v.images[0] : '',
+            price: v.price, stock: v.stock, sku: v.sku || ''
           }));
-          window._photoOptionsOriginalIds.admin = photoVariants.map(v => v.id);
-        } catch (e) { /* non-fatal - just shows no photo options to edit */ }
+          window._photoOptionsOriginalIds.admin = colourVariants.map(v => v.id);
+        } catch (e) { /* non-fatal - just shows no colours to edit */ }
       }
       const adminHasPhotoOptionsEl = document.getElementById('adminHasPhotoOptions');
       if (adminHasPhotoOptionsEl) adminHasPhotoOptionsEl.checked = window._photoOptionsState.admin.length > 0;
@@ -18928,11 +18935,11 @@ window._renderPhotoOptionsList = function(which) {
   if (!wrap) return;
   const options = window._photoOptionsState[which];
   if (!options.length) {
-    wrap.innerHTML = '<div style="font-size:11px; color:var(--gray);">No options yet - add at least one below.</div>';
+    wrap.innerHTML = '<div style="font-size:11px; color:var(--gray);">No colours yet - add at least one below.</div>';
     return;
   }
   wrap.innerHTML = options.map((opt, i) => `
-    <div style="display:flex; gap:10px; align-items:center; background:var(--surface-3); border:1px solid var(--border-strong); border-radius:8px; padding:8px;">
+    <div style="display:flex; gap:10px; align-items:start; background:var(--surface-3); border:1px solid var(--border-strong); border-radius:8px; padding:8px;">
       <div>
         <input type="file" accept="image/*" id="photoOption_${which}_${i}_file" style="display:none;" onchange="window._handlePhotoOptionImageSelected('${which}', ${i}, this.files[0])">
         <button type="button" onclick="document.getElementById('photoOption_${which}_${i}_file').click()" title="Choose photo" style="width:60px; height:60px; border-radius:8px; border:1px dashed var(--border-strong); background:var(--surface-2); cursor:pointer; padding:0; overflow:hidden; flex-shrink:0;">
@@ -18940,6 +18947,10 @@ window._renderPhotoOptionsList = function(which) {
         </button>
       </div>
       <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div style="grid-column:1/-1;">
+          <label style="font-size:10px; color:var(--gray); display:block;">Colour Name</label>
+          <input type="text" placeholder="e.g. Black" value="${escapeHtml(opt.name ?? '')}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'name', this.value)">
+        </div>
         <div>
           <label style="font-size:10px; color:var(--gray); display:block;">Price (KES)</label>
           <input type="number" min="1" value="${opt.price ?? ''}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'price', this.value)">
@@ -18948,14 +18959,18 @@ window._renderPhotoOptionsList = function(which) {
           <label style="font-size:10px; color:var(--gray); display:block;">Stock</label>
           <input type="number" min="0" value="${opt.stock ?? ''}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'stock', this.value)">
         </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:10px; color:var(--gray); display:block;">SKU (optional)</label>
+          <input type="text" placeholder="e.g. CARPET-BLK-01" value="${escapeHtml(opt.sku ?? '')}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'sku', this.value)">
+        </div>
       </div>
-      <button type="button" onclick="window._removePhotoOption('${which}', ${i})" title="Remove option" style="background:#e74c3c; border:none; color:#fff; border-radius:6px; width:26px; height:26px; cursor:pointer; flex-shrink:0;">✕</button>
+      <button type="button" onclick="window._removePhotoOption('${which}', ${i})" title="Remove colour" style="background:#e74c3c; border:none; color:#fff; border-radius:6px; width:26px; height:26px; cursor:pointer; flex-shrink:0;">✕</button>
     </div>
   `).join('');
 };
 
 window.addPhotoOption = function(which) {
-  window._photoOptionsState[which].push({ id: null, image: '', price: '', stock: '' });
+  window._photoOptionsState[which].push({ id: null, name: '', image: '', price: '', stock: '', sku: '' });
   window._renderPhotoOptionsList(which);
 };
 
@@ -18994,25 +19009,30 @@ window._resetPhotoOptions = function(which) {
   if (wrap) wrap.style.display = 'none';
 };
 
-// Validates and returns the option list, or null (with a toast) if
+// Validates and returns the colour list, or null (with a toast) if
 // invalid. Returns [] untouched when the checkbox isn't checked.
 window._collectPhotoOptions = function(which) {
   const enabled = document.getElementById(which + 'HasPhotoOptions')?.checked;
   const list = window._photoOptionsState[which];
   if (!enabled || !list.length) return [];
+  const seenNames = new Set();
   for (const opt of list) {
-    if (!opt.image) { showToast('Each option needs its own photo.', 'error'); return null; }
-    if (!opt.price || Number(opt.price) <= 0) { showToast('Each option needs a valid price.', 'error'); return null; }
-    if (opt.stock === '' || isNaN(Number(opt.stock)) || Number(opt.stock) < 0) { showToast('Each option needs a stock quantity.', 'error'); return null; }
+    if (!opt.name || !opt.name.trim()) { showToast('Each colour needs a name.', 'error'); return null; }
+    const key = opt.name.trim().toLowerCase();
+    if (seenNames.has(key)) { showToast(`"${opt.name.trim()}" is used more than once - each colour name must be unique.`, 'error'); return null; }
+    seenNames.add(key);
+    if (!opt.image) { showToast(`"${opt.name.trim()}" needs its own photo.`, 'error'); return null; }
+    if (!opt.price || Number(opt.price) <= 0) { showToast(`"${opt.name.trim()}" needs a valid price.`, 'error'); return null; }
+    if (opt.stock === '' || isNaN(Number(opt.stock)) || Number(opt.stock) < 0) { showToast(`"${opt.name.trim()}" needs a stock quantity.`, 'error'); return null; }
   }
-  return list.map(opt => ({ id: opt.id, image: opt.image, price: Number(opt.price), stock: parseInt(opt.stock, 10) }));
+  return list.map(opt => ({ id: opt.id, name: opt.name.trim(), image: opt.image, price: Number(opt.price), stock: parseInt(opt.stock, 10), sku: (opt.sku || '').trim() || undefined }));
 };
 
-// Creates/updates/deletes variant rows to match the current photo
-// options list - called after the base product itself has already
-// been saved, since it needs a real product id to attach variants to.
-// isAdminMode picks which set of variant endpoints to call (admin's
-// own /admin/variants/:id routes work on any product; the seller-scoped
+// Creates/updates/deletes variant rows to match the current colour
+// list - called after the base product itself has already been saved,
+// since it needs a real product id to attach variants to. isAdminMode
+// picks which set of variant endpoints to call (admin's own
+// /admin/variants/:id routes work on any product; the seller-scoped
 // ones are ownership-checked and need the product id in the URL too).
 async function _savePhotoOptionVariants(productId, options, isAdminMode) {
   const keptIds = options.filter(o => o.id).map(o => o.id);
@@ -19021,10 +19041,32 @@ async function _savePhotoOptionVariants(productId, options, isAdminMode) {
     try {
       if (isAdminMode) await adminApiCall(`/admin/variants/${id}`, { method: 'DELETE' });
       else await apiCall(`/products/${productId}/variants/${id}`, { method: 'DELETE' });
-    } catch (e) { console.error('Failed to remove old photo option:', e.message); }
+    } catch (e) { console.error('Failed to remove old colour variant:', e.message); }
   }
+
+  // Ensure a single "Colour" attribute exists on this product, so each
+  // variant's colour name is a real, queryable attribute value - not
+  // just a photo label - matching how the buyer-facing "Color: X"
+  // picker and the cart/order snapshot both expect to read it.
+  let colourAttrId = null;
+  try {
+    const attrBody = JSON.stringify({ attributes: ['Colour'] });
+    const attrRes = isAdminMode
+      ? await adminApiCall(`/admin/products/${productId}/attributes`, { method: 'PUT', body: attrBody })
+      : await apiCall(`/products/${productId}/attributes`, { method: 'PUT', body: attrBody });
+    const colourAttr = (attrRes.data.attributes || []).find(a => a.name === 'Colour');
+    colourAttrId = colourAttr ? colourAttr.id : null;
+  } catch (e) {
+    console.error('Failed to set up the Colour attribute:', e.message);
+    showToast('⚠️ Could not save colour names - please try editing this product again.', 'error');
+  }
+
   for (const opt of options) {
-    const body = JSON.stringify({ price: opt.price, stock: opt.stock, images_json: JSON.stringify([opt.image]), options: [] });
+    const body = JSON.stringify({
+      price: opt.price, stock: opt.stock, sku: opt.sku,
+      images_json: JSON.stringify([opt.image]),
+      options: colourAttrId ? [{ attribute_id: colourAttrId, value: opt.name }] : []
+    });
     try {
       if (opt.id) {
         if (isAdminMode) await adminApiCall(`/admin/variants/${opt.id}`, { method: 'PUT', body });
@@ -19033,7 +19075,7 @@ async function _savePhotoOptionVariants(productId, options, isAdminMode) {
         if (isAdminMode) await adminApiCall(`/admin/products/${productId}/variants`, { method: 'POST', body });
         else await apiCall(`/products/${productId}/variants`, { method: 'POST', body });
       }
-    } catch (e) { console.error('Failed to save photo option:', e.message); }
+    } catch (e) { console.error('Failed to save colour variant:', e.message); }
   }
 }
 window._savePhotoOptionVariants = _savePhotoOptionVariants;
