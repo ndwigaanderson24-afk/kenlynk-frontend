@@ -2793,6 +2793,16 @@
                 <button type="button" onclick="window.addWholesaleTier('seller')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Tier</button>
               </div>
             </div>
+            <div class="field" style="grid-column:1/-1; background:var(--surface-2); border-radius:10px; padding:14px;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white); font-weight:600; margin-bottom:8px;">
+                <input type="checkbox" id="sellerHasPhotoOptions" onchange="window._togglePhotoOptionsWrap && window._togglePhotoOptionsWrap('seller')"> 📸 This product has different options, each with its own photo, price and stock
+              </label>
+              <div id="sellerPhotoOptionsWrap" style="display:none;">
+                <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">For example, different styles or colours that each need their own price and stock. Add one option per photo below.</div>
+                <div id="sellerPhotoOptionsListWrap" style="display:flex; flex-direction:column; gap:10px; margin-bottom:8px;"></div>
+                <button type="button" onclick="window.addPhotoOption('seller')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Option</button>
+              </div>
+            </div>
           </div>
 
           <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;">
@@ -3322,6 +3332,17 @@
             <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">Offer a lower price per unit when a buyer orders a larger quantity. Add one or more quantity tiers below - each needs a minimum quantity and a price per unit for that range.</div>
             <div id="adminWholesaleTiersWrap" style="display:flex; flex-direction:column; gap:8px; margin-bottom:8px;"></div>
             <button type="button" onclick="window.addWholesaleTier('admin')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Tier</button>
+          </div>
+        </div>
+
+        <div class="field" style="background:var(--surface-2); border-radius:10px; padding:14px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white); font-weight:600; margin-bottom:8px;">
+            <input type="checkbox" id="adminHasPhotoOptions" onchange="window._togglePhotoOptionsWrap && window._togglePhotoOptionsWrap('admin')"> 📸 This product has different options, each with its own photo, price and stock
+          </label>
+          <div id="adminPhotoOptionsWrap" style="display:none;">
+            <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">For example, different styles or colours that each need their own price and stock. Add one option per photo below.</div>
+            <div id="adminPhotoOptionsListWrap" style="display:flex; flex-direction:column; gap:10px; margin-bottom:8px;"></div>
+            <button type="button" onclick="window.addPhotoOption('admin')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Option</button>
           </div>
         </div>
 
@@ -10043,6 +10064,9 @@ window._simpleProductSubmit = async function(mode) {
     return;
   }
 
+  const photoOptions = window._collectPhotoOptions('seller');
+  if (photoOptions === null) return;
+
   const btn = document.getElementById('sellerSubmitBtn');
   const origText = btn?.textContent;
   if (btn) { btn.disabled = true; btn.textContent = mode === 'draft' ? '💾 Saving…' : '⏳ Publishing…'; }
@@ -10053,7 +10077,8 @@ window._simpleProductSubmit = async function(mode) {
     images: window._getUploadedImages(),
     wholesale_tiers: wholesaleTiers,
     status: mode === 'draft' ? 'draft' : 'active',
-    low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined
+    low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined,
+    ...(photoOptions.length > 0 ? { has_variants: 1 } : {})
   };
 
   try {
@@ -10066,6 +10091,11 @@ window._simpleProductSubmit = async function(mode) {
       const res = await apiCall('/products', { method: 'POST', body: JSON.stringify(payload) });
       savedId = res.data.product.id;
     }
+
+    if (photoOptions.length > 0) {
+      await window._savePhotoOptionVariants(savedId, photoOptions, isAdmin());
+    }
+
 
     // Optional simple variants: Sizes x Colours (or just one of them).
     const sizesRaw = document.getElementById('sellerSimpleSizes')?.value.trim();
@@ -10113,7 +10143,7 @@ window._simpleProductSubmit = async function(mode) {
 };
 
 
-  function editSellerProduct(id) {
+  async function editSellerProduct(id) {
 
     const product = sellerOwnProducts.find(p => p.id === id);
 
@@ -10147,6 +10177,27 @@ window._simpleProductSubmit = async function(mode) {
     const sellerWholesaleWrapEl = document.getElementById('sellerWholesaleWrap');
     if (sellerWholesaleWrapEl) sellerWholesaleWrapEl.style.display = window._wholesaleTiersState.seller.length ? '' : 'none';
     window._renderWholesaleTiers('seller');
+
+    // Photo options are stored as variant rows with no attribute options -
+    // fetch the product's actual variants (not part of the product object
+    // itself) and treat any that have zero options as a photo option.
+    window._photoOptionsState.seller = [];
+    window._photoOptionsOriginalIds.seller = [];
+    if (product.has_variants) {
+      try {
+        const vRes = await apiCall(`/products/${id}/variants`);
+        const photoVariants = (vRes.data.variants || []).filter(v => !v.options || v.options.length === 0);
+        window._photoOptionsState.seller = photoVariants.map(v => ({
+          id: v.id, image: (v.images && v.images.length) ? v.images[0] : '', price: v.price, stock: v.stock
+        }));
+        window._photoOptionsOriginalIds.seller = photoVariants.map(v => v.id);
+      } catch (e) { /* non-fatal - just shows no photo options to edit */ }
+    }
+    const sellerHasPhotoOptionsEl = document.getElementById('sellerHasPhotoOptions');
+    if (sellerHasPhotoOptionsEl) sellerHasPhotoOptionsEl.checked = window._photoOptionsState.seller.length > 0;
+    const sellerPhotoOptionsWrapEl = document.getElementById('sellerPhotoOptionsWrap');
+    if (sellerPhotoOptionsWrapEl) sellerPhotoOptionsWrapEl.style.display = window._photoOptionsState.seller.length ? '' : 'none';
+    window._renderPhotoOptionsList('seller');
 
     if (product.categoryId && window._setCat_sellerCategory) window._setCat_sellerCategory(product.categoryId);
     else if (document.getElementById("sellerCategory")) document.getElementById("sellerCategory").value = product.category || '';
@@ -10264,6 +10315,7 @@ async function renderAdminProducts() {
           }
           <button onclick="window.loadAdminVariants(${p.id}, '${escapeHtml(p.name).replace(/'/g, "\\'")}');"
             style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--green); padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">🎛️ Variants</button>
+          <button class="admin-edit-btn" data-id="${p.id}" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">✏️ Edit</button>
           <button class="admin-delete-product-btn" data-id="${p.id}" data-name="${escapeHtml(p.name)}" style="background:#f44336; border:none; color:white; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">🗑️ Delete</button>
 
         </div>
@@ -10357,7 +10409,7 @@ async function renderAdminProducts() {
       }
     }));
 
-    list.querySelectorAll(".admin-edit-btn").forEach(btn => btn.addEventListener("click", function() {
+    list.querySelectorAll(".admin-edit-btn").forEach(btn => btn.addEventListener("click", async function() {
 
       const id = parseInt(this.dataset.id, 10);
 
@@ -10388,6 +10440,24 @@ async function renderAdminProducts() {
       const adminWholesaleWrapEl = document.getElementById('adminWholesaleWrap');
       if (adminWholesaleWrapEl) adminWholesaleWrapEl.style.display = window._wholesaleTiersState.admin.length ? '' : 'none';
       window._renderWholesaleTiers('admin');
+
+      window._photoOptionsState.admin = [];
+      window._photoOptionsOriginalIds.admin = [];
+      if (product.has_variants) {
+        try {
+          const vRes = await adminApiCall(`/admin/products/${id}/variants`);
+          const photoVariants = (vRes.data.variants || []).filter(v => !v.options || v.options.length === 0);
+          window._photoOptionsState.admin = photoVariants.map(v => ({
+            id: v.id, image: (v.images && v.images.length) ? v.images[0] : '', price: v.price, stock: v.stock
+          }));
+          window._photoOptionsOriginalIds.admin = photoVariants.map(v => v.id);
+        } catch (e) { /* non-fatal - just shows no photo options to edit */ }
+      }
+      const adminHasPhotoOptionsEl = document.getElementById('adminHasPhotoOptions');
+      if (adminHasPhotoOptionsEl) adminHasPhotoOptionsEl.checked = window._photoOptionsState.admin.length > 0;
+      const adminPhotoOptionsWrapEl = document.getElementById('adminPhotoOptionsWrap');
+      if (adminPhotoOptionsWrapEl) adminPhotoOptionsWrapEl.style.display = window._photoOptionsState.admin.length ? '' : 'none';
+      window._renderPhotoOptionsList('admin');
 
       document.getElementById("adminDesc").value = product.desc || '';
 
@@ -11112,16 +11182,21 @@ window.loadManualData = loadManualData;
       return;
     }
 
+    const photoOptions = window._collectPhotoOptions('admin');
+    if (photoOptions === null) return;
+
     const submitBtn = this;
     submitBtn.disabled = true;
 
     try {
+      let savedId;
       if (editingProductId) {
 
         await adminApiCall(`/products/admin/${editingProductId}`, {
           method: 'PUT',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
+        savedId = editingProductId;
         showToast("Product updated successfully!", "success");
 
         editingProductId = null;
@@ -11134,12 +11209,17 @@ window.loadManualData = loadManualData;
 
       } else {
 
-        await adminApiCall('/products/admin', {
+        const createRes = await adminApiCall('/products/admin', {
           method: 'POST',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
+        savedId = createRes.data.product.id;
         showToast("Product added successfully!", "success");
 
+      }
+
+      if (photoOptions.length > 0) {
+        await window._savePhotoOptionVariants(savedId, photoOptions, true);
       }
     } catch (err) {
       showToast('⚠️ ' + err.message, 'error');
@@ -11158,6 +11238,7 @@ window.loadManualData = loadManualData;
     if (document.getElementById("adminStock")) document.getElementById("adminStock").value = "";
 
     window._resetWholesaleTiers('admin');
+    window._resetPhotoOptions('admin');
 
     if (document.getElementById("adminLowStock")) document.getElementById("adminLowStock").value = "";
 
@@ -11202,6 +11283,7 @@ window.loadManualData = loadManualData;
     if (document.getElementById("adminStock")) document.getElementById("adminStock").value = "";
 
     window._resetWholesaleTiers('admin');
+    window._resetPhotoOptions('admin');
 
     if (document.getElementById("adminLowStock")) document.getElementById("adminLowStock").value = "";
 
@@ -14119,6 +14201,81 @@ function createAdminSellerManagement() {
     ) || null;
   }
 
+  let _detailSelectedVariantId = null; // for photo-option variants (no attributes)
+
+  // A lightweight alternative to the attribute-based picker above - for
+  // products where each purchasable option is just a photo with its own
+  // price/stock (no size/colour naming at all). Same underlying variant
+  // rows and endpoints, just variants with zero attribute options.
+  function _renderPhotoOptionsPicker(variantData, product) {
+    const { variants } = variantData;
+    if (!variants || !variants.length) return '';
+
+    let html = `<div id="variantPickerWrap" style="margin:14px 0; padding:14px; background:var(--surface-2); border-radius:12px; border:1px solid var(--border);">`;
+    html += `<div style="font-weight:700; font-size:14px; margin-bottom:10px; color:var(--white);">📸 Choose an Option</div>`;
+    html += `<div style="display:flex; flex-wrap:wrap; gap:10px;">`;
+    for (const v of variants) {
+      const img = (v.images && v.images.length) ? v.images[0] : getProductImageUrl(product);
+      const outOfStock = !v.is_active || v.stock === 0;
+      const isSelected = _detailSelectedVariantId === v.id;
+      html += `<button onclick="${outOfStock ? '' : `window._selectPhotoVariant(${v.id})`}"
+        style="position:relative; width:76px; padding:0; border-radius:10px; border:2px solid ${isSelected ? 'var(--green)' : 'var(--border-strong)'};
+               background:var(--surface-3); cursor:${outOfStock ? 'default' : 'pointer'}; opacity:${outOfStock ? 0.4 : 1}; overflow:hidden;"
+        ${outOfStock ? 'disabled' : ''}>
+        <img src="${img}" style="width:76px; height:76px; object-fit:cover; display:block;">
+        ${outOfStock ? '<span style="position:absolute;top:2px;right:2px;background:#e74c3c;color:#fff;font-size:8px;border-radius:4px;padding:1px 4px;">OUT</span>' : ''}
+      </button>`;
+    }
+    html += `</div>`;
+
+    const matched = variants.find(v => v.id === _detailSelectedVariantId) || null;
+    html += `<div id="variantMatchInfo" style="margin-top:10px; padding:10px; border-radius:8px; background:var(--surface); border:1px solid var(--border);">`;
+    if (!matched) {
+      html += `<div style="color:var(--gray); font-size:13px;">👆 Tap a photo above to see its price and availability.</div>`;
+    } else if (!matched.is_active || matched.stock === 0) {
+      html += `<div style="color:#e74c3c; font-size:13px; font-weight:600;">❌ Out of stock.</div>`;
+    } else {
+      html += `
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+          <div>
+            <span style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:var(--gold);">KES ${Number(matched.price).toLocaleString()}</span>
+            ${matched.original_price ? `<span style="color:var(--gray); font-size:12px; text-decoration:line-through; margin-left:8px;">KES ${Number(matched.original_price).toLocaleString()}</span>` : ''}
+          </div>
+          <div style="font-size:12px; color:var(--green-light);">✅ ${matched.stock} in stock</div>
+        </div>
+      `;
+    }
+    html += `</div></div>`;
+    return html;
+  }
+
+  window._selectPhotoVariant = function(variantId) {
+    _detailSelectedVariantId = variantId;
+    const wrap = document.getElementById('variantPickerWrap');
+    if (wrap) wrap.outerHTML = _renderPhotoOptionsPicker(_detailVariantData, _detailProduct);
+    _syncPhotoVariantDetailUI();
+  };
+
+  function _syncPhotoVariantDetailUI() {
+    if (!_detailVariantData) return;
+    const matched = _detailVariantData.variants.find(v => v.id === _detailSelectedVariantId) || null;
+    const cartBtn = document.getElementById('detailAddToCartBtn');
+    if (!cartBtn) return;
+    if (matched && matched.is_active && matched.stock > 0) {
+      cartBtn.disabled = false;
+      cartBtn.style.opacity = '1';
+      cartBtn.onclick = () => addToCartVariant(_detailProduct.id, matched.id, matched);
+      if (matched.images && matched.images.length) {
+        const img = document.getElementById('detailMainImage');
+        if (img) img.src = matched.images[0];
+      }
+    } else {
+      cartBtn.disabled = true;
+      cartBtn.style.opacity = '0.6';
+      cartBtn.onclick = null;
+    }
+  }
+
   function _renderVariantPicker(variantData, product) {
     if (!variantData || !variantData.attributes || !variantData.attributes.length) return '';
     const { attributes, variants, attributeValues } = variantData;
@@ -14227,6 +14384,7 @@ function createAdminSellerManagement() {
     _detailProduct = product;
     _detailVariantData = null;
     _detailSelectedOptions = {};
+    _detailSelectedVariantId = null;
 
     const detailContent = document.getElementById('productDetailContent');
 
@@ -14234,20 +14392,29 @@ function createAdminSellerManagement() {
 
     const mainImg = getProductImageUrl(product);
 
-    // Fetch variants from backend if product has them
+    // Fetch variants from backend if product has them. Two shapes are
+    // supported from the same data: attribute-based (Size/Colour text
+    // buttons) when attributes exist, or photo-based (each variant is
+    // just a photo with its own price/stock, no attributes at all).
     let variantHtml = '';
     if (product.has_variants) {
       try {
         const vRes = await apiCall(`/products/${productId}/variants`);
-        if (vRes && vRes.data && vRes.data.attributes && vRes.data.attributes.length) {
+        if (vRes && vRes.data && vRes.data.variants && vRes.data.variants.length) {
           _detailVariantData = vRes.data;
-          variantHtml = _renderVariantPicker(_detailVariantData, product);
+          variantHtml = (vRes.data.attributes && vRes.data.attributes.length)
+            ? _renderVariantPicker(_detailVariantData, product)
+            : _renderPhotoOptionsPicker(_detailVariantData, product);
         }
       } catch (e) { /* non-fatal – show product without picker */ }
     }
 
-    const hasVariants = !!(_detailVariantData && _detailVariantData.attributes && _detailVariantData.attributes.length);
-    const allAttrsPicked = hasVariants && _detailVariantData.attributes.every(a => _detailSelectedOptions[a.name]);
+    const hasAttributeVariants = !!(_detailVariantData && _detailVariantData.attributes && _detailVariantData.attributes.length);
+    const hasPhotoVariants = !!(_detailVariantData && !hasAttributeVariants && _detailVariantData.variants && _detailVariantData.variants.length);
+    const hasVariants = hasAttributeVariants || hasPhotoVariants;
+    const allAttrsPicked = hasAttributeVariants
+      ? _detailVariantData.attributes.every(a => _detailSelectedOptions[a.name])
+      : (hasPhotoVariants ? (_detailSelectedVariantId !== null) : false);
 
     detailContent.innerHTML = `
       <div class="product-detail-grid">
@@ -18737,6 +18904,140 @@ window._collectWholesaleTiers = function(which) {
   return tiers;
 };
 
+// ════════════════════════════════════════════════════════════
+// PHOTO OPTIONS - each purchasable option is a photo with its own
+// price and stock, no size/colour naming needed. Built on the same
+// product_variants backend as wholesale/attribute variants - each
+// option becomes a variant row with zero attribute options, just
+// its own price, stock, and images_json.
+// ════════════════════════════════════════════════════════════
+window._photoOptionsState = { seller: [], admin: [] };
+// Tracks which variant ids existed when a product was opened for
+// editing, so removed rows can be deleted from the backend on save
+// instead of just silently staying there.
+window._photoOptionsOriginalIds = { seller: [], admin: [] };
+
+window._togglePhotoOptionsWrap = function(which) {
+  const on = document.getElementById(which + 'HasPhotoOptions')?.checked;
+  const wrap = document.getElementById(which + 'PhotoOptionsWrap');
+  if (wrap) wrap.style.display = on ? '' : 'none';
+};
+
+window._renderPhotoOptionsList = function(which) {
+  const wrap = document.getElementById(which + 'PhotoOptionsListWrap');
+  if (!wrap) return;
+  const options = window._photoOptionsState[which];
+  if (!options.length) {
+    wrap.innerHTML = '<div style="font-size:11px; color:var(--gray);">No options yet - add at least one below.</div>';
+    return;
+  }
+  wrap.innerHTML = options.map((opt, i) => `
+    <div style="display:flex; gap:10px; align-items:center; background:var(--surface-3); border:1px solid var(--border-strong); border-radius:8px; padding:8px;">
+      <div>
+        <input type="file" accept="image/*" id="photoOption_${which}_${i}_file" style="display:none;" onchange="window._handlePhotoOptionImageSelected('${which}', ${i}, this.files[0])">
+        <button type="button" onclick="document.getElementById('photoOption_${which}_${i}_file').click()" title="Choose photo" style="width:60px; height:60px; border-radius:8px; border:1px dashed var(--border-strong); background:var(--surface-2); cursor:pointer; padding:0; overflow:hidden; flex-shrink:0;">
+          ${opt.image ? `<img src="${opt.image}" style="width:60px; height:60px; object-fit:cover; display:block;">` : `<span style="color:var(--gray); font-size:18px;">+</span>`}
+        </button>
+      </div>
+      <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div>
+          <label style="font-size:10px; color:var(--gray); display:block;">Price (KES)</label>
+          <input type="number" min="1" value="${opt.price ?? ''}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'price', this.value)">
+        </div>
+        <div>
+          <label style="font-size:10px; color:var(--gray); display:block;">Stock</label>
+          <input type="number" min="0" value="${opt.stock ?? ''}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'stock', this.value)">
+        </div>
+      </div>
+      <button type="button" onclick="window._removePhotoOption('${which}', ${i})" title="Remove option" style="background:#e74c3c; border:none; color:#fff; border-radius:6px; width:26px; height:26px; cursor:pointer; flex-shrink:0;">✕</button>
+    </div>
+  `).join('');
+};
+
+window.addPhotoOption = function(which) {
+  window._photoOptionsState[which].push({ id: null, image: '', price: '', stock: '' });
+  window._renderPhotoOptionsList(which);
+};
+
+window._removePhotoOption = function(which, i) {
+  window._photoOptionsState[which].splice(i, 1);
+  window._renderPhotoOptionsList(which);
+};
+
+window._updatePhotoOptionField = function(which, i, field, value) {
+  const opt = window._photoOptionsState[which][i];
+  if (!opt) return;
+  opt[field] = value;
+};
+
+window._handlePhotoOptionImageSelected = async function(which, i, file) {
+  if (!file) return;
+  try {
+    const compressed = await compressImageFile(file, 900, 0.8);
+    if (!compressed) { showToast('Could not read that image. Please try a different photo.', 'error'); return; }
+    const opt = window._photoOptionsState[which][i];
+    if (opt) opt.image = compressed;
+    window._renderPhotoOptionsList(which);
+  } catch (err) {
+    console.error('Photo option image upload failed:', err);
+    showToast('⚠️ Could not process that photo. Please try again.', 'error');
+  }
+};
+
+window._resetPhotoOptions = function(which) {
+  window._photoOptionsState[which] = [];
+  window._photoOptionsOriginalIds[which] = [];
+  window._renderPhotoOptionsList(which);
+  const checkbox = document.getElementById(which + 'HasPhotoOptions');
+  if (checkbox) checkbox.checked = false;
+  const wrap = document.getElementById(which + 'PhotoOptionsWrap');
+  if (wrap) wrap.style.display = 'none';
+};
+
+// Validates and returns the option list, or null (with a toast) if
+// invalid. Returns [] untouched when the checkbox isn't checked.
+window._collectPhotoOptions = function(which) {
+  const enabled = document.getElementById(which + 'HasPhotoOptions')?.checked;
+  const list = window._photoOptionsState[which];
+  if (!enabled || !list.length) return [];
+  for (const opt of list) {
+    if (!opt.image) { showToast('Each option needs its own photo.', 'error'); return null; }
+    if (!opt.price || Number(opt.price) <= 0) { showToast('Each option needs a valid price.', 'error'); return null; }
+    if (opt.stock === '' || isNaN(Number(opt.stock)) || Number(opt.stock) < 0) { showToast('Each option needs a stock quantity.', 'error'); return null; }
+  }
+  return list.map(opt => ({ id: opt.id, image: opt.image, price: Number(opt.price), stock: parseInt(opt.stock, 10) }));
+};
+
+// Creates/updates/deletes variant rows to match the current photo
+// options list - called after the base product itself has already
+// been saved, since it needs a real product id to attach variants to.
+// isAdminMode picks which set of variant endpoints to call (admin's
+// own /admin/variants/:id routes work on any product; the seller-scoped
+// ones are ownership-checked and need the product id in the URL too).
+async function _savePhotoOptionVariants(productId, options, isAdminMode) {
+  const keptIds = options.filter(o => o.id).map(o => o.id);
+  const removedIds = window._photoOptionsOriginalIds[isAdminMode ? 'admin' : 'seller'].filter(id => !keptIds.includes(id));
+  for (const id of removedIds) {
+    try {
+      if (isAdminMode) await adminApiCall(`/admin/variants/${id}`, { method: 'DELETE' });
+      else await apiCall(`/products/${productId}/variants/${id}`, { method: 'DELETE' });
+    } catch (e) { console.error('Failed to remove old photo option:', e.message); }
+  }
+  for (const opt of options) {
+    const body = JSON.stringify({ price: opt.price, stock: opt.stock, images_json: JSON.stringify([opt.image]), options: [] });
+    try {
+      if (opt.id) {
+        if (isAdminMode) await adminApiCall(`/admin/variants/${opt.id}`, { method: 'PUT', body });
+        else await apiCall(`/products/${productId}/variants/${opt.id}`, { method: 'PUT', body });
+      } else {
+        if (isAdminMode) await adminApiCall(`/admin/products/${productId}/variants`, { method: 'POST', body });
+        else await apiCall(`/products/${productId}/variants`, { method: 'POST', body });
+      }
+    } catch (e) { console.error('Failed to save photo option:', e.message); }
+  }
+}
+window._savePhotoOptionVariants = _savePhotoOptionVariants;
+
 // Returns the correct unit price for a given quantity, honouring wholesale
 // tiers when present. Falls back to the product's normal Selling Price.
 window.getUnitPriceForQty = function(product, qty) {
@@ -18863,6 +19164,7 @@ window.cancelEditProduct = function() {
   renderImageThumbnails(uploadedImages, 'sellerImagePreview', 'sellerImageCount', 'removeImageAt');
 
   window._resetWholesaleTiers('seller');
+  window._resetPhotoOptions('seller');
 };
 
 // Seller ShopStream management tab
