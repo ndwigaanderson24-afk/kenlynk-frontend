@@ -3297,6 +3297,8 @@
             <label>Flash Deal Ends At (optional)</label>
             <input type="datetime-local" id="adminFlashDealEndsAt">
           </div>
+          <div class="field"><label>Stock Quantity *</label><input type="number" id="adminStock" min="0" placeholder="0"></div>
+          <div class="field"><label>Low Stock Alert (optional)</label><input type="number" id="adminLowStock" min="0" placeholder="5"></div>
 
         </div>
 
@@ -10332,6 +10334,10 @@ async function renderAdminProducts() {
 
       document.getElementById("adminCategory").value = product.category_id || '';
 
+      if (document.getElementById("adminStock")) document.getElementById("adminStock").value = (typeof product.stock === 'number') ? product.stock : '';
+
+      if (document.getElementById("adminLowStock")) document.getElementById("adminLowStock").value = (typeof product.lowStockThreshold === 'number') ? product.lowStockThreshold : '';
+
       uploadedAdminImages = (product.images && product.images.length) ? [...product.images] : (product.image ? [product.image] : []);
       renderImageThumbnails(uploadedAdminImages, 'adminImagePreview', 'adminImageCount', 'removeAdminImageAt');
 
@@ -11035,9 +11041,15 @@ window.loadManualData = loadManualData;
 
     const flashDealEndsAt = (hot && flashDealEndsAtRaw) ? new Date(flashDealEndsAtRaw).toISOString().slice(0, 19).replace('T', ' ') : null;
 
+    const stock = parseInt(document.getElementById('adminStock')?.value, 10);
+
+    const lowStock = parseInt(document.getElementById('adminLowStock')?.value, 10);
+
     const desc = document.getElementById("adminDesc")?.value.trim();
 
     if (!name || !price || !desc) { showToast("Please fill in all required fields.", "error"); return; }
+
+    if (isNaN(stock) || stock < 0) { showToast("Please enter a valid stock quantity.", "error"); document.getElementById("adminStock").focus(); return; }
 
     if (uploadedAdminImages.length === 0) { showToast("Please add at least one product photo.", "error"); return; }
 
@@ -11053,7 +11065,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall(`/products/admin/${editingProductId}`, {
           method: 'PUT',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, description: desc })
         });
         showToast("Product updated successfully!", "success");
 
@@ -11069,7 +11081,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall('/products/admin', {
           method: 'POST',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, description: desc })
         });
         showToast("Product added successfully!", "success");
 
@@ -11087,6 +11099,10 @@ window.loadManualData = loadManualData;
     document.getElementById("adminPrice").value = "";
 
     document.getElementById("adminOriginalPrice").value = "";
+
+    if (document.getElementById("adminStock")) document.getElementById("adminStock").value = "";
+
+    if (document.getElementById("adminLowStock")) document.getElementById("adminLowStock").value = "";
 
     removeAdminImage();
 
@@ -11125,6 +11141,10 @@ window.loadManualData = loadManualData;
     document.getElementById("adminPrice").value = "";
 
     document.getElementById("adminOriginalPrice").value = "";
+
+    if (document.getElementById("adminStock")) document.getElementById("adminStock").value = "";
+
+    if (document.getElementById("adminLowStock")) document.getElementById("adminLowStock").value = "";
 
     removeAdminImage();
 
