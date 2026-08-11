@@ -502,6 +502,27 @@
       transform:translateY(-2px);
       box-shadow:0 8px 24px rgba(0,0,0,0.3);
     }
+
+    /* ── Skeleton loading placeholders - shown instantly on page load
+       while the real product data is still being fetched (the backend
+       can take several seconds to wake up on its first request), so
+       the page looks like it's loading rather than broken/empty. ── */
+    @keyframes skeletonPulse{ 0%,100%{ opacity:0.5; } 50%{ opacity:0.9; } }
+    .skeleton-pcard{
+      width:100%; border-radius:14px; overflow:hidden;
+      background:var(--surface); border:1px solid var(--border);
+    }
+    .skeleton-pcard-img{
+      width:100%; height:140px; background:var(--surface-3);
+      animation:skeletonPulse 1.4s ease-in-out infinite;
+    }
+    .skeleton-pcard-line{
+      height:10px; margin:10px 10px 0; border-radius:4px;
+      background:var(--surface-3);
+      animation:skeletonPulse 1.4s ease-in-out infinite;
+    }
+    .skeleton-pcard-line.short{ width:60%; margin-bottom:10px; }
+
     .pcard-img-wrap{
       position:relative; width:100%; height:140px;
       background:var(--surface-2); overflow:hidden;
@@ -7602,6 +7623,31 @@ if(page === "admin") {
     }
     row.closest('.collection-section').style.display = '';
     items.forEach(p => row.appendChild(buildProductCard(p, { compact: true })));
+  }
+
+  // Fills every homepage collection row with pulsing skeleton
+  // placeholders instantly on page load, before any network request has
+  // even started - so the page reads as "loading" rather than "broken/
+  // empty" during the gap while the backend wakes up and real product
+  // data arrives. renderShopCollections() naturally replaces this with
+  // real cards the moment PRODUCTS is populated (it clears each row's
+  // contents before appending real cards either way).
+  function showCollectionSkeletons() {
+    const rowIds = ['allProductsRow', 'flashDealsRow', 'newArrivalsRow', 'budgetRow', 'bestRatedRow', 'madeInKenyaRow'];
+    const skeletonCard = `
+      <div class="skeleton-pcard">
+        <div class="skeleton-pcard-img"></div>
+        <div class="skeleton-pcard-line"></div>
+        <div class="skeleton-pcard-line short"></div>
+      </div>
+    `;
+    for (const rowId of rowIds) {
+      const row = document.getElementById(rowId);
+      if (!row) continue;
+      row.innerHTML = skeletonCard.repeat(4);
+      const section = row.closest('.collection-section');
+      if (section) section.style.display = '';
+    }
   }
 
   function renderShopCollections() {
@@ -15950,6 +15996,8 @@ window.renderSMSLog = renderSMSLog;
     const adminTotalProductsEl = document.getElementById("adminTotalProducts");
     if (adminTotalProductsEl) adminTotalProductsEl.textContent = PRODUCTS.length;
   }
+
+  showCollectionSkeletons();
 
   loadProductsFromApi();
 
