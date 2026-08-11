@@ -6155,11 +6155,15 @@ function getCartOwnerParams() {
 // Converts one item from the backend cart (joined product row + qty) into
 // the flat shape the rest of this app's cart code already expects.
 function mapApiCartItem(row) {
+  let variantImage = null;
+  try { if (row.variant_images_json) variantImage = JSON.parse(row.variant_images_json)[0] || null; } catch (e) { /* ignore */ }
   return {
     id: row.id,
+    variantId: row.variant_id || null,
+    variantName: row.variant_name || null,
     name: row.name,
     price: Number(row.price),
-    image: row.image,
+    image: variantImage || row.image,
     emoji: row.emoji,
     category: row.category,
     qty: row.qty
@@ -7630,7 +7634,7 @@ window._trackProductClick = function(productId) {
   apiCall('/analytics/click', { method: 'POST', body: JSON.stringify({ product_id: productId }) }).catch(() => {});
 };
 
-  async function addToCart(id, qty){
+  async function addToCart(id, qty, variant){
 
     qty = parseInt(qty, 10) > 0 ? parseInt(qty, 10) : 1;
 
@@ -7640,11 +7644,18 @@ window._trackProductClick = function(productId) {
 
     window._trackProductClick && window._trackProductClick(id);
 
-    // Optimistic UI update first, so tapping "Add to Cart" feels instant -
-    // then sync to the server in the background.
-    const existing = cart.find(c=> c.id === id);
+    const variantId = variant ? variant.id : null;
+    const variantName = variant ? (variant.options || []).map(o => o.value).join(', ') : null;
+    const lineImage = (variant && variant.images && variant.images.length) ? variant.images[0] : product.image;
+    const linePrice = variant ? Number(variant.price) : product.price;
 
-    if(existing){ existing.qty += qty; } else { cart.push({id:product.id, name:product.name, price:product.price, image:product.image, emoji:product.emoji, category:product.category, qty:qty}); }
+    // Optimistic UI update first, so tapping "Add to Cart" feels instant -
+    // then sync to the server in the background. A different colour of
+    // the same product is its own separate cart line, never merged with
+    // another colour or with the base product.
+    const existing = cart.find(c=> c.id === id && (c.variantId || null) === (variantId || null));
+
+    if(existing){ existing.qty += qty; } else { cart.push({id:product.id, variantId, variantName, name:product.name, price:linePrice, image:lineImage, emoji:product.emoji, category:product.category, qty:qty}); }
 
     updateBadges();
 
@@ -7652,7 +7663,7 @@ window._trackProductClick = function(productId) {
 
     try {
       const owner = getCartOwnerParams();
-      await apiCall('/cart/add', { method: 'POST', body: JSON.stringify({ product_id: id, qty: qty, ...owner.asBody }) });
+      await apiCall('/cart/add', { method: 'POST', body: JSON.stringify({ product_id: id, qty: qty, variant_id: variantId || undefined, variant_name: variantName || undefined, ...owner.asBody }) });
     } catch (err) {
       showToast('⚠️ Could not sync cart with the server: ' + err.message, 'error');
     }
@@ -7661,9 +7672,9 @@ window._trackProductClick = function(productId) {
 
 
 
-  async function changeQty(id, delta){
+  async function changeQty(id, delta, variantId){
 
-    const item = cart.find(c=> c.id === id);
+    const item = cart.find(c=> c.id === id && (c.variantId || null) === (variantId || null));
 
     if(!item) return;
 
@@ -7671,7 +7682,7 @@ window._trackProductClick = function(productId) {
 
     const removed = item.qty <= 0;
 
-    if(removed){ cart = cart.filter(c=> c.id !== id); }
+    if(removed){ cart = cart.filter(c=> c !== item); }
 
     updateBadges();
 
@@ -7679,7 +7690,7 @@ window._trackProductClick = function(productId) {
 
     try {
       const owner = getCartOwnerParams();
-      await apiCall('/cart/update', { method: 'PUT', body: JSON.stringify({ product_id: id, qty: removed ? 0 : item.qty, ...owner.asBody }) });
+      await apiCall('/cart/update', { method: 'PUT', body: JSON.stringify({ product_id: id, qty: removed ? 0 : item.qty, variant_id: variantId || undefined, ...owner.asBody }) });
     } catch (err) {
       showToast('⚠️ Could not sync cart with the server: ' + err.message, 'error');
     }
@@ -7688,9 +7699,9 @@ window._trackProductClick = function(productId) {
 
 
 
-  async function removeFromCart(id){
+  async function removeFromCart(id, variantId){
 
-    cart = cart.filter(c=> c.id !== id);
+    cart = cart.filter(c=> !(c.id === id && (c.variantId || null) === (variantId || null)));
 
     updateBadges();
 
@@ -7698,7 +7709,8 @@ window._trackProductClick = function(productId) {
 
     try {
       const owner = getCartOwnerParams();
-      await apiCall(`/cart/${id}${owner.asQuery}`, { method: 'DELETE' });
+      const variantParam = variantId ? (owner.asQuery ? `&variant_id=${variantId}` : `?variant_id=${variantId}`) : '';
+      await apiCall(`/cart/${id}${owner.asQuery}${variantParam}`, { method: 'DELETE' });
     } catch (err) {
       showToast('⚠️ Could not sync cart with the server: ' + err.message, 'error');
     }
@@ -7749,12 +7761,13 @@ function renderCart(){
       ${productImageTag(c, 'width:44px; height:44px; border-radius:11px; object-fit:cover; flex-shrink:0;')}
       <div class="info">
         <h4>${escapeHtml(c.name)}</h4>
+        ${c.variantName ? `<div style="font-size:11px; color:var(--gold); font-weight:600;">Color: ${escapeHtml(c.variantName)}</div>` : ''}
         <div class="unit">KES ${unitPrice.toLocaleString()} each${isWholesale ? ' <span style="color:var(--green-light); font-weight:600;">· wholesale price applied</span>' : ''}</div>
         ${tiers.length ? `<div style="font-size:10px; color:var(--gray); margin-top:2px;">${tiers.map(t => `${t.min}${t.max ? '–'+t.max : '+'}: KES ${Number(t.price).toLocaleString()}`).join(' · ')}</div>` : ''}
       </div>
-      <div class="qty-ctrl"><button data-act="dec" data-id="${c.id}">−</button><span>${c.qty}</span><button data-act="inc" data-id="${c.id}">+</button></div>
+      <div class="qty-ctrl"><button data-act="dec" data-id="${c.id}" data-variant-id="${c.variantId || ''}">−</button><span>${c.qty}</span><button data-act="inc" data-id="${c.id}" data-variant-id="${c.variantId || ''}">+</button></div>
       <div class="line-total">KES ${(unitPrice * c.qty).toLocaleString()}</div>
-      <button class="remove-btn" data-act="rm" data-id="${c.id}">✕</button>
+      <button class="remove-btn" data-act="rm" data-id="${c.id}" data-variant-id="${c.variantId || ''}">✕</button>
     </div>
   `;}).join("");
   
@@ -8263,10 +8276,11 @@ window.markNotificationRead = markNotificationRead;
       const btn = e.target.closest("button[data-act]");
       if (!btn) return;
       const id = Number(btn.dataset.id);
+      const variantId = btn.dataset.variantId ? Number(btn.dataset.variantId) : null;
       const act = btn.dataset.act;
-      if (act === "inc") changeQty(id, 1);
-      else if (act === "dec") changeQty(id, -1);
-      else if (act === "rm") removeFromCart(id);
+      if (act === "inc") changeQty(id, 1, variantId);
+      else if (act === "dec") changeQty(id, -1, variantId);
+      else if (act === "rm") removeFromCart(id, variantId);
     });
   }
 
@@ -14200,6 +14214,7 @@ function createAdminSellerManagement() {
   // so the picker can dynamically update price / stock / image.
   let _detailVariantData = null;  // { attributes, variants, attributeValues }
   let _detailSelectedOptions = {};// { attributeName: value }
+  let _detailShowAllColours = {}; // { attributeId: true/false } - "View all colours" expand state
   let _detailProduct = null;
 
   function _findMatchingVariant(variants, selected) {
@@ -14298,34 +14313,67 @@ function createAdminSellerManagement() {
     const { attributes, variants, attributeValues } = variantData;
 
     let html = `<div id="variantPickerWrap" style="margin:14px 0; padding:14px; background:var(--surface-2); border-radius:12px; border:1px solid var(--border);">`;
-    html += `<div style="font-weight:700; font-size:14px; margin-bottom:10px; color:var(--white);">🎛️ Choose Options</div>`;
+
+    const COLOUR_VISIBLE_LIMIT = 6;
 
     for (const attr of attributes) {
       const values = attributeValues[attr.name] || [];
-      html += `<div style="margin-bottom:12px;">
-        <div style="font-size:12px; color:var(--gray); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">${escapeHtml(attr.name)}</div>
-        <div style="display:flex; flex-wrap:wrap; gap:6px;" id="attr_${attr.id}_btns">`;
-      for (const val of values) {
-        // Check if any variant with this value has stock
-        const hasStock = variants.some(v =>
-          v.is_active && v.stock > 0 &&
-          v.options.some(o => o.attribute_name === attr.name && o.value === val)
-        );
-        const isSelected = _detailSelectedOptions[attr.name] === val;
-        html += `<button
-          onclick="window._selectVariantOption('${escapeHtml(attr.name)}', '${escapeHtml(val)}')"
-          style="padding:6px 14px; border-radius:8px; border:2px solid ${isSelected ? 'var(--green)' : 'var(--border-strong)'};
-                 background:${isSelected ? 'var(--green)' : 'var(--surface-3)'};
-                 color:${isSelected ? '#fff' : (hasStock ? 'var(--white)' : 'var(--gray)')};
-                 font-size:12px; font-weight:600; cursor:${hasStock ? 'pointer' : 'default'};
-                 opacity:${hasStock ? 1 : 0.4}; position:relative;"
-          ${!hasStock ? 'disabled' : ''}
-          data-attr="${escapeHtml(attr.name)}" data-val="${escapeHtml(val)}">
-          ${escapeHtml(val)}
-          ${!hasStock ? '<span style="position:absolute;top:-6px;right:-6px;background:#e74c3c;color:#fff;font-size:9px;border-radius:4px;padding:1px 4px;">OUT</span>' : ''}
-        </button>`;
+      const isColour = attr.name.toLowerCase() === 'colour' || attr.name.toLowerCase() === 'color';
+      const selectedVal = _detailSelectedOptions[attr.name];
+
+      html += `<div style="margin-bottom:12px;">`;
+      html += `<div style="font-size:13px; font-weight:700; color:var(--white); margin-bottom:8px;">${escapeHtml(attr.name)}: <span style="color:var(--gold);">${selectedVal ? escapeHtml(selectedVal) : 'please select'}</span></div>`;
+
+      if (isColour) {
+        const expanded = !!_detailShowAllColours[attr.id];
+        const visibleValues = expanded ? values : values.slice(0, COLOUR_VISIBLE_LIMIT);
+
+        html += `<div id="attr_${attr.id}_btns" style="display:flex; flex-wrap:wrap; gap:8px;">`;
+        for (const val of visibleValues) {
+          const variantForVal = variants.find(v => v.options.some(o => o.attribute_name === attr.name && o.value === val));
+          const thumb = (variantForVal && variantForVal.images && variantForVal.images.length) ? variantForVal.images[0] : getProductImageUrl(product);
+          const hasStock = variants.some(v => v.is_active && v.stock > 0 && v.options.some(o => o.attribute_name === attr.name && o.value === val));
+          const isSelected = selectedVal === val;
+          html += `<button
+            onclick="${hasStock ? `window._selectVariantOption('${escapeHtml(attr.name)}', '${escapeHtml(val)}')` : ''}"
+            title="${escapeHtml(val)}"
+            style="position:relative; width:64px; padding:0; border-radius:10px; border:2px solid ${isSelected ? 'var(--gold)' : 'var(--border-strong)'};
+                   background:var(--surface-3); cursor:${hasStock ? 'pointer' : 'default'}; opacity:${hasStock ? 1 : 0.4}; overflow:hidden;"
+            ${!hasStock ? 'disabled' : ''}>
+            <img src="${thumb}" style="width:64px; height:64px; object-fit:cover; display:block;">
+            ${!hasStock ? '<span style="position:absolute;top:2px;right:2px;background:#e74c3c;color:#fff;font-size:8px;border-radius:4px;padding:1px 4px;">OUT</span>' : ''}
+          </button>`;
+        }
+        html += `</div>`;
+        if (values.length > COLOUR_VISIBLE_LIMIT) {
+          html += `<button type="button" onclick="window._toggleShowAllColours(${attr.id})" style="margin-top:8px; background:none; border:none; color:var(--gold); font-size:12px; cursor:pointer; text-decoration:underline; padding:0;">
+            ${expanded ? 'Show fewer colours' : `View all ${values.length} colours`}
+          </button>`;
+        }
+      } else {
+        html += `<div style="display:flex; flex-wrap:wrap; gap:6px;" id="attr_${attr.id}_btns">`;
+        for (const val of values) {
+          const hasStock = variants.some(v =>
+            v.is_active && v.stock > 0 &&
+            v.options.some(o => o.attribute_name === attr.name && o.value === val)
+          );
+          const isSelected = selectedVal === val;
+          html += `<button
+            onclick="window._selectVariantOption('${escapeHtml(attr.name)}', '${escapeHtml(val)}')"
+            style="padding:6px 14px; border-radius:8px; border:2px solid ${isSelected ? 'var(--green)' : 'var(--border-strong)'};
+                   background:${isSelected ? 'var(--green)' : 'var(--surface-3)'};
+                   color:${isSelected ? '#fff' : (hasStock ? 'var(--white)' : 'var(--gray)')};
+                   font-size:12px; font-weight:600; cursor:${hasStock ? 'pointer' : 'default'};
+                   opacity:${hasStock ? 1 : 0.4}; position:relative;"
+            ${!hasStock ? 'disabled' : ''}
+            data-attr="${escapeHtml(attr.name)}" data-val="${escapeHtml(val)}">
+            ${escapeHtml(val)}
+            ${!hasStock ? '<span style="position:absolute;top:-6px;right:-6px;background:#e74c3c;color:#fff;font-size:9px;border-radius:4px;padding:1px 4px;">OUT</span>' : ''}
+          </button>`;
+        }
+        html += `</div>`;
       }
-      html += `</div></div>`;
+      html += `</div>`;
     }
 
     // Matched variant info
@@ -14334,7 +14382,7 @@ function createAdminSellerManagement() {
 
     html += `<div id="variantMatchInfo" style="margin-top:10px; padding:10px; border-radius:8px; background:var(--surface); border:1px solid var(--border);">`;
     if (!allAttrsPicked) {
-      html += `<div style="color:var(--gray); font-size:13px;">👆 Select all options above to see availability.</div>`;
+      html += `<div style="color:var(--gray); font-size:13px;">👆 Please select a colour to see price and availability.</div>`;
     } else if (!matched) {
       html += `<div style="color:#e74c3c; font-size:13px; font-weight:600;">❌ This combination is not available.</div>`;
     } else if (!matched.is_active || matched.stock === 0) {
@@ -14354,6 +14402,12 @@ function createAdminSellerManagement() {
     html += `</div></div>`;
     return html;
   }
+
+  window._toggleShowAllColours = function(attrId) {
+    _detailShowAllColours[attrId] = !_detailShowAllColours[attrId];
+    const wrap = document.getElementById('variantPickerWrap');
+    if (wrap) wrap.outerHTML = _renderVariantPicker(_detailVariantData, _detailProduct);
+  };
 
   window._selectVariantOption = function(attrName, value) {
     _detailSelectedOptions[attrName] = value;
@@ -14388,8 +14442,7 @@ function createAdminSellerManagement() {
   }
 
   async function addToCartVariant(productId, variantId, variant) {
-    // Pass variant info through addToCart with a custom data attribute
-    await addToCart(productId, { variant_id: variantId, variant });
+    await addToCart(productId, document.getElementById('detailWholesaleQty')?.value || 1, variant);
   }
 
   async function showProductDetail(productId) {
@@ -14402,6 +14455,7 @@ function createAdminSellerManagement() {
     _detailVariantData = null;
     _detailSelectedOptions = {};
     _detailSelectedVariantId = null;
+    _detailShowAllColours = {};
 
     const detailContent = document.getElementById('productDetailContent');
 
