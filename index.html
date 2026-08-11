@@ -14263,6 +14263,16 @@ function createAdminSellerManagement() {
     _syncPhotoVariantDetailUI();
   };
 
+  // Swaps the product detail page's main image when a thumbnail is
+  // clicked, and highlights whichever thumbnail is currently selected.
+  window._selectDetailImage = function(url, index) {
+    const mainImg = document.getElementById('detailMainImage');
+    if (mainImg) mainImg.src = url;
+    document.querySelectorAll('#detailImageThumbs img').forEach(thumb => {
+      thumb.style.borderColor = (Number(thumb.dataset.thumbIndex) === index) ? 'var(--gold)' : 'var(--border-strong)';
+    });
+  };
+
   function _syncPhotoVariantDetailUI() {
     if (!_detailVariantData) return;
     const matched = _detailVariantData.variants.find(v => v.id === _detailSelectedVariantId) || null;
@@ -14428,9 +14438,18 @@ function createAdminSellerManagement() {
         <div>
           <img id="detailMainImage" src="${mainImg}" alt="${escapeHtml(product.name)}"
                class="product-detail-image"
-               onclick="openImageZoom('${mainImg}')"
+               onclick="openImageZoom(document.getElementById('detailMainImage').src)"
                onerror="this.onerror=null;this.src='${DEFAULT_PRODUCT_IMAGE}';"
                style="cursor:zoom-in; width:100%; height:400px; object-fit:cover; border-radius:16px;">
+          ${(product.images && product.images.length > 1) ? `
+          <div id="detailImageThumbs" style="display:flex; gap:8px; margin-top:10px; overflow-x:auto; padding-bottom:4px;">
+            ${product.images.map((imgUrl, i) => `
+              <img src="${imgUrl}" data-thumb-index="${i}"
+                   onclick="window._selectDetailImage('${imgUrl.replace(/'/g, "\\'")}', ${i})"
+                   style="width:64px; height:64px; object-fit:cover; border-radius:8px; cursor:pointer; flex-shrink:0;
+                          border:2px solid ${i === 0 ? 'var(--gold)' : 'var(--border-strong)'}; transition:border-color 0.15s;">
+            `).join('')}
+          </div>` : ''}
           ${product.video ? `<video src="${product.video}" controls style="width:100%; border-radius:16px; margin-top:10px; max-height:300px;"></video>` : ''}
         </div>
         <div class="product-detail-info">
