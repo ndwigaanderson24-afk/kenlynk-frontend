@@ -482,21 +482,21 @@
 
     /* Horizontal scrolling product row */
     .product-scroll-row{
-      display:flex; gap:12px;
-      overflow-x:auto; padding-bottom:6px;
-      scrollbar-width:none; -ms-overflow-style:none;
+      display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));
+      gap:12px;
     }
-    .product-scroll-row::-webkit-scrollbar{ display:none; }
+    @media (max-width:640px){
+      .product-scroll-row{ grid-template-columns:1fr 1fr; gap:10px; }
+    }
 
     /* Premium product card */
     .pcard{
-      flex-shrink:0; width:160px;
+      width:100%;
       background:var(--surface); border:1px solid var(--border);
       border-radius:14px; overflow:hidden;
       cursor:pointer; transition:all 0.2s ease;
       position:relative;
     }
-    @media(max-width:480px){ .pcard{ width:145px; } }
     .pcard:hover{
       border-color:var(--border-strong);
       transform:translateY(-2px);
