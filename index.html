@@ -728,6 +728,49 @@
 
     .cart-item .line-total{ font-family:var(--font-mono); color:var(--gold); font-weight:600; font-size:14px; min-width:80px; text-align:right; }
 
+    /* ── Cart v2: fresh card-based redesign of the items list only ── */
+    .cart-v2-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding:0 2px; }
+    .cart-v2-header h3{ font-family:var(--font-display); font-size:17px; color:var(--white); }
+    .cart-v2-header span{ font-size:12.5px; color:var(--gray); font-family:var(--font-mono); }
+
+    .cart-v2-card{
+      display:flex; gap:14px; align-items:center; background:var(--surface);
+      border:1px solid var(--border); border-radius:18px; padding:16px;
+      margin-bottom:12px; transition:border-color 0.15s ease, transform 0.15s ease;
+    }
+    .cart-v2-card:hover{ border-color:var(--border-strong); }
+
+    .cart-v2-img{ width:72px; height:72px; border-radius:14px; object-fit:cover; flex-shrink:0; box-shadow:0 4px 14px rgba(0,0,0,0.25); }
+
+    .cart-v2-info{ flex:1; min-width:0; }
+    .cart-v2-info h4{ font-family:var(--font-display); font-weight:600; font-size:15px; color:var(--white); margin-bottom:3px;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .cart-v2-colour{ display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; color:var(--gold);
+      background:rgba(255,193,7,0.12); border-radius:6px; padding:2px 8px; margin-bottom:5px; }
+    .cart-v2-unit{ color:var(--gray); font-size:12.5px; font-family:var(--font-mono); }
+    .cart-v2-wholesale{ color:var(--green-light); font-weight:600; }
+    .cart-v2-tiers{ font-size:10.5px; color:var(--gray); margin-top:3px; }
+
+    .cart-v2-right{ display:flex; flex-direction:column; align-items:flex-end; gap:10px; flex-shrink:0; }
+
+    .cart-v2-qty{ display:flex; align-items:center; gap:2px; background:var(--surface-2); border-radius:999px; padding:4px; }
+    .cart-v2-qty button{ background:var(--surface-3); border:none; color:var(--white); width:28px; height:28px; border-radius:999px;
+      font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.15s ease; }
+    .cart-v2-qty button:hover{ background:var(--green); }
+    .cart-v2-qty span{ font-family:var(--font-mono); min-width:22px; text-align:center; font-size:13.5px; font-weight:600; }
+
+    .cart-v2-total{ font-family:var(--font-mono); color:var(--gold); font-weight:700; font-size:15px; }
+
+    .cart-v2-remove{ background:transparent; border:none; color:var(--gray); font-size:16px; cursor:pointer; padding:2px;
+      transition:color 0.15s ease; }
+    .cart-v2-remove:hover{ color:#ff6b6b; }
+
+    @media (max-width:520px){
+      .cart-v2-card{ flex-wrap:wrap; padding:12px; }
+      .cart-v2-img{ width:60px; height:60px; }
+      .cart-v2-right{ flex-direction:row; align-items:center; justify-content:space-between; width:100%; margin-top:8px; }
+    }
+
 
 
     .summary-box{ background:var(--surface); border:1px solid var(--border-strong); border-radius:16px; padding:22px; position:sticky; top:90px; }
@@ -1187,6 +1230,35 @@
 
       border-radius:8px;
 
+    }
+
+    /* ── Variant selection modal: bottom sheet (mobile) / centered panel (desktop) ── */
+    .variant-modal-overlay{
+      display:none; position:fixed; inset:0; z-index:1200;
+      background:rgba(0,0,0,0.6); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+      align-items:flex-end; justify-content:center;
+    }
+    .variant-modal-overlay.show{ display:flex; }
+    .variant-modal-sheet{
+      position:relative; width:100%; max-height:88vh; overflow-y:auto;
+      background:var(--surface); border-radius:22px 22px 0 0;
+      padding:20px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+      animation:variantSheetUp 0.28s cubic-bezier(0.16,1,0.3,1);
+      box-shadow:0 -8px 40px rgba(0,0,0,0.4);
+    }
+    @keyframes variantSheetUp{ from{ transform:translateY(100%); } to{ transform:translateY(0); } }
+    .variant-modal-close{
+      position:absolute; top:14px; right:14px; width:32px; height:32px; border-radius:50%;
+      background:var(--surface-3); border:none; color:var(--white); font-size:15px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; z-index:2;
+    }
+    @media (min-width:640px){
+      .variant-modal-overlay{ align-items:center; }
+      .variant-modal-sheet{
+        width:480px; max-width:92vw; max-height:85vh; border-radius:22px;
+        animation:variantSheetPop 0.22s cubic-bezier(0.16,1,0.3,1);
+      }
+      @keyframes variantSheetPop{ from{ transform:scale(0.94); opacity:0; } to{ transform:scale(1); opacity:1; } }
     }
 
     .image-zoom-modal .close-zoom {
@@ -3793,6 +3865,13 @@
 
   <img id="zoomImage" src="#" alt="Product zoom">
 
+</div>
+
+<div id="variantModalOverlay" class="variant-modal-overlay" onclick="if(event.target===this) window.closeVariantModal();">
+  <div id="variantModalSheet" class="variant-modal-sheet">
+    <button class="variant-modal-close" onclick="window.closeVariantModal()">✕</button>
+    <div id="variantModalBody"></div>
+  </div>
 </div>
 
 
@@ -7248,7 +7327,7 @@ if(page === "admin") {
         </div>
       `;
       div.querySelector('.pcard-wish').addEventListener('click', e => { e.stopPropagation(); toggleWishlist(p.id); });
-      div.querySelector('.pcard-add').addEventListener('click', e => { e.stopPropagation(); addToCart(p.id); });
+      div.querySelector('.pcard-add').addEventListener('click', e => { e.stopPropagation(); window._addToCartOrOpenVariantModal(p.id, 'cart'); });
       const pcardSellerEl = div.querySelector('.pcard-seller');
       if (pcardSellerEl && p.sellerEmail) pcardSellerEl.addEventListener('click', e => { e.stopPropagation(); window.viewSellerShop(p.sellerEmail); });
       div.addEventListener('click', () => showProductDetail(p.id));
@@ -7290,7 +7369,7 @@ if(page === "admin") {
       </div>
     `;
     div.querySelector('.card-wish-btn').addEventListener('click', e => { e.stopPropagation(); toggleWishlist(p.id); });
-    div.querySelector('.card-add-btn').addEventListener('click', e => { e.stopPropagation(); addToCart(p.id); });
+    div.querySelector('.card-add-btn').addEventListener('click', e => { e.stopPropagation(); window._addToCartOrOpenVariantModal(p.id, 'cart'); });
     div.querySelector('.card-quick-view').addEventListener('click', e => { e.stopPropagation(); showProductDetail(p.id); });
     const cardSellerEl = div.querySelector('.card-seller-row');
     if (cardSellerEl && p.sellerEmail) cardSellerEl.addEventListener('click', e => { e.stopPropagation(); window.viewSellerShop(p.sellerEmail); });
@@ -7750,26 +7829,42 @@ function renderCart(){
     wrap.innerHTML = '<div class="empty-state"><div class="ic">🧺</div><div>' + t('cartEmpty') + '</div></div>';
     return; 
   }
+
+  const itemCount = cart.reduce((sum, c) => sum + c.qty, 0);
   
-  wrap.innerHTML = cart.map(c=> {
+  const cardsHtml = cart.map(c=> {
     const product = PRODUCTS.find(p => p.id === c.id);
     const unitPrice = cartItemUnitPrice(c);
     const isWholesale = unitPrice < c.price;
     const tiers = (product && Array.isArray(product.wholesaleTiers)) ? product.wholesaleTiers : [];
     return `
-    <div class="cart-item">
-      ${productImageTag(c, 'width:44px; height:44px; border-radius:11px; object-fit:cover; flex-shrink:0;')}
-      <div class="info">
+    <div class="cart-v2-card">
+      <img class="cart-v2-img" src="${getProductImageUrl(c)}" alt="${escapeHtml(c.name)}" onerror="this.onerror=null;this.src='${DEFAULT_PRODUCT_IMAGE}';">
+      <div class="cart-v2-info">
         <h4>${escapeHtml(c.name)}</h4>
-        ${c.variantName ? `<div style="font-size:11px; color:var(--gold); font-weight:600;">Color: ${escapeHtml(c.variantName)}</div>` : ''}
-        <div class="unit">KES ${unitPrice.toLocaleString()} each${isWholesale ? ' <span style="color:var(--green-light); font-weight:600;">· wholesale price applied</span>' : ''}</div>
-        ${tiers.length ? `<div style="font-size:10px; color:var(--gray); margin-top:2px;">${tiers.map(t => `${t.min}${t.max ? '–'+t.max : '+'}: KES ${Number(t.price).toLocaleString()}`).join(' · ')}</div>` : ''}
+        ${c.variantName ? `<div class="cart-v2-colour">🎨 ${escapeHtml(c.variantName)}</div>` : ''}
+        <div class="cart-v2-unit">KES ${unitPrice.toLocaleString()} each${isWholesale ? ' <span class="cart-v2-wholesale">· wholesale price applied</span>' : ''}</div>
+        ${tiers.length ? `<div class="cart-v2-tiers">${tiers.map(t => `${t.min}${t.max ? '–'+t.max : '+'}: KES ${Number(t.price).toLocaleString()}`).join(' · ')}</div>` : ''}
       </div>
-      <div class="qty-ctrl"><button data-act="dec" data-id="${c.id}" data-variant-id="${c.variantId || ''}">−</button><span>${c.qty}</span><button data-act="inc" data-id="${c.id}" data-variant-id="${c.variantId || ''}">+</button></div>
-      <div class="line-total">KES ${(unitPrice * c.qty).toLocaleString()}</div>
-      <button class="remove-btn" data-act="rm" data-id="${c.id}" data-variant-id="${c.variantId || ''}">✕</button>
+      <div class="cart-v2-right">
+        <button class="cart-v2-remove" data-act="rm" data-id="${c.id}" data-variant-id="${c.variantId || ''}" title="Remove">✕</button>
+        <div class="cart-v2-qty">
+          <button data-act="dec" data-id="${c.id}" data-variant-id="${c.variantId || ''}">−</button>
+          <span>${c.qty}</span>
+          <button data-act="inc" data-id="${c.id}" data-variant-id="${c.variantId || ''}">+</button>
+        </div>
+        <div class="cart-v2-total">KES ${(unitPrice * c.qty).toLocaleString()}</div>
+      </div>
     </div>
   `;}).join("");
+
+  wrap.innerHTML = `
+    <div class="cart-v2-header">
+      <h3>🛍️ Your items</h3>
+      <span>${itemCount} item${itemCount !== 1 ? 's' : ''}</span>
+    </div>
+    ${cardsHtml}
+  `;
   
   // Keep delivery fee & totals in sync with the current cart contents.
   // updateDeliveryPrice() recalculates deliveryFee (weight + county based)
@@ -14403,6 +14498,229 @@ function createAdminSellerManagement() {
     return html;
   }
 
+  // ════════════════════════════════════════════════════════════
+  // VARIANT SELECTION MODAL - bottom sheet (mobile) / centered
+  // panel (desktop). Opened instead of adding to cart directly
+  // whenever a product has variants, regardless of whether it was
+  // triggered from the product detail page or a quick-add button
+  // on a card - it fetches its own variant data either way, so it
+  // works from anywhere in the app.
+  // ════════════════════════════════════════════════════════════
+  let _modalProduct = null;
+  let _modalVariantData = null;
+  let _modalSelectedOptions = {};
+  let _modalShowAllColours = {};
+  let _modalQty = 1;
+  let _modalIntent = 'cart'; // 'cart' | 'order'
+
+  // Entry point used by every "Add to Cart" / "Order Now" trigger in the
+  // app (product cards, product detail page). Non-variant products skip
+  // the modal entirely and add straight away, exactly as before.
+  window._addToCartOrOpenVariantModal = async function(productId, intent) {
+    const product = PRODUCTS.find(p => p.id === productId);
+    if (!product) return;
+    if (!product.has_variants) {
+      await addToCart(productId, 1);
+      if (intent === 'order') goToPage('cart');
+      return;
+    }
+    window.openVariantModal(productId, intent);
+  };
+
+  // Non-variant "Order Now" - adds then jumps straight to the cart/
+  // checkout page, matching what the variant flow does after a
+  // successful modal add.
+  window._buyNowDirect = async function(productId) {
+    const qtyEl = document.getElementById('detailWholesaleQty');
+    await addToCart(productId, qtyEl ? qtyEl.value : 1);
+    goToPage('cart');
+  };
+
+  window.openVariantModal = async function(productId, intent) {
+    const product = PRODUCTS.find(p => p.id === productId);
+    if (!product) return;
+
+    _modalProduct = product;
+    _modalSelectedOptions = {};
+    _modalShowAllColours = {};
+    _modalQty = 1;
+    _modalIntent = intent || 'cart';
+    _modalVariantData = null;
+
+    const overlay = document.getElementById('variantModalOverlay');
+    const body = document.getElementById('variantModalBody');
+    if (body) body.innerHTML = `<div style="padding:40px 0; text-align:center; color:var(--gray);">Loading options…</div>`;
+    if (overlay) overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+
+    try {
+      const vRes = await apiCall(`/products/${productId}/variants`);
+      _modalVariantData = vRes.data;
+    } catch (e) {
+      console.error('Failed to load variant options:', e.message);
+    }
+    _renderVariantModal();
+  };
+
+  window.closeVariantModal = function() {
+    const overlay = document.getElementById('variantModalOverlay');
+    if (overlay) overlay.classList.remove('show');
+    document.body.style.overflow = '';
+  };
+
+  function _modalMatchedVariant() {
+    if (!_modalVariantData) return null;
+    return _findMatchingVariant(_modalVariantData.variants, _modalSelectedOptions);
+  }
+
+  function _renderVariantModal() {
+    const body = document.getElementById('variantModalBody');
+    if (!body || !_modalProduct) return;
+    const product = _modalProduct;
+    const variantData = _modalVariantData;
+    const attributes = variantData ? variantData.attributes : [];
+    const allPicked = attributes.length ? attributes.every(a => _modalSelectedOptions[a.name]) : false;
+    const matched = allPicked ? _modalMatchedVariant() : null;
+    const displayImage = (matched && matched.images && matched.images.length) ? matched.images[0] : getProductImageUrl(product);
+    const maxQty = matched ? matched.stock : 0;
+    if (_modalQty > maxQty && maxQty > 0) _modalQty = maxQty;
+    if (_modalQty < 1) _modalQty = 1;
+
+    const COLOUR_VISIBLE_LIMIT = 6;
+
+    let html = `
+      <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px; padding-right:36px;">
+        <img id="variantModalThumb" src="${displayImage}" style="width:64px; height:64px; border-radius:12px; object-fit:cover; flex-shrink:0;">
+        <div style="min-width:0;">
+          <div style="font-weight:700; font-size:14.5px; color:var(--white); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(product.name)}</div>
+          <div id="variantModalPriceLine" style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700; margin-top:2px;">
+            ${matched ? `KES ${Number(matched.price).toLocaleString()}` : `KES ${product.price.toLocaleString()}`}
+          </div>
+          <div id="variantModalStockLine" style="font-size:11.5px; margin-top:2px;">
+            ${!attributes.length ? '' : !allPicked ? '<span style="color:var(--gray);">Select options below</span>'
+              : matched && matched.is_active && matched.stock > 0 ? `<span style="color:var(--green-light);">✅ ${matched.stock} in stock${matched.sku ? ' · SKU: ' + escapeHtml(matched.sku) : ''}</span>`
+              : '<span style="color:#e74c3c; font-weight:600;">❌ Out of stock</span>'}
+          </div>
+        </div>
+      </div>
+    `;
+
+    if (!attributes.length) {
+      html += `<div style="text-align:center; color:var(--gray); padding:20px 0;">This product has no selectable options yet.</div>`;
+    }
+
+    for (const attr of attributes) {
+      const values = (variantData.attributeValues && variantData.attributeValues[attr.name]) || [];
+      const isColour = attr.name.toLowerCase() === 'colour' || attr.name.toLowerCase() === 'color';
+      const selectedVal = _modalSelectedOptions[attr.name];
+
+      html += `<div style="margin-bottom:16px;">`;
+      html += `<div style="font-size:13px; font-weight:700; color:var(--white); margin-bottom:8px;">${escapeHtml(attr.name)}: <span style="color:var(--gold);">${selectedVal ? escapeHtml(selectedVal) : 'please select'}</span></div>`;
+
+      if (isColour) {
+        const expanded = !!_modalShowAllColours[attr.id];
+        const visibleValues = expanded ? values : values.slice(0, COLOUR_VISIBLE_LIMIT);
+        html += `<div style="display:flex; flex-wrap:wrap; gap:10px;">`;
+        for (const val of visibleValues) {
+          const variantForVal = variantData.variants.find(v => v.options.some(o => o.attribute_name === attr.name && o.value === val));
+          const thumb = (variantForVal && variantForVal.images && variantForVal.images.length) ? variantForVal.images[0] : getProductImageUrl(product);
+          const hasStock = variantData.variants.some(v => v.is_active && v.stock > 0 && v.options.some(o => o.attribute_name === attr.name && o.value === val));
+          const isSelected = selectedVal === val;
+          html += `<button
+            onclick="${hasStock ? `window._selectModalVariantOption('${escapeHtml(attr.name)}', '${escapeHtml(val)}')` : ''}"
+            style="display:flex; flex-direction:column; align-items:center; gap:5px; width:78px; background:none; border:none; cursor:${hasStock ? 'pointer' : 'default'}; opacity:${hasStock ? 1 : 0.4};"
+            ${!hasStock ? 'disabled' : ''}>
+            <div style="position:relative; width:72px; height:72px; border-radius:14px; overflow:hidden; border:2.5px solid ${isSelected ? 'var(--gold)' : 'var(--border-strong)'}; background:${isSelected ? 'rgba(255,193,7,0.1)' : 'var(--surface-2)'};">
+              <img src="${thumb}" style="width:100%; height:100%; object-fit:cover; display:block;">
+              ${isSelected ? `<div style="position:absolute; top:3px; right:3px; width:20px; height:20px; border-radius:50%; background:var(--gold); color:#111; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900;">✓</div>` : ''}
+              ${!hasStock ? '<div style="position:absolute; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; color:#fff; font-size:9px; font-weight:700;">OUT</div>' : ''}
+            </div>
+            <span style="font-size:11.5px; color:${isSelected ? 'var(--gold)' : 'var(--white)'}; font-weight:${isSelected ? 700 : 500}; text-align:center; line-height:1.2;">${escapeHtml(val)}</span>
+          </button>`;
+        }
+        html += `</div>`;
+        if (values.length > COLOUR_VISIBLE_LIMIT) {
+          html += `<button type="button" onclick="window._toggleModalShowAllColours(${attr.id})" style="margin-top:10px; background:none; border:none; color:var(--gold); font-size:12.5px; cursor:pointer; text-decoration:underline; padding:0;">
+            ${expanded ? 'Show fewer colours' : `View all ${values.length} colours`}
+          </button>`;
+        }
+      } else {
+        html += `<div style="display:flex; flex-wrap:wrap; gap:8px;">`;
+        for (const val of values) {
+          const hasStock = variantData.variants.some(v => v.is_active && v.stock > 0 && v.options.some(o => o.attribute_name === attr.name && o.value === val));
+          const isSelected = selectedVal === val;
+          html += `<button
+            onclick="${hasStock ? `window._selectModalVariantOption('${escapeHtml(attr.name)}', '${escapeHtml(val)}')` : ''}"
+            style="padding:9px 18px; border-radius:10px; border:2px solid ${isSelected ? 'var(--gold)' : 'var(--border-strong)'};
+                   background:${isSelected ? 'rgba(255,193,7,0.1)' : 'var(--surface-2)'};
+                   color:${isSelected ? 'var(--gold)' : (hasStock ? 'var(--white)' : 'var(--gray)')};
+                   font-size:13px; font-weight:${isSelected ? 700 : 500}; cursor:${hasStock ? 'pointer' : 'default'};
+                   opacity:${hasStock ? 1 : 0.4};"
+            ${!hasStock ? 'disabled' : ''}>
+            ${escapeHtml(val)}${!hasStock ? ' (out)' : ''}
+          </button>`;
+        }
+        html += `</div>`;
+      }
+      html += `</div>`;
+    }
+
+    if (attributes.length) {
+      html += `
+        <div style="display:flex; align-items:center; justify-content:space-between; margin:18px 0; padding:12px 14px; background:var(--surface-2); border-radius:12px;">
+          <span style="font-size:13px; font-weight:600; color:var(--white);">Quantity</span>
+          <div style="display:flex; align-items:center; gap:2px; background:var(--surface-3); border-radius:999px; padding:4px;">
+            <button onclick="window._modalChangeQty(-1)" style="background:var(--surface); border:none; color:var(--white); width:30px; height:30px; border-radius:999px; font-size:16px; cursor:pointer;">−</button>
+            <span style="font-family:var(--font-mono); min-width:28px; text-align:center; font-size:14px; font-weight:700;">${_modalQty}</span>
+            <button onclick="window._modalChangeQty(1)" style="background:var(--surface); border:none; color:var(--white); width:30px; height:30px; border-radius:999px; font-size:16px; cursor:pointer;">+</button>
+          </div>
+        </div>
+        <div style="font-size:11.5px; color:var(--gray); margin:-10px 0 14px;">🚚 Shipping calculated at checkout, based on your delivery location.</div>
+      `;
+    }
+
+    html += `
+      <div style="display:flex; gap:10px; position:sticky; bottom:0; background:var(--surface); padding-top:6px;">
+        <button onclick="window._modalConfirmAdd('cart')" style="flex:1; background:var(--green); color:#fff; border:none; border-radius:12px; padding:13px; font-weight:700; font-size:14px; cursor:pointer;">🛒 Add to Cart</button>
+        <button onclick="window._modalConfirmAdd('order')" style="flex:1; background:var(--gold); color:#111; border:none; border-radius:12px; padding:13px; font-weight:700; font-size:14px; cursor:pointer;">⚡ Order Now</button>
+      </div>
+    `;
+
+    body.innerHTML = html;
+  }
+
+  window._toggleModalShowAllColours = function(attrId) {
+    _modalShowAllColours[attrId] = !_modalShowAllColours[attrId];
+    _renderVariantModal();
+  };
+
+  window._selectModalVariantOption = function(attrName, value) {
+    _modalSelectedOptions[attrName] = value;
+    _renderVariantModal();
+  };
+
+  window._modalChangeQty = function(delta) {
+    const matched = _modalMatchedVariant();
+    const max = matched ? matched.stock : 99;
+    _modalQty = Math.max(1, Math.min(max, _modalQty + delta));
+    _renderVariantModal();
+  };
+
+  window._modalConfirmAdd = async function(intent) {
+    if (!_modalVariantData || !_modalProduct) return;
+    const attributes = _modalVariantData.attributes;
+    const allPicked = attributes.every(a => _modalSelectedOptions[a.name]);
+    if (!allPicked) { showToast('Please select all options before continuing.', 'error'); return; }
+    const matched = _modalMatchedVariant();
+    if (!matched) { showToast('That combination is not available.', 'error'); return; }
+    if (!matched.is_active || matched.stock === 0) { showToast('That option is out of stock.', 'error'); return; }
+    if (_modalQty > matched.stock) { showToast(`Only ${matched.stock} left in stock.`, 'error'); return; }
+
+    await addToCart(_modalProduct.id, _modalQty, matched);
+    window.closeVariantModal();
+    if (intent === 'order') goToPage('cart');
+  };
+
   window._toggleShowAllColours = function(attrId) {
     _detailShowAllColours[attrId] = !_detailShowAllColours[attrId];
     const wrap = document.getElementById('variantPickerWrap');
@@ -14542,13 +14860,17 @@ function createAdminSellerManagement() {
               <span id="detailWholesaleLineTotal" style="font-size:12px; color:var(--white); font-weight:600;"></span>
             </div>
           </div>` : ''}
-          ${variantHtml}
+          ${hasVariants ? `<div style="font-size:12.5px; color:var(--gray); margin:8px 0;">🎨 This product comes in different options - choose one to see the exact price, stock and photo.</div>` : ''}
           <div class="product-detail-actions">
             <button id="detailAddToCartBtn"
-              onclick="${hasVariants ? '' : `addToCart(${product.id}, document.getElementById('detailWholesaleQty')?.value || 1)`}"
-              ${hasVariants && !allAttrsPicked ? 'disabled' : ''}
-              style="background:var(--green); color:white; flex:1; ${hasVariants && !allAttrsPicked ? 'opacity:0.5;' : ''}">
+              onclick="${hasVariants ? `window._addToCartOrOpenVariantModal(${product.id}, 'cart')` : `addToCart(${product.id}, document.getElementById('detailWholesaleQty')?.value || 1)`}"
+              style="background:var(--green); color:white; flex:1;">
               🛒 Add to Cart
+            </button>
+            <button id="detailOrderNowBtn"
+              onclick="${hasVariants ? `window._addToCartOrOpenVariantModal(${product.id}, 'order')` : `window._buyNowDirect(${product.id})`}"
+              style="background:var(--gold); color:#111; flex:1; font-weight:700;">
+              ⚡ Order Now
             </button>
             <button onclick="toggleWishlist(${product.id})" style="background:var(--surface-3); color:var(--white); border:1px solid var(--border-strong); flex:1;">${wishlist.includes(product.id) ? '❤️' : '🤍'} Wishlist</button>
             <button onclick="openRating(${product.id})" style="background:var(--surface-3); color:var(--white); border:1px solid var(--border-strong);">⭐ Rate</button>
