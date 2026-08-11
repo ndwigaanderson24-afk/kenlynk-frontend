@@ -2877,10 +2877,50 @@
                 <input type="checkbox" id="sellerHasPhotoOptions" onchange="window._togglePhotoOptionsWrap && window._togglePhotoOptionsWrap('seller')"> 🎯 This product has multiple options (colour, size, storage, etc.)
               </label>
               <div id="sellerPhotoOptionsWrap" style="display:none;">
-                <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">First, list the option types this product uses (e.g. "Colour, Size" or just "Storage"). Then add each combination below with its own photo, price, stock and SKU.</div>
-                <div style="margin-bottom:10px;">
-                  <label style="font-size:11px; color:var(--gray); display:block; margin-bottom:4px;">Option types (comma-separated)</label>
-                  <input type="text" id="sellerPhotoOptionAttrTypes" placeholder="e.g. Colour, Size" value="Colour" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:8px 10px; font-size:12.5px;" oninput="window._updatePhotoOptionAttrTypes('seller', this.value)">
+                <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">First, add the option types this product uses (e.g. Colour, Size). Then add each combination below with its own photo, price, stock and SKU.</div>
+                <div style="margin-bottom:8px;">
+                  <label style="font-size:11px; color:var(--gray); display:block; margin-bottom:4px;">Add an option type</label>
+                  <div style="display:flex; gap:8px;">
+                    <select id="sellerPhotoOptionTypeSelect" style="flex:1; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:8px 10px; font-size:12.5px;" onchange="window._onAttrTypeSelectChange('seller')">
+                      <option value="">Choose a type…</option>
+                      <option value="Colour">Colour</option>
+                      <option value="Size">Size</option>
+                      <option value="Storage">Storage</option>
+                      <option value="RAM">RAM</option>
+                      <option value="Model">Model</option>
+                      <option value="Brand">Brand</option>
+                      <option value="Network">Network</option>
+                      <option value="SIM">SIM</option>
+                      <option value="Material">Material</option>
+                      <option value="Capacity">Capacity</option>
+                      <option value="Weight">Weight</option>
+                      <option value="Power">Power/Wattage</option>
+                      <option value="Voltage">Voltage</option>
+                      <option value="Configuration">Configuration</option>
+                      <option value="Connectivity">Connectivity</option>
+                      <option value="Condition">Condition</option>
+                      <option value="Pattern">Pattern/Design</option>
+                      <option value="Style">Style</option>
+                      <option value="Pack">Pack/Quantity</option>
+                      <option value="Fragrance">Fragrance/Flavour</option>
+                      <option value="Finish">Finish</option>
+                      <option value="Shape">Shape</option>
+                      <option value="Length">Length</option>
+                      <option value="Screen Size">Screen Size</option>
+                      <option value="Resolution">Resolution</option>
+                      <option value="Smart TV">Smart / Non-Smart</option>
+                      <option value="Fuel Type">Fuel Type</option>
+                      <option value="Oven Type">Oven Type</option>
+                      <option value="Number of Burners">Number of Burners</option>
+                      <option value="Generation">Generation</option>
+                      <option value="Model Year">Model Year</option>
+                      <option value="Type">Type</option>
+                      <option value="__custom__">+ Custom type…</option>
+                    </select>
+                    <button type="button" onclick="window._addPhotoOptionAttrType('seller')" style="background:var(--gold); color:#111; border:none; border-radius:6px; padding:0 16px; font-size:12.5px; font-weight:700; cursor:pointer;">Add</button>
+                  </div>
+                  <input type="text" id="sellerPhotoOptionCustomType" placeholder="Type the custom option name" style="display:none; width:100%; margin-top:6px; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:8px 10px; font-size:12.5px;">
+                  <div id="sellerPhotoOptionAttrChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
                 </div>
                 <div id="sellerPhotoOptionsListWrap" style="display:flex; flex-direction:column; gap:10px; margin-bottom:8px;"></div>
                 <button type="button" onclick="window.addPhotoOption('seller')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Option</button>
@@ -3423,10 +3463,50 @@
             <input type="checkbox" id="adminHasPhotoOptions" onchange="window._togglePhotoOptionsWrap && window._togglePhotoOptionsWrap('admin')"> 🎯 This product has multiple options (colour, size, storage, etc.)
           </label>
           <div id="adminPhotoOptionsWrap" style="display:none;">
-            <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">First, list the option types this product uses (e.g. "Colour, Size" or just "Storage"). Then add each combination below with its own photo, price, stock and SKU.</div>
-            <div style="margin-bottom:10px;">
-              <label style="font-size:11px; color:var(--gray); display:block; margin-bottom:4px;">Option types (comma-separated)</label>
-              <input type="text" id="adminPhotoOptionAttrTypes" placeholder="e.g. Colour, Size" value="Colour" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:8px 10px; font-size:12.5px;" oninput="window._updatePhotoOptionAttrTypes('admin', this.value)">
+            <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">First, add the option types this product uses (e.g. Colour, Size). Then add each combination below with its own photo, price, stock and SKU.</div>
+            <div style="margin-bottom:8px;">
+              <label style="font-size:11px; color:var(--gray); display:block; margin-bottom:4px;">Add an option type</label>
+              <div style="display:flex; gap:8px;">
+                <select id="adminPhotoOptionTypeSelect" style="flex:1; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:8px 10px; font-size:12.5px;" onchange="window._onAttrTypeSelectChange('admin')">
+                  <option value="">Choose a type…</option>
+                  <option value="Colour">Colour</option>
+                  <option value="Size">Size</option>
+                  <option value="Storage">Storage</option>
+                  <option value="RAM">RAM</option>
+                  <option value="Model">Model</option>
+                  <option value="Brand">Brand</option>
+                  <option value="Network">Network</option>
+                  <option value="SIM">SIM</option>
+                  <option value="Material">Material</option>
+                  <option value="Capacity">Capacity</option>
+                  <option value="Weight">Weight</option>
+                  <option value="Power">Power/Wattage</option>
+                  <option value="Voltage">Voltage</option>
+                  <option value="Configuration">Configuration</option>
+                  <option value="Connectivity">Connectivity</option>
+                  <option value="Condition">Condition</option>
+                  <option value="Pattern">Pattern/Design</option>
+                  <option value="Style">Style</option>
+                  <option value="Pack">Pack/Quantity</option>
+                  <option value="Fragrance">Fragrance/Flavour</option>
+                  <option value="Finish">Finish</option>
+                  <option value="Shape">Shape</option>
+                  <option value="Length">Length</option>
+                  <option value="Screen Size">Screen Size</option>
+                  <option value="Resolution">Resolution</option>
+                  <option value="Smart TV">Smart / Non-Smart</option>
+                  <option value="Fuel Type">Fuel Type</option>
+                  <option value="Oven Type">Oven Type</option>
+                  <option value="Number of Burners">Number of Burners</option>
+                  <option value="Generation">Generation</option>
+                  <option value="Model Year">Model Year</option>
+                  <option value="Type">Type</option>
+                  <option value="__custom__">+ Custom type…</option>
+                </select>
+                <button type="button" onclick="window._addPhotoOptionAttrType('admin')" style="background:var(--gold); color:#111; border:none; border-radius:6px; padding:0 16px; font-size:12.5px; font-weight:700; cursor:pointer;">Add</button>
+              </div>
+              <input type="text" id="adminPhotoOptionCustomType" placeholder="Type the custom option name" style="display:none; width:100%; margin-top:6px; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:8px 10px; font-size:12.5px;">
+              <div id="adminPhotoOptionAttrChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
             </div>
             <div id="adminPhotoOptionsListWrap" style="display:flex; flex-direction:column; gap:10px; margin-bottom:8px;"></div>
             <button type="button" onclick="window.addPhotoOption('admin')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Option</button>
@@ -10319,8 +10399,7 @@ window._simpleProductSubmit = async function(mode) {
         if (optionVariants.length) {
           const attrNames = [...new Set(optionVariants.flatMap(v => v.options.map(o => o.attribute_name)))];
           window._photoOptionAttrTypes.seller = attrNames;
-          const attrTypesInput = document.getElementById('sellerPhotoOptionAttrTypes');
-          if (attrTypesInput) attrTypesInput.value = attrNames.join(', ');
+          window._renderAttrTypeChips('seller');
         }
         window._photoOptionsState.seller = optionVariants.map(v => ({
           id: v.id,
@@ -10588,8 +10667,7 @@ async function renderAdminProducts() {
           if (optionVariants.length) {
             const attrNames = [...new Set(optionVariants.flatMap(v => v.options.map(o => o.attribute_name)))];
             window._photoOptionAttrTypes.admin = attrNames;
-            const attrTypesInput = document.getElementById('adminPhotoOptionAttrTypes');
-            if (attrTypesInput) attrTypesInput.value = attrNames.join(', ');
+            window._renderAttrTypeChips('admin');
           }
           window._photoOptionsState.admin = optionVariants.map(v => ({
             id: v.id,
@@ -19350,6 +19428,43 @@ window._photoOptionsState = { seller: [], admin: [] };
 // of attribute dimensions (Colour, Size, Storage, RAM, whatever the
 // seller types) rather than being limited to a single "Colour" one.
 window._photoOptionAttrTypes = { seller: ['Colour'], admin: ['Colour'] };
+
+// Common attribute types and their typical values - powers the dropdown
+// pickers so a seller/admin can pick "Storage" and get 64GB/128GB/256GB
+// etc. offered directly, instead of typing every value by hand. Types
+// not in this list (Model, Brand, Network Provider, ...) are genuinely
+// open-ended, so they get a free-text field instead of a dropdown - no
+// realistic list could cover every phone model or brand name.
+const VARIANT_ATTRIBUTE_CATALOG = {
+  'Colour': ['Black','White','Red','Blue','Green','Yellow','Grey','Silver','Gold','Rose Gold','Brown','Beige','Pink','Purple','Orange','Navy','Maroon','Khaki'],
+  'Size': ['XS','S','M','L','XL','XXL','XXXL','36','37','38','39','40','41','42','43','44','45','46'],
+  'Storage': ['16GB','32GB','64GB','128GB','256GB','512GB','1TB','2TB'],
+  'RAM': ['1GB','2GB','3GB','4GB','6GB','8GB','12GB','16GB','32GB'],
+  'Network': ['2G','3G','4G','5G'],
+  'SIM': ['Single SIM','Dual SIM','eSIM'],
+  'Material': ['Leather','Cotton','Polyester','Stainless Steel','Plastic','Wood','Metal','Glass','Wool','Denim','Silk','Rubber'],
+  'Capacity': ['0.5L','1L','1.5L','2L','3L','5L','10L','15L','20L'],
+  'Weight': ['100g','250g','500g','1kg','2kg','5kg','10kg','20kg'],
+  'Power': ['300W','500W','800W','1000W','1200W','1500W','2000W','2500W'],
+  'Voltage': ['110V','120V','220V','230V','240V'],
+  'Configuration': ['2.0CH','2.1CH','5.1CH','7.1CH'],
+  'Connectivity': ['Bluetooth','Wi-Fi','USB','AUX','NFC','Wired'],
+  'Condition': ['New','Refurbished','Used - Like New','Used - Good'],
+  'Pattern': ['Plain','Floral','Striped','Printed','Checked','Polka Dot','Camouflage'],
+  'Style': ['Classic','Modern','Sport','Casual','Formal','Vintage'],
+  'Pack': ['1pc','2pcs','3pcs','5pcs','6pcs','12pcs','24pcs'],
+  'Finish': ['Matte','Glossy','Metallic','Satin'],
+  'Shape': ['Round','Square','Rectangular','Oval','Triangular'],
+  'Length': ['0.5m','1m','1.5m','2m','3m','5m','10m'],
+  'Screen Size': ['24"','32"','40"','43"','50"','55"','58"','65"','75"','85"'],
+  'Resolution': ['HD','Full HD','2K','4K','8K'],
+  'Smart TV': ['Smart','Non-Smart'],
+  'Fuel Type': ['Gas','Electric','Gas + Electric','Infrared'],
+  'Oven Type': ['With Oven','Without Oven'],
+  'Number of Burners': ['1','2','3','4','5','6'],
+  'Generation': ['1st Gen','2nd Gen','3rd Gen','4th Gen','5th Gen'],
+  'Model Year': ['2022','2023','2024','2025','2026']
+};
 // Tracks which variant ids existed when a product was opened for
 // editing, so removed rows can be deleted from the backend on save
 // instead of just silently staying there.
@@ -19361,11 +19476,52 @@ window._togglePhotoOptionsWrap = function(which) {
   if (wrap) wrap.style.display = on ? '' : 'none';
 };
 
-window._updatePhotoOptionAttrTypes = function(which, rawValue) {
-  const types = rawValue.split(',').map(s => s.trim()).filter(Boolean);
-  window._photoOptionAttrTypes[which] = types.length ? types : ['Colour'];
+window._onAttrTypeSelectChange = function(which) {
+  const select = document.getElementById(which + 'PhotoOptionTypeSelect');
+  const customInput = document.getElementById(which + 'PhotoOptionCustomType');
+  if (!select || !customInput) return;
+  customInput.style.display = select.value === '__custom__' ? '' : 'none';
+  if (select.value === '__custom__') customInput.focus();
+};
+
+window._addPhotoOptionAttrType = function(which) {
+  const select = document.getElementById(which + 'PhotoOptionTypeSelect');
+  const customInput = document.getElementById(which + 'PhotoOptionCustomType');
+  if (!select) return;
+  let typeName = select.value === '__custom__' ? (customInput?.value || '').trim() : select.value;
+  if (!typeName) { showToast('Please choose or type an option type first.', 'error'); return; }
+  const current = window._photoOptionAttrTypes[which];
+  if (current.some(t => t.toLowerCase() === typeName.toLowerCase())) { showToast(`"${typeName}" is already added.`, 'error'); return; }
+  current.push(typeName);
+  select.value = '';
+  if (customInput) { customInput.value = ''; customInput.style.display = 'none'; }
+  window._renderAttrTypeChips(which);
   window._renderPhotoOptionsList(which);
 };
+
+window._removePhotoOptionAttrType = function(which, typeName) {
+  window._photoOptionAttrTypes[which] = window._photoOptionAttrTypes[which].filter(t => t !== typeName);
+  // Clear that type's values off every existing row too, so stale data
+  // doesn't linger once the type is no longer configured.
+  window._photoOptionsState[which].forEach(opt => { if (opt.values) delete opt.values[typeName]; });
+  window._renderAttrTypeChips(which);
+  window._renderPhotoOptionsList(which);
+};
+
+window._renderAttrTypeChips = function(which) {
+  const wrap = document.getElementById(which + 'PhotoOptionAttrChips');
+  if (!wrap) return;
+  const types = window._photoOptionAttrTypes[which];
+  wrap.innerHTML = types.map(t => `
+    <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,193,7,0.12); border:1px solid var(--gold); color:var(--gold); font-size:11.5px; font-weight:600; border-radius:999px; padding:4px 6px 4px 12px;">
+      ${escapeHtml(t)}
+      <button type="button" onclick="window._removePhotoOptionAttrType('${which}', '${escapeHtml(t).replace(/'/g, "\\'")}')" style="background:none; border:none; color:var(--gold); cursor:pointer; font-size:13px; line-height:1; padding:2px 4px;">✕</button>
+    </span>
+  `).join('');
+};
+// Show the default "Colour" chip on both forms as soon as the page loads.
+window._renderAttrTypeChips('seller');
+window._renderAttrTypeChips('admin');
 
 window._renderPhotoOptionsList = function(which) {
   const wrap = document.getElementById(which + 'PhotoOptionsListWrap');
@@ -19385,11 +19541,29 @@ window._renderPhotoOptionsList = function(which) {
         </button>
       </div>
       <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-        ${attrTypes.map(attrType => `
-        <div style="grid-column:1/-1;">
-          <label style="font-size:10px; color:var(--gray); display:block;">${escapeHtml(attrType)}</label>
-          <input type="text" placeholder="e.g. ${escapeHtml(attrType)} value" value="${escapeHtml((opt.values && opt.values[attrType]) ?? '')}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionAttrValue('${which}', ${i}, '${escapeHtml(attrType).replace(/'/g, "\\'")}', this.value)">
-        </div>`).join('')}
+        ${attrTypes.map(attrType => {
+          const catalogValues = VARIANT_ATTRIBUTE_CATALOG[attrType];
+          const currentVal = (opt.values && opt.values[attrType]) || '';
+          const explicitCustom = opt._customMode && opt._customMode[attrType];
+          const isCustom = explicitCustom || (currentVal && catalogValues && !catalogValues.includes(currentVal));
+          if (catalogValues && catalogValues.length) {
+            return `
+            <div style="grid-column:1/-1;">
+              <label style="font-size:10px; color:var(--gray); display:block;">${escapeHtml(attrType)}</label>
+              <select onchange="window._onPhotoOptionAttrSelectChange('${which}', ${i}, '${escapeHtml(attrType).replace(/'/g, "\\'")}', this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;">
+                <option value="">Choose ${escapeHtml(attrType)}…</option>
+                ${catalogValues.map(v => `<option value="${escapeHtml(v)}" ${(!isCustom && currentVal === v) ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}
+                <option value="__other__" ${isCustom ? 'selected' : ''}>Other (type manually)</option>
+              </select>
+              <input type="text" placeholder="Type custom ${escapeHtml(attrType.toLowerCase())} value" value="${escapeHtml(isCustom ? currentVal : '')}" style="width:100%; margin-top:5px; display:${isCustom ? '' : 'none'}; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionAttrValue('${which}', ${i}, '${escapeHtml(attrType).replace(/'/g, "\\'")}', this.value)">
+            </div>`;
+          }
+          return `
+          <div style="grid-column:1/-1;">
+            <label style="font-size:10px; color:var(--gray); display:block;">${escapeHtml(attrType)}</label>
+            <input type="text" placeholder="e.g. ${escapeHtml(attrType)} value" value="${escapeHtml(currentVal)}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionAttrValue('${which}', ${i}, '${escapeHtml(attrType).replace(/'/g, "\\'")}', this.value)">
+          </div>`;
+        }).join('')}
         <div>
           <label style="font-size:10px; color:var(--gray); display:block;">Price (KES)</label>
           <input type="number" min="1" value="${opt.price ?? ''}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'price', this.value)">
@@ -19413,6 +19587,23 @@ window._updatePhotoOptionAttrValue = function(which, i, attrType, value) {
   if (!opt) return;
   if (!opt.values) opt.values = {};
   opt.values[attrType] = value;
+};
+
+// Handles the dropdown for a catalog-backed attribute type (e.g.
+// Storage) - picking a real value stores it directly; picking "Other"
+// clears the value and reveals the free-text field below instead.
+window._onPhotoOptionAttrSelectChange = function(which, i, attrType, selectedValue) {
+  const opt = window._photoOptionsState[which][i];
+  if (!opt) return;
+  if (!opt._customMode) opt._customMode = {};
+  if (selectedValue === '__other__') {
+    opt._customMode[attrType] = true;
+    window._updatePhotoOptionAttrValue(which, i, attrType, '');
+  } else {
+    opt._customMode[attrType] = false;
+    window._updatePhotoOptionAttrValue(which, i, attrType, selectedValue);
+  }
+  window._renderPhotoOptionsList(which);
 };
 
 window.addPhotoOption = function(which) {
@@ -19449,8 +19640,7 @@ window._resetPhotoOptions = function(which) {
   window._photoOptionsState[which] = [];
   window._photoOptionsOriginalIds[which] = [];
   window._photoOptionAttrTypes[which] = ['Colour'];
-  const attrTypesInput = document.getElementById(which + 'PhotoOptionAttrTypes');
-  if (attrTypesInput) attrTypesInput.value = 'Colour';
+  window._renderAttrTypeChips(which);
   window._renderPhotoOptionsList(which);
   const checkbox = document.getElementById(which + 'HasPhotoOptions');
   if (checkbox) checkbox.checked = false;
