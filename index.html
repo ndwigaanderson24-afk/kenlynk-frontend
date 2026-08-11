@@ -581,6 +581,13 @@
       font-size:9px; font-weight:700;
       padding:2px 7px; border-radius:6px;
     }
+    .card-variants-badge{
+      position:absolute; bottom:8px; left:8px;
+      background:rgba(0,0,0,0.65); color:#fff;
+      font-size:9px; font-weight:700;
+      padding:2px 7px; border-radius:6px;
+      backdrop-filter:blur(4px);
+    }
     .card-wish-btn{
       position:absolute; top:6px; right:6px;
       background:rgba(0,0,0,0.5); border:none; color:#fff;
@@ -2867,12 +2874,16 @@
             </div>
             <div class="field" style="grid-column:1/-1; background:var(--surface-2); border-radius:10px; padding:14px;">
               <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white); font-weight:600; margin-bottom:8px;">
-                <input type="checkbox" id="sellerHasPhotoOptions" onchange="window._togglePhotoOptionsWrap && window._togglePhotoOptionsWrap('seller')"> 🎨 This product has colour variants
+                <input type="checkbox" id="sellerHasPhotoOptions" onchange="window._togglePhotoOptionsWrap && window._togglePhotoOptionsWrap('seller')"> 🎯 This product has multiple options (colour, size, storage, etc.)
               </label>
               <div id="sellerPhotoOptionsWrap" style="display:none;">
-                <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">Add each colour separately - its own name, photo, price, stock and SKU. Buyers pick a colour on the product page before adding to cart.</div>
+                <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">First, list the option types this product uses (e.g. "Colour, Size" or just "Storage"). Then add each combination below with its own photo, price, stock and SKU.</div>
+                <div style="margin-bottom:10px;">
+                  <label style="font-size:11px; color:var(--gray); display:block; margin-bottom:4px;">Option types (comma-separated)</label>
+                  <input type="text" id="sellerPhotoOptionAttrTypes" placeholder="e.g. Colour, Size" value="Colour" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:8px 10px; font-size:12.5px;" oninput="window._updatePhotoOptionAttrTypes('seller', this.value)">
+                </div>
                 <div id="sellerPhotoOptionsListWrap" style="display:flex; flex-direction:column; gap:10px; margin-bottom:8px;"></div>
-                <button type="button" onclick="window.addPhotoOption('seller')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Colour</button>
+                <button type="button" onclick="window.addPhotoOption('seller')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Option</button>
               </div>
             </div>
           </div>
@@ -3409,12 +3420,16 @@
 
         <div class="field" style="background:var(--surface-2); border-radius:10px; padding:14px;">
           <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white); font-weight:600; margin-bottom:8px;">
-            <input type="checkbox" id="adminHasPhotoOptions" onchange="window._togglePhotoOptionsWrap && window._togglePhotoOptionsWrap('admin')"> 🎨 This product has colour variants
+            <input type="checkbox" id="adminHasPhotoOptions" onchange="window._togglePhotoOptionsWrap && window._togglePhotoOptionsWrap('admin')"> 🎯 This product has multiple options (colour, size, storage, etc.)
           </label>
           <div id="adminPhotoOptionsWrap" style="display:none;">
-            <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">Add each colour separately - its own name, photo, price, stock and SKU. Buyers pick a colour on the product page before adding to cart.</div>
+            <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">First, list the option types this product uses (e.g. "Colour, Size" or just "Storage"). Then add each combination below with its own photo, price, stock and SKU.</div>
+            <div style="margin-bottom:10px;">
+              <label style="font-size:11px; color:var(--gray); display:block; margin-bottom:4px;">Option types (comma-separated)</label>
+              <input type="text" id="adminPhotoOptionAttrTypes" placeholder="e.g. Colour, Size" value="Colour" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:8px 10px; font-size:12.5px;" oninput="window._updatePhotoOptionAttrTypes('admin', this.value)">
+            </div>
             <div id="adminPhotoOptionsListWrap" style="display:flex; flex-direction:column; gap:10px; margin-bottom:8px;"></div>
-            <button type="button" onclick="window.addPhotoOption('admin')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Colour</button>
+            <button type="button" onclick="window.addPhotoOption('admin')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Option</button>
           </div>
         </div>
 
@@ -7312,6 +7327,7 @@ if(page === "admin") {
                onerror="this.onerror=null;this.src='${DEFAULT_PRODUCT_IMAGE}';" loading="lazy">
           ${disc ? `<span class="pcard-discount">-${disc}%</span>` : ''}
           ${p.hot ? `<span class="pcard-discount" style="background:var(--gold);color:#111;">HOT</span>` : ''}
+          ${p.has_variants ? `<span class="pcard-discount" style="top:auto; bottom:6px; background:rgba(0,0,0,0.65);">🎯</span>` : ''}
           <button class="pcard-wish" data-id="${p.id}" title="Wishlist">${inWish ? '❤️' : '🤍'}</button>
         </div>
         <div class="pcard-body">
@@ -7342,6 +7358,7 @@ if(page === "admin") {
         <img src="${img}" alt="${escapeHtml(p.name)}"
              onerror="this.onerror=null;this.src='${DEFAULT_PRODUCT_IMAGE}';" loading="lazy">
         ${disc ? `<span class="card-discount-badge">-${disc}%</span>` : (p.hot ? `<span class="card-hot-badge">🔥 HOT</span>` : '')}
+        ${p.has_variants ? `<span class="card-variants-badge">🎯 Options</span>` : ''}
         <button class="card-wish-btn" data-id="${p.id}">${inWish ? '❤️' : '🤍'}</button>
       </div>
       <div class="card-body">
@@ -10289,22 +10306,30 @@ window._simpleProductSubmit = async function(mode) {
 
     // Photo options are stored as variant rows with no attribute options -
     // fetch the product's actual variants (not part of the product object
-    // itself) and treat any that have a Colour attribute option as a
-    // colour variant to edit.
+    // itself) and treat any that have attribute options as an option
+    // combination to edit - reconstructs values{} from ALL of a
+    // variant's options, not just a "Colour" one, so multi-attribute
+    // products (Colour + Size, etc) edit correctly too.
     window._photoOptionsState.seller = [];
     window._photoOptionsOriginalIds.seller = [];
     if (product.has_variants) {
       try {
         const vRes = await apiCall(`/products/${id}/variants`);
-        const colourVariants = (vRes.data.variants || []).filter(v => v.options && v.options.some(o => o.attribute_name === 'Colour'));
-        window._photoOptionsState.seller = colourVariants.map(v => ({
+        const optionVariants = (vRes.data.variants || []).filter(v => v.options && v.options.length);
+        if (optionVariants.length) {
+          const attrNames = [...new Set(optionVariants.flatMap(v => v.options.map(o => o.attribute_name)))];
+          window._photoOptionAttrTypes.seller = attrNames;
+          const attrTypesInput = document.getElementById('sellerPhotoOptionAttrTypes');
+          if (attrTypesInput) attrTypesInput.value = attrNames.join(', ');
+        }
+        window._photoOptionsState.seller = optionVariants.map(v => ({
           id: v.id,
-          name: (v.options.find(o => o.attribute_name === 'Colour') || {}).value || '',
+          values: v.options.reduce((acc, o) => { acc[o.attribute_name] = o.value; return acc; }, {}),
           image: (v.images && v.images.length) ? v.images[0] : '',
           price: v.price, stock: v.stock, sku: v.sku || ''
         }));
-        window._photoOptionsOriginalIds.seller = colourVariants.map(v => v.id);
-      } catch (e) { /* non-fatal - just shows no colours to edit */ }
+        window._photoOptionsOriginalIds.seller = optionVariants.map(v => v.id);
+      } catch (e) { /* non-fatal - just shows no options to edit */ }
     }
     const sellerHasPhotoOptionsEl = document.getElementById('sellerHasPhotoOptions');
     if (sellerHasPhotoOptionsEl) sellerHasPhotoOptionsEl.checked = window._photoOptionsState.seller.length > 0;
@@ -10559,15 +10584,21 @@ async function renderAdminProducts() {
       if (product.has_variants) {
         try {
           const vRes = await adminApiCall(`/admin/products/${id}/variants`);
-          const colourVariants = (vRes.data.variants || []).filter(v => v.options && v.options.some(o => o.attribute_name === 'Colour'));
-          window._photoOptionsState.admin = colourVariants.map(v => ({
+          const optionVariants = (vRes.data.variants || []).filter(v => v.options && v.options.length);
+          if (optionVariants.length) {
+            const attrNames = [...new Set(optionVariants.flatMap(v => v.options.map(o => o.attribute_name)))];
+            window._photoOptionAttrTypes.admin = attrNames;
+            const attrTypesInput = document.getElementById('adminPhotoOptionAttrTypes');
+            if (attrTypesInput) attrTypesInput.value = attrNames.join(', ');
+          }
+          window._photoOptionsState.admin = optionVariants.map(v => ({
             id: v.id,
-            name: (v.options.find(o => o.attribute_name === 'Colour') || {}).value || '',
+            values: v.options.reduce((acc, o) => { acc[o.attribute_name] = o.value; return acc; }, {}),
             image: (v.images && v.images.length) ? v.images[0] : '',
             price: v.price, stock: v.stock, sku: v.sku || ''
           }));
-          window._photoOptionsOriginalIds.admin = colourVariants.map(v => v.id);
-        } catch (e) { /* non-fatal - just shows no colours to edit */ }
+          window._photoOptionsOriginalIds.admin = optionVariants.map(v => v.id);
+        } catch (e) { /* non-fatal - just shows no options to edit */ }
       }
       const adminHasPhotoOptionsEl = document.getElementById('adminHasPhotoOptions');
       if (adminHasPhotoOptionsEl) adminHasPhotoOptionsEl.checked = window._photoOptionsState.admin.length > 0;
@@ -19314,6 +19345,11 @@ window._collectWholesaleTiers = function(which) {
 // its own price, stock, and images_json.
 // ════════════════════════════════════════════════════════════
 window._photoOptionsState = { seller: [], admin: [] };
+// The set of option "types" this product uses, e.g. ['Colour', 'Size'] -
+// entered as a comma-separated field, so a product can mix any number
+// of attribute dimensions (Colour, Size, Storage, RAM, whatever the
+// seller types) rather than being limited to a single "Colour" one.
+window._photoOptionAttrTypes = { seller: ['Colour'], admin: ['Colour'] };
 // Tracks which variant ids existed when a product was opened for
 // editing, so removed rows can be deleted from the backend on save
 // instead of just silently staying there.
@@ -19325,12 +19361,19 @@ window._togglePhotoOptionsWrap = function(which) {
   if (wrap) wrap.style.display = on ? '' : 'none';
 };
 
+window._updatePhotoOptionAttrTypes = function(which, rawValue) {
+  const types = rawValue.split(',').map(s => s.trim()).filter(Boolean);
+  window._photoOptionAttrTypes[which] = types.length ? types : ['Colour'];
+  window._renderPhotoOptionsList(which);
+};
+
 window._renderPhotoOptionsList = function(which) {
   const wrap = document.getElementById(which + 'PhotoOptionsListWrap');
   if (!wrap) return;
   const options = window._photoOptionsState[which];
+  const attrTypes = window._photoOptionAttrTypes[which] || ['Colour'];
   if (!options.length) {
-    wrap.innerHTML = '<div style="font-size:11px; color:var(--gray);">No colours yet - add at least one below.</div>';
+    wrap.innerHTML = '<div style="font-size:11px; color:var(--gray);">No options yet - add at least one below.</div>';
     return;
   }
   wrap.innerHTML = options.map((opt, i) => `
@@ -19342,10 +19385,11 @@ window._renderPhotoOptionsList = function(which) {
         </button>
       </div>
       <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        ${attrTypes.map(attrType => `
         <div style="grid-column:1/-1;">
-          <label style="font-size:10px; color:var(--gray); display:block;">Colour Name</label>
-          <input type="text" placeholder="e.g. Black" value="${escapeHtml(opt.name ?? '')}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'name', this.value)">
-        </div>
+          <label style="font-size:10px; color:var(--gray); display:block;">${escapeHtml(attrType)}</label>
+          <input type="text" placeholder="e.g. ${escapeHtml(attrType)} value" value="${escapeHtml((opt.values && opt.values[attrType]) ?? '')}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionAttrValue('${which}', ${i}, '${escapeHtml(attrType).replace(/'/g, "\\'")}', this.value)">
+        </div>`).join('')}
         <div>
           <label style="font-size:10px; color:var(--gray); display:block;">Price (KES)</label>
           <input type="number" min="1" value="${opt.price ?? ''}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'price', this.value)">
@@ -19359,13 +19403,20 @@ window._renderPhotoOptionsList = function(which) {
           <input type="text" placeholder="e.g. CARPET-BLK-01" value="${escapeHtml(opt.sku ?? '')}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'sku', this.value)">
         </div>
       </div>
-      <button type="button" onclick="window._removePhotoOption('${which}', ${i})" title="Remove colour" style="background:#e74c3c; border:none; color:#fff; border-radius:6px; width:26px; height:26px; cursor:pointer; flex-shrink:0;">✕</button>
+      <button type="button" onclick="window._removePhotoOption('${which}', ${i})" title="Remove option" style="background:#e74c3c; border:none; color:#fff; border-radius:6px; width:26px; height:26px; cursor:pointer; flex-shrink:0;">✕</button>
     </div>
   `).join('');
 };
 
+window._updatePhotoOptionAttrValue = function(which, i, attrType, value) {
+  const opt = window._photoOptionsState[which][i];
+  if (!opt) return;
+  if (!opt.values) opt.values = {};
+  opt.values[attrType] = value;
+};
+
 window.addPhotoOption = function(which) {
-  window._photoOptionsState[which].push({ id: null, name: '', image: '', price: '', stock: '', sku: '' });
+  window._photoOptionsState[which].push({ id: null, values: {}, image: '', price: '', stock: '', sku: '' });
   window._renderPhotoOptionsList(which);
 };
 
@@ -19397,6 +19448,9 @@ window._handlePhotoOptionImageSelected = async function(which, i, file) {
 window._resetPhotoOptions = function(which) {
   window._photoOptionsState[which] = [];
   window._photoOptionsOriginalIds[which] = [];
+  window._photoOptionAttrTypes[which] = ['Colour'];
+  const attrTypesInput = document.getElementById(which + 'PhotoOptionAttrTypes');
+  if (attrTypesInput) attrTypesInput.value = 'Colour';
   window._renderPhotoOptionsList(which);
   const checkbox = document.getElementById(which + 'HasPhotoOptions');
   if (checkbox) checkbox.checked = false;
@@ -19404,26 +19458,42 @@ window._resetPhotoOptions = function(which) {
   if (wrap) wrap.style.display = 'none';
 };
 
-// Validates and returns the colour list, or null (with a toast) if
-// invalid. Returns [] untouched when the checkbox isn't checked.
+// Validates and returns the option list, or null (with a toast) if
+// invalid. Returns [] untouched when the checkbox isn't checked. Each
+// option needs a value for every configured attribute type, and the
+// full combination (e.g. Colour=Black + Size=M) must be unique - not
+// just a single field, since a product can have several attribute
+// dimensions now.
 window._collectPhotoOptions = function(which) {
   const enabled = document.getElementById(which + 'HasPhotoOptions')?.checked;
   const list = window._photoOptionsState[which];
+  const attrTypes = window._photoOptionAttrTypes[which] || ['Colour'];
   if (!enabled || !list.length) return [];
-  const seenNames = new Set();
+  const seenCombos = new Set();
   for (const opt of list) {
-    if (!opt.name || !opt.name.trim()) { showToast('Each colour needs a name.', 'error'); return null; }
-    const key = opt.name.trim().toLowerCase();
-    if (seenNames.has(key)) { showToast(`"${opt.name.trim()}" is used more than once - each colour name must be unique.`, 'error'); return null; }
-    seenNames.add(key);
-    if (!opt.image) { showToast(`"${opt.name.trim()}" needs its own photo.`, 'error'); return null; }
-    if (!opt.price || Number(opt.price) <= 0) { showToast(`"${opt.name.trim()}" needs a valid price.`, 'error'); return null; }
-    if (opt.stock === '' || isNaN(Number(opt.stock)) || Number(opt.stock) < 0) { showToast(`"${opt.name.trim()}" needs a stock quantity.`, 'error'); return null; }
+    const values = opt.values || {};
+    const labelParts = [];
+    for (const attrType of attrTypes) {
+      const v = (values[attrType] || '').trim();
+      if (!v) { showToast(`Please fill in "${attrType}" for every option.`, 'error'); return null; }
+      labelParts.push(`${attrType}: ${v}`);
+    }
+    const comboLabel = labelParts.join(', ');
+    const comboKey = attrTypes.map(t => (values[t] || '').trim().toLowerCase()).join('||');
+    if (seenCombos.has(comboKey)) { showToast(`"${comboLabel}" is used more than once - each combination must be unique.`, 'error'); return null; }
+    seenCombos.add(comboKey);
+    if (!opt.image) { showToast(`"${comboLabel}" needs its own photo.`, 'error'); return null; }
+    if (!opt.price || Number(opt.price) <= 0) { showToast(`"${comboLabel}" needs a valid price.`, 'error'); return null; }
+    if (opt.stock === '' || isNaN(Number(opt.stock)) || Number(opt.stock) < 0) { showToast(`"${comboLabel}" needs a stock quantity.`, 'error'); return null; }
   }
-  return list.map(opt => ({ id: opt.id, name: opt.name.trim(), image: opt.image, price: Number(opt.price), stock: parseInt(opt.stock, 10), sku: (opt.sku || '').trim() || undefined }));
+  return list.map(opt => ({
+    id: opt.id,
+    values: attrTypes.reduce((acc, t) => { acc[t] = (opt.values[t] || '').trim(); return acc; }, {}),
+    image: opt.image, price: Number(opt.price), stock: parseInt(opt.stock, 10), sku: (opt.sku || '').trim() || undefined
+  }));
 };
 
-// Creates/updates/deletes variant rows to match the current colour
+// Creates/updates/deletes variant rows to match the current option
 // list - called after the base product itself has already been saved,
 // since it needs a real product id to attach variants to. isAdminMode
 // picks which set of variant endpoints to call (admin's own
@@ -19436,31 +19506,37 @@ async function _savePhotoOptionVariants(productId, options, isAdminMode) {
     try {
       if (isAdminMode) await adminApiCall(`/admin/variants/${id}`, { method: 'DELETE' });
       else await apiCall(`/products/${productId}/variants/${id}`, { method: 'DELETE' });
-    } catch (e) { console.error('Failed to remove old colour variant:', e.message); }
+    } catch (e) { console.error('Failed to remove old option variant:', e.message); }
   }
 
-  // Ensure a single "Colour" attribute exists on this product, so each
-  // variant's colour name is a real, queryable attribute value - not
-  // just a photo label - matching how the buyer-facing "Color: X"
-  // picker and the cart/order snapshot both expect to read it.
-  let colourAttrId = null;
-  try {
-    const attrBody = JSON.stringify({ attributes: ['Colour'] });
-    const attrRes = isAdminMode
-      ? await adminApiCall(`/admin/products/${productId}/attributes`, { method: 'PUT', body: attrBody })
-      : await apiCall(`/products/${productId}/attributes`, { method: 'PUT', body: attrBody });
-    const colourAttr = (attrRes.data.attributes || []).find(a => a.name === 'Colour');
-    colourAttrId = colourAttr ? colourAttr.id : null;
-  } catch (e) {
-    console.error('Failed to set up the Colour attribute:', e.message);
-    showToast('⚠️ Could not save colour names - please try editing this product again.', 'error');
+  // Ensure every configured attribute type (Colour, Size, Storage, ...)
+  // exists on this product as a real attribute, so each variant's
+  // values are real, queryable data - not just a photo label - matching
+  // how the buyer-facing picker and the cart/order snapshot both expect
+  // to read them.
+  const attrTypes = options.length ? Object.keys(options[0].values) : [];
+  let attrIdByName = {};
+  if (attrTypes.length) {
+    try {
+      const attrBody = JSON.stringify({ attributes: attrTypes });
+      const attrRes = isAdminMode
+        ? await adminApiCall(`/admin/products/${productId}/attributes`, { method: 'PUT', body: attrBody })
+        : await apiCall(`/products/${productId}/attributes`, { method: 'PUT', body: attrBody });
+      for (const a of (attrRes.data.attributes || [])) attrIdByName[a.name] = a.id;
+    } catch (e) {
+      console.error('Failed to set up option attributes:', e.message);
+      showToast('⚠️ Could not save option types - please try editing this product again.', 'error');
+    }
   }
 
   for (const opt of options) {
+    const comboLabel = Object.entries(opt.values).map(([k, v]) => `${k}: ${v}`).join(', ');
     const body = JSON.stringify({
       price: opt.price, stock: opt.stock, sku: opt.sku,
       images_json: JSON.stringify([opt.image]),
-      options: colourAttrId ? [{ attribute_id: colourAttrId, value: opt.name }] : []
+      options: Object.entries(opt.values)
+        .filter(([attrName]) => attrIdByName[attrName])
+        .map(([attrName, value]) => ({ attribute_id: attrIdByName[attrName], value }))
     });
     try {
       if (opt.id) {
@@ -19471,8 +19547,8 @@ async function _savePhotoOptionVariants(productId, options, isAdminMode) {
         else await apiCall(`/products/${productId}/variants`, { method: 'POST', body });
       }
     } catch (e) {
-      console.error('Failed to save colour variant:', e.message);
-      showToast(`⚠️ Could not save colour "${opt.name}": ${e.message}`, 'error');
+      console.error('Failed to save option variant:', e.message);
+      showToast(`⚠️ Could not save "${comboLabel}": ${e.message}`, 'error');
     }
   }
 }
