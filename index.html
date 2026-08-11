@@ -19148,7 +19148,10 @@ async function _savePhotoOptionVariants(productId, options, isAdminMode) {
         if (isAdminMode) await adminApiCall(`/admin/products/${productId}/variants`, { method: 'POST', body });
         else await apiCall(`/products/${productId}/variants`, { method: 'POST', body });
       }
-    } catch (e) { console.error('Failed to save colour variant:', e.message); }
+    } catch (e) {
+      console.error('Failed to save colour variant:', e.message);
+      showToast(`⚠️ Could not save colour "${opt.name}": ${e.message}`, 'error');
+    }
   }
 }
 window._savePhotoOptionVariants = _savePhotoOptionVariants;
