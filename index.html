@@ -2009,10 +2009,18 @@
       <!-- ── Featured Collections (below tabs, shown on All) ── -->
       <div id="shopCollections">
 
+        <div class="collection-section" id="colAllProducts">
+          <div class="collection-header">
+            <span class="collection-title">🛍️ All Products</span>
+            <button class="collection-see-all" onclick="window._filterCollection('allproducts')">See All</button>
+          </div>
+          <div class="product-scroll-row" id="allProductsRow"></div>
+        </div>
+
         <div class="collection-section" id="colFlashDeals">
           <div class="collection-header">
             <span class="collection-title">⚡ Flash Deals</span>
-            <button class="collection-see-all" onclick="window._filterCollection('hotdeals')">See All</button>
+            <button class="collection-see-all" onclick="window._filterCollection('flash')">See All</button>
           </div>
           <div class="product-scroll-row" id="flashDealsRow"></div>
         </div>
@@ -2036,7 +2044,7 @@
         <div class="collection-section" id="colBestRated">
           <div class="collection-header">
             <span class="collection-title">⭐ Best Rated</span>
-            <button class="collection-see-all" onclick="window._filterCollection('toprated')">See All</button>
+            <button class="collection-see-all" onclick="window._filterCollection('bestrated')">See All</button>
           </div>
           <div class="product-scroll-row" id="bestRatedRow"></div>
         </div>
@@ -2044,7 +2052,7 @@
         <div class="collection-section" id="colMadeInKenya">
           <div class="collection-header">
             <span class="collection-title">🇰🇪 Made in Kenya</span>
-            <button class="collection-see-all" onclick="window._filterCollection('local')">See All</button>
+            <button class="collection-see-all" onclick="window._filterCollection('kenya')">See All</button>
           </div>
           <div class="product-scroll-row" id="madeInKenyaRow"></div>
         </div>
@@ -2833,6 +2841,9 @@
             <div class="field"><label>Low Stock Alert (optional)</label><input type="number" id="sellerLowStock" min="0" placeholder="5"></div>
             <div class="field"><label>Weight (kg)</label><input type="number" id="sellerWeight" min="0" step="0.1" value="1"></div>
             <div class="field" style="display:flex; align-items:end;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);"><input type="checkbox" id="sellerHot" style="width:16px; height:16px;" onchange="window._toggleFlashDealField && window._toggleFlashDealField('seller')"> 🔥 Mark as Hot Deal</label></div>
+            <div class="field" style="display:flex; align-items:end;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);"><input type="checkbox" id="sellerNewArrival" style="width:16px; height:16px;"> 🆕 Show in New Arrivals</label></div>
+            <div class="field" style="display:flex; align-items:end;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);"><input type="checkbox" id="sellerBestRated" style="width:16px; height:16px;"> ⭐ Show in Best Rated</label></div>
+            <div class="field" style="display:flex; align-items:end;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);"><input type="checkbox" id="sellerMadeInKenya" style="width:16px; height:16px;"> 🇰🇪 Made in Kenya</label></div>
             <div class="field" id="sellerFlashDealWrap" style="display:none;">
               <label>Flash Deal Ends At (optional)</label>
               <input type="datetime-local" id="sellerFlashDealEndsAt">
@@ -3442,6 +3453,9 @@
           </div>
           <div class="field"><label>Stock Quantity *</label><input type="number" id="adminStock" min="0" placeholder="0"></div>
           <div class="field"><label>Low Stock Alert (optional)</label><input type="number" id="adminLowStock" min="0" placeholder="5"></div>
+          <div class="field"><label>New Arrival</label><select id="adminNewArrival"><option value="false">No</option><option value="true">Yes 🆕</option></select></div>
+          <div class="field"><label>Best Rated</label><select id="adminBestRated"><option value="false">No</option><option value="true">Yes ⭐</option></select></div>
+          <div class="field"><label>Made in Kenya</label><select id="adminMadeInKenya"><option value="false">No</option><option value="true">Yes 🇰🇪</option></select></div>
 
         </div>
 
@@ -7274,14 +7288,19 @@ if(page === "admin") {
       // KSh 500, Best Rated, Made in Kenya) use the exact same criteria
       // as their homepage preview rows - see renderShopCollections() -
       // just applied to the full catalog instead of a 12-item slice.
+      // New Arrival / Best Rated / Made in Kenya are all explicit
+      // seller/admin-set flags now, not automatic (newest-by-id,
+      // rating>=4, brand/county presence) - a product only shows up in
+      // these sections because someone deliberately turned it on.
       const matchesCat =
           activeCategory === "all" ? true
+        : activeCategory === "allproducts" ? true
         : activeCategory === "hotdeals" ? isFlashDealActive(p)
         : activeCategory === "flash" ? isFlashDealActive(p)
-        : activeCategory === "new" ? true
+        : activeCategory === "new" ? !!p.isNewArrival
         : activeCategory === "under500" ? Number(p.price) < 500
-        : activeCategory === "bestrated" ? Number(p.rating) >= 4
-        : activeCategory === "kenya" ? !!(p.brand || p.county)
+        : activeCategory === "bestrated" ? !!p.isBestRated
+        : activeCategory === "kenya" ? !!p.madeInKenya
         : activeCategory === "wholesale" ? !!(p.wholesaleTiers && p.wholesaleTiers.length)
         : activeCategory.startsWith('cat:')
           ? (() => {
@@ -7539,15 +7558,10 @@ if(page === "admin") {
     let out = [...list];
 
     // Collection mode filters
-    if (_collectionMode === 'hotdeals' || activeCategory === 'hotdeals') {
-      out = out.filter(p => isFlashDealActive(p));
-    } else if (_collectionMode === 'new') {
-      out = [...out].sort((a,b) => b.id - a.id).slice(0, 40);
-    } else if (_collectionMode === 'under500' || _filterPrice === 'under500') {
-      out = out.filter(p => p.price < 500);
-    } else if (_collectionMode === 'toprated') {
-      out = out.filter(p => p.rating >= 4);
-    }
+    // Collection mode (Flash Deals, New Arrivals, Under 500, Best Rated,
+    // Made in Kenya, All Products, Wholesale) is already fully handled
+    // by getFilteredProducts() via activeCategory - nothing extra needed
+    // here anymore.
 
     // Price filter
     if (_filterPrice === 'under500')  out = out.filter(p => p.price < 500);
@@ -7595,11 +7609,16 @@ if(page === "admin") {
     const cols = document.getElementById('shopCollections');
     if (!cols) return;
 
+    // New Arrivals / Best Rated / Made in Kenya are all explicit
+    // seller/admin-set flags now - a product only shows up because
+    // someone deliberately turned it on for that product, not because
+    // it happens to be recent, well-rated, or has a brand/county set.
+    _renderCollectionRow('allProductsRow', PRODUCTS, 12);
     _renderCollectionRow('flashDealsRow',  PRODUCTS.filter(p => isFlashDealActive(p)), 12);
-    _renderCollectionRow('newArrivalsRow', [...PRODUCTS].sort((a,b)=>b.id-a.id), 12);
+    _renderCollectionRow('newArrivalsRow', PRODUCTS.filter(p => p.isNewArrival), 12);
     _renderCollectionRow('budgetRow',      PRODUCTS.filter(p=>p.price<500), 12);
-    _renderCollectionRow('bestRatedRow',   PRODUCTS.filter(p=>p.rating>=4).sort((a,b)=>(b.rating||0)-(a.rating||0)), 12);
-    _renderCollectionRow('madeInKenyaRow', PRODUCTS.filter(p=>p.brand||p.county), 12);
+    _renderCollectionRow('bestRatedRow',   PRODUCTS.filter(p => p.isBestRated), 12);
+    _renderCollectionRow('madeInKenyaRow', PRODUCTS.filter(p => p.madeInKenya), 12);
   }
 
   // Show/hide collections vs product grid
@@ -10247,6 +10266,9 @@ window._simpleProductSubmit = async function(mode) {
   const weight = parseFloat(document.getElementById('sellerWeight')?.value) || 1;
   const brand = document.getElementById('sellerBrand')?.value.trim();
   const hot = document.getElementById('sellerHot')?.checked;
+  const isNewArrival = document.getElementById('sellerNewArrival')?.checked;
+  const isBestRated = document.getElementById('sellerBestRated')?.checked;
+  const madeInKenya = document.getElementById('sellerMadeInKenya')?.checked;
   // datetime-local gives "YYYY-MM-DDTHH:MM" in the browser's local time,
   // with no timezone info - new Date() on that parses it as local time,
   // and toISOString() converts it to the UTC instant MySQL should store,
@@ -10279,7 +10301,7 @@ window._simpleProductSubmit = async function(mode) {
 
   const payload = {
     name, description: desc, category: cat, category_id: catId ? Number(catId) : undefined, price, original_price: orig,
-    stock: isNaN(stock) ? 0 : stock, weight, brand: brand || undefined, hot, flash_deal_ends_at: flashDealEndsAt,
+    stock: isNaN(stock) ? 0 : stock, weight, brand: brand || undefined, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, made_in_kenya: madeInKenya, flash_deal_ends_at: flashDealEndsAt,
     images: window._getUploadedImages(),
     wholesale_tiers: wholesaleTiers,
     status: mode === 'draft' ? 'draft' : 'active',
@@ -10363,6 +10385,9 @@ window._simpleProductSubmit = async function(mode) {
     document.getElementById("sellerDesc").value = product.desc || '';
     if (document.getElementById("sellerBrand")) document.getElementById("sellerBrand").value = product.brand || '';
     document.getElementById("sellerHot").checked = !!product.hot;
+    const sellerNewArrivalEl = document.getElementById("sellerNewArrival"); if (sellerNewArrivalEl) sellerNewArrivalEl.checked = !!product.isNewArrival;
+    const sellerBestRatedEl = document.getElementById("sellerBestRated"); if (sellerBestRatedEl) sellerBestRatedEl.checked = !!product.isBestRated;
+    const sellerMadeInKenyaEl = document.getElementById("sellerMadeInKenya"); if (sellerMadeInKenyaEl) sellerMadeInKenyaEl.checked = !!product.madeInKenya;
     const sellerFlashWrap = document.getElementById("sellerFlashDealWrap");
     if (sellerFlashWrap) sellerFlashWrap.style.display = product.hot ? '' : 'none';
     const sellerFlashInput = document.getElementById("sellerFlashDealEndsAt");
@@ -10687,6 +10712,12 @@ async function renderAdminProducts() {
       document.getElementById("adminDesc").value = product.desc || '';
 
       document.getElementById("adminHot").value = product.hot ? 'true' : 'false';
+
+      const adminNewArrivalEl = document.getElementById("adminNewArrival"); if (adminNewArrivalEl) adminNewArrivalEl.value = product.isNewArrival ? 'true' : 'false';
+
+      const adminBestRatedEl = document.getElementById("adminBestRated"); if (adminBestRatedEl) adminBestRatedEl.value = product.isBestRated ? 'true' : 'false';
+
+      const adminMadeInKenyaEl = document.getElementById("adminMadeInKenya"); if (adminMadeInKenyaEl) adminMadeInKenyaEl.value = product.madeInKenya ? 'true' : 'false';
 
       const adminFlashWrap = document.getElementById("adminFlashDealWrap");
       if (adminFlashWrap) adminFlashWrap.style.display = product.hot ? '' : 'none';
@@ -11380,6 +11411,12 @@ window.loadManualData = loadManualData;
 
     const hot = document.getElementById("adminHot")?.value === 'true';
 
+    const isNewArrival = document.getElementById("adminNewArrival")?.value === 'true';
+
+    const isBestRated = document.getElementById("adminBestRated")?.value === 'true';
+
+    const madeInKenya = document.getElementById("adminMadeInKenya")?.value === 'true';
+
     const flashDealEndsAtRaw = document.getElementById("adminFlashDealEndsAt")?.value;
 
     const flashDealEndsAt = (hot && flashDealEndsAtRaw) ? new Date(flashDealEndsAtRaw).toISOString().slice(0, 19).replace('T', ' ') : null;
@@ -11419,7 +11456,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall(`/products/admin/${editingProductId}`, {
           method: 'PUT',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, made_in_kenya: madeInKenya, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
         savedId = editingProductId;
         showToast("Product updated successfully!", "success");
@@ -11436,7 +11473,7 @@ window.loadManualData = loadManualData;
 
         const createRes = await adminApiCall('/products/admin', {
           method: 'POST',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, made_in_kenya: madeInKenya, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
         savedId = createRes.data.product.id;
         showToast("Product added successfully!", "success");
@@ -11473,6 +11510,10 @@ window.loadManualData = loadManualData;
     document.getElementById("adminDesc").value = "";
 
     document.getElementById("adminHot").value = "false";
+
+    const adminNewArrivalReset = document.getElementById("adminNewArrival"); if (adminNewArrivalReset) adminNewArrivalReset.value = "false";
+    const adminBestRatedReset = document.getElementById("adminBestRated"); if (adminBestRatedReset) adminBestRatedReset.value = "false";
+    const adminMadeInKenyaReset = document.getElementById("adminMadeInKenya"); if (adminMadeInKenyaReset) adminMadeInKenyaReset.value = "false";
 
     const adminFlashDealField1 = document.getElementById("adminFlashDealEndsAt"); if (adminFlashDealField1) adminFlashDealField1.value = "";
     const adminFlashDealWrap1 = document.getElementById("adminFlashDealWrap"); if (adminFlashDealWrap1) adminFlashDealWrap1.style.display = "none";
@@ -11517,6 +11558,10 @@ window.loadManualData = loadManualData;
     document.getElementById("adminDesc").value = "";
 
     document.getElementById("adminHot").value = "false";
+
+    const adminNewArrivalReset = document.getElementById("adminNewArrival"); if (adminNewArrivalReset) adminNewArrivalReset.value = "false";
+    const adminBestRatedReset = document.getElementById("adminBestRated"); if (adminBestRatedReset) adminBestRatedReset.value = "false";
+    const adminMadeInKenyaReset = document.getElementById("adminMadeInKenya"); if (adminMadeInKenyaReset) adminMadeInKenyaReset.value = "false";
 
     const adminFlashDealField2 = document.getElementById("adminFlashDealEndsAt"); if (adminFlashDealField2) adminFlashDealField2.value = "";
     const adminFlashDealWrap2 = document.getElementById("adminFlashDealWrap"); if (adminFlashDealWrap2) adminFlashDealWrap2.style.display = "none";
@@ -15838,6 +15883,9 @@ window.renderSMSLog = renderSMSLog;
       stock: p.stock,
       county: p.county,
       hot: !!p.hot,
+      isNewArrival: !!p.is_new_arrival,
+      isBestRated: !!p.is_best_rated,
+      madeInKenya: !!p.made_in_kenya,
       // MySQL returns DATETIME values as "YYYY-MM-DD HH:MM:SS" (space,
       // no timezone marker) - it's genuinely UTC (that's what got
       // stored, via toISOString() at save time), but new Date() on that
@@ -19855,6 +19903,9 @@ window.cancelEditProduct = function() {
   });
   const weightEl = document.getElementById('sellerWeight'); if (weightEl) weightEl.value = '1';
   const hotEl = document.getElementById('sellerHot'); if (hotEl) hotEl.checked = false;
+  const newArrivalEl = document.getElementById('sellerNewArrival'); if (newArrivalEl) newArrivalEl.checked = false;
+  const bestRatedEl = document.getElementById('sellerBestRated'); if (bestRatedEl) bestRatedEl.checked = false;
+  const madeInKenyaEl = document.getElementById('sellerMadeInKenya'); if (madeInKenyaEl) madeInKenyaEl.checked = false;
   const flashDealEl = document.getElementById('sellerFlashDealEndsAt'); if (flashDealEl) flashDealEl.value = '';
   const flashDealWrapEl = document.getElementById('sellerFlashDealWrap'); if (flashDealWrapEl) flashDealWrapEl.style.display = 'none';
   const catMain = document.getElementById('sellerCatMain'); if (catMain) catMain.value = '';
