@@ -2843,7 +2843,7 @@
             <div class="field" style="display:flex; align-items:end;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);"><input type="checkbox" id="sellerHot" style="width:16px; height:16px;" onchange="window._toggleFlashDealField && window._toggleFlashDealField('seller')"> 🔥 Mark as Hot Deal</label></div>
             <div class="field" style="display:flex; align-items:end;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);"><input type="checkbox" id="sellerNewArrival" style="width:16px; height:16px;"> 🆕 Show in New Arrivals</label></div>
             <div class="field" style="display:flex; align-items:end;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);"><input type="checkbox" id="sellerBestRated" style="width:16px; height:16px;"> ⭐ Show in Best Rated</label></div>
-            <div class="field" style="display:flex; align-items:end;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);"><input type="checkbox" id="sellerMadeInKenya" style="width:16px; height:16px;"> 🇰🇪 Made in Kenya</label></div>
+            <div class="field"><label>Country of Origin</label><select id="sellerCountryOfOrigin"><option value="">Not specified</option><option value="Kenya">🇰🇪 Kenya</option><option value="China">🇨🇳 China</option><option value="Tanzania">🇹🇿 Tanzania</option><option value="Uganda">🇺🇬 Uganda</option><option value="India">🇮🇳 India</option><option value="Other">🌍 Other</option></select></div>
             <div class="field" id="sellerFlashDealWrap" style="display:none;">
               <label>Flash Deal Ends At (optional)</label>
               <input type="datetime-local" id="sellerFlashDealEndsAt">
@@ -3455,7 +3455,7 @@
           <div class="field"><label>Low Stock Alert (optional)</label><input type="number" id="adminLowStock" min="0" placeholder="5"></div>
           <div class="field"><label>New Arrival</label><select id="adminNewArrival"><option value="false">No</option><option value="true">Yes 🆕</option></select></div>
           <div class="field"><label>Best Rated</label><select id="adminBestRated"><option value="false">No</option><option value="true">Yes ⭐</option></select></div>
-          <div class="field"><label>Made in Kenya</label><select id="adminMadeInKenya"><option value="false">No</option><option value="true">Yes 🇰🇪</option></select></div>
+          <div class="field"><label>Country of Origin</label><select id="adminCountryOfOrigin"><option value="">Not specified</option><option value="Kenya">🇰🇪 Kenya</option><option value="China">🇨🇳 China</option><option value="Tanzania">🇹🇿 Tanzania</option><option value="Uganda">🇺🇬 Uganda</option><option value="India">🇮🇳 India</option><option value="Other">🌍 Other</option></select></div>
 
         </div>
 
@@ -10268,7 +10268,7 @@ window._simpleProductSubmit = async function(mode) {
   const hot = document.getElementById('sellerHot')?.checked;
   const isNewArrival = document.getElementById('sellerNewArrival')?.checked;
   const isBestRated = document.getElementById('sellerBestRated')?.checked;
-  const madeInKenya = document.getElementById('sellerMadeInKenya')?.checked;
+  const countryOfOrigin = document.getElementById('sellerCountryOfOrigin')?.value || undefined;
   // datetime-local gives "YYYY-MM-DDTHH:MM" in the browser's local time,
   // with no timezone info - new Date() on that parses it as local time,
   // and toISOString() converts it to the UTC instant MySQL should store,
@@ -10301,7 +10301,7 @@ window._simpleProductSubmit = async function(mode) {
 
   const payload = {
     name, description: desc, category: cat, category_id: catId ? Number(catId) : undefined, price, original_price: orig,
-    stock: isNaN(stock) ? 0 : stock, weight, brand: brand || undefined, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, made_in_kenya: madeInKenya, flash_deal_ends_at: flashDealEndsAt,
+    stock: isNaN(stock) ? 0 : stock, weight, brand: brand || undefined, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt,
     images: window._getUploadedImages(),
     wholesale_tiers: wholesaleTiers,
     status: mode === 'draft' ? 'draft' : 'active',
@@ -10387,7 +10387,7 @@ window._simpleProductSubmit = async function(mode) {
     document.getElementById("sellerHot").checked = !!product.hot;
     const sellerNewArrivalEl = document.getElementById("sellerNewArrival"); if (sellerNewArrivalEl) sellerNewArrivalEl.checked = !!product.isNewArrival;
     const sellerBestRatedEl = document.getElementById("sellerBestRated"); if (sellerBestRatedEl) sellerBestRatedEl.checked = !!product.isBestRated;
-    const sellerMadeInKenyaEl = document.getElementById("sellerMadeInKenya"); if (sellerMadeInKenyaEl) sellerMadeInKenyaEl.checked = !!product.madeInKenya;
+    const sellerCountryOfOriginEl = document.getElementById("sellerCountryOfOrigin"); if (sellerCountryOfOriginEl) sellerCountryOfOriginEl.value = product.countryOfOrigin || '';
     const sellerFlashWrap = document.getElementById("sellerFlashDealWrap");
     if (sellerFlashWrap) sellerFlashWrap.style.display = product.hot ? '' : 'none';
     const sellerFlashInput = document.getElementById("sellerFlashDealEndsAt");
@@ -10717,7 +10717,7 @@ async function renderAdminProducts() {
 
       const adminBestRatedEl = document.getElementById("adminBestRated"); if (adminBestRatedEl) adminBestRatedEl.value = product.isBestRated ? 'true' : 'false';
 
-      const adminMadeInKenyaEl = document.getElementById("adminMadeInKenya"); if (adminMadeInKenyaEl) adminMadeInKenyaEl.value = product.madeInKenya ? 'true' : 'false';
+      const adminCountryOfOriginEl = document.getElementById("adminCountryOfOrigin"); if (adminCountryOfOriginEl) adminCountryOfOriginEl.value = product.countryOfOrigin || '';
 
       const adminFlashWrap = document.getElementById("adminFlashDealWrap");
       if (adminFlashWrap) adminFlashWrap.style.display = product.hot ? '' : 'none';
@@ -11415,7 +11415,7 @@ window.loadManualData = loadManualData;
 
     const isBestRated = document.getElementById("adminBestRated")?.value === 'true';
 
-    const madeInKenya = document.getElementById("adminMadeInKenya")?.value === 'true';
+    const countryOfOrigin = document.getElementById("adminCountryOfOrigin")?.value || undefined;
 
     const flashDealEndsAtRaw = document.getElementById("adminFlashDealEndsAt")?.value;
 
@@ -11456,7 +11456,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall(`/products/admin/${editingProductId}`, {
           method: 'PUT',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, made_in_kenya: madeInKenya, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
         savedId = editingProductId;
         showToast("Product updated successfully!", "success");
@@ -11473,7 +11473,7 @@ window.loadManualData = loadManualData;
 
         const createRes = await adminApiCall('/products/admin', {
           method: 'POST',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, made_in_kenya: madeInKenya, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
+          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
         savedId = createRes.data.product.id;
         showToast("Product added successfully!", "success");
@@ -11513,7 +11513,7 @@ window.loadManualData = loadManualData;
 
     const adminNewArrivalReset = document.getElementById("adminNewArrival"); if (adminNewArrivalReset) adminNewArrivalReset.value = "false";
     const adminBestRatedReset = document.getElementById("adminBestRated"); if (adminBestRatedReset) adminBestRatedReset.value = "false";
-    const adminMadeInKenyaReset = document.getElementById("adminMadeInKenya"); if (adminMadeInKenyaReset) adminMadeInKenyaReset.value = "false";
+    const adminCountryOfOriginReset = document.getElementById("adminCountryOfOrigin"); if (adminCountryOfOriginReset) adminCountryOfOriginReset.value = "";
 
     const adminFlashDealField1 = document.getElementById("adminFlashDealEndsAt"); if (adminFlashDealField1) adminFlashDealField1.value = "";
     const adminFlashDealWrap1 = document.getElementById("adminFlashDealWrap"); if (adminFlashDealWrap1) adminFlashDealWrap1.style.display = "none";
@@ -11561,7 +11561,7 @@ window.loadManualData = loadManualData;
 
     const adminNewArrivalReset = document.getElementById("adminNewArrival"); if (adminNewArrivalReset) adminNewArrivalReset.value = "false";
     const adminBestRatedReset = document.getElementById("adminBestRated"); if (adminBestRatedReset) adminBestRatedReset.value = "false";
-    const adminMadeInKenyaReset = document.getElementById("adminMadeInKenya"); if (adminMadeInKenyaReset) adminMadeInKenyaReset.value = "false";
+    const adminCountryOfOriginReset = document.getElementById("adminCountryOfOrigin"); if (adminCountryOfOriginReset) adminCountryOfOriginReset.value = "";
 
     const adminFlashDealField2 = document.getElementById("adminFlashDealEndsAt"); if (adminFlashDealField2) adminFlashDealField2.value = "";
     const adminFlashDealWrap2 = document.getElementById("adminFlashDealWrap"); if (adminFlashDealWrap2) adminFlashDealWrap2.style.display = "none";
@@ -15014,6 +15014,7 @@ function createAdminSellerManagement() {
               <span id="detailWholesaleLineTotal" style="font-size:12px; color:var(--white); font-weight:600;"></span>
             </div>
           </div>` : ''}
+          ${product.countryOfOrigin ? `<div style="font-size:12px; color:var(--gray); margin:6px 0;">${({Kenya:'🇰🇪',China:'🇨🇳',Tanzania:'🇹🇿',Uganda:'🇺🇬',India:'🇮🇳'}[product.countryOfOrigin]) || '🌍'} Made in ${escapeHtml(product.countryOfOrigin)}</div>` : ''}
           ${hasVariants ? `<div style="font-size:12.5px; color:var(--gray); margin:8px 0;">🎨 This product comes in different options - choose one to see the exact price, stock and photo.</div>` : ''}
           <div class="product-detail-actions">
             <button id="detailAddToCartBtn"
@@ -15886,6 +15887,7 @@ window.renderSMSLog = renderSMSLog;
       isNewArrival: !!p.is_new_arrival,
       isBestRated: !!p.is_best_rated,
       madeInKenya: !!p.made_in_kenya,
+      countryOfOrigin: p.country_of_origin || null,
       // MySQL returns DATETIME values as "YYYY-MM-DD HH:MM:SS" (space,
       // no timezone marker) - it's genuinely UTC (that's what got
       // stored, via toISOString() at save time), but new Date() on that
@@ -19905,7 +19907,7 @@ window.cancelEditProduct = function() {
   const hotEl = document.getElementById('sellerHot'); if (hotEl) hotEl.checked = false;
   const newArrivalEl = document.getElementById('sellerNewArrival'); if (newArrivalEl) newArrivalEl.checked = false;
   const bestRatedEl = document.getElementById('sellerBestRated'); if (bestRatedEl) bestRatedEl.checked = false;
-  const madeInKenyaEl = document.getElementById('sellerMadeInKenya'); if (madeInKenyaEl) madeInKenyaEl.checked = false;
+  const countryOfOriginEl = document.getElementById('sellerCountryOfOrigin'); if (countryOfOriginEl) countryOfOriginEl.value = '';
   const flashDealEl = document.getElementById('sellerFlashDealEndsAt'); if (flashDealEl) flashDealEl.value = '';
   const flashDealWrapEl = document.getElementById('sellerFlashDealWrap'); if (flashDealWrapEl) flashDealWrapEl.style.display = 'none';
   const catMain = document.getElementById('sellerCatMain'); if (catMain) catMain.value = '';
