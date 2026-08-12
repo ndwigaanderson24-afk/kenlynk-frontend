@@ -2447,6 +2447,13 @@
         </div>
       </div>
 
+      <!-- Live Now strip - real sellers currently broadcasting -->
+      <div id="ssLiveNowStrip" style="display:none; position:absolute; top:56px; left:0; right:0; z-index:19;
+           overflow-x:auto; padding:8px 12px; scrollbar-width:none;
+           background:linear-gradient(to bottom, rgba(0,0,0,0.65), transparent);">
+        <div style="display:flex; gap:10px; white-space:nowrap;" id="ssLiveNowStripInner"></div>
+      </div>
+
       <!-- Category filter strip -->
       <div id="ssCatStrip" style="display:none; position:absolute; top:56px; left:0; right:0; z-index:19;
            overflow-x:auto; padding:8px 12px; scrollbar-width:none;
@@ -18676,6 +18683,93 @@ window._ssGoLive          = ssGoLive;
 window._ssEndLive         = ssEndLive;
 window._ssLiveFlip        = ssLiveFlip;
 window._ssLivePin         = ssLivePin;
+
+// ── Buyer-facing: watch a real live stream ──────────────────────────
+let ssWatchClient = null;
+let ssWatchStreamId = null;
+
+window._refreshLiveNowStrip = async function() {
+  const strip = el('ssLiveNowStrip');
+  const inner = el('ssLiveNowStripInner');
+  if (!strip || !inner) return;
+  try {
+    const res = await apiCall('/shopstream/live');
+    const streams = res.data.streams || [];
+    window._liveStreamsCache = streams;
+    if (!streams.length) { strip.style.display = 'none'; return; }
+    strip.style.display = 'block';
+    inner.innerHTML = streams.map(s => `
+      <button onclick="window._ssWatchLive(${s.id})" style="display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:none; cursor:pointer; flex-shrink:0;">
+        <div style="position:relative; width:56px; height:56px; border-radius:50%; border:2.5px solid #e74c3c; padding:2px; background:#111;">
+          <div style="width:100%; height:100%; border-radius:50%; background:var(--surface-3); display:flex; align-items:center; justify-content:center; font-size:20px; overflow:hidden;">
+            ${s.product_image ? `<img src="${s.product_image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">` : '🔴'}
+          </div>
+        </div>
+        <span style="font-size:10px; color:#fff; max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml((s.seller_business_name || 'Seller').slice(0, 10))}</span>
+      </button>
+    `).join('');
+  } catch (e) { /* non-fatal - just leave whatever was last shown */ }
+};
+setInterval(() => window._refreshLiveNowStrip(), 15000);
+window._refreshLiveNowStrip();
+
+window._ssWatchLive = async function(streamId) {
+  if (typeof AgoraRTC === 'undefined') { toast('Live streaming failed to load. Please refresh.', 'error'); return; }
+
+  if (!el('ssWatchModal')) {
+    const div = document.createElement('div');
+    div.id = 'ssWatchModal';
+    div.style.cssText = 'display:none;position:fixed;inset:0;z-index:3000;background:#000;flex-direction:column;';
+    div.innerHTML = `
+      <div style="position:absolute;top:0;left:0;right:0;z-index:10;padding:12px 16px;
+           display:flex;align-items:center;justify-content:space-between;
+           background:linear-gradient(to bottom,rgba(0,0,0,0.8),transparent);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="background:#e74c3c;color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;animation:pulse 1.5s infinite;">🔴 LIVE</span>
+          <span id="ssWatchSellerName" style="color:#fff;font-size:13px;font-weight:600;"></span>
+        </div>
+        <button onclick="window._ssLeaveLive()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:8px;padding:7px 16px;cursor:pointer;font-weight:700;font-size:13px;">✕ Leave</button>
+      </div>
+      <div id="ssWatchVideo" style="width:100%;height:100%;background:#111;"></div>
+    `;
+    document.body.appendChild(div);
+  }
+
+  el('ssWatchModal').style.display = 'flex';
+
+  try {
+    const res = await apiCall(`/shopstream/${streamId}/join`, { method: 'POST' });
+    const { app_id, token, channel_name, uid, seller_business_name } = res.data;
+    ssWatchStreamId = streamId;
+
+    const nameEl = el('ssWatchSellerName');
+    if (nameEl) nameEl.textContent = seller_business_name || 'Seller';
+
+    ssWatchClient = AgoraRTC.createClient({ mode: 'live', codec: 'vp8' });
+    await ssWatchClient.setClientRole('audience');
+    await ssWatchClient.join(app_id, channel_name, token, uid);
+
+    ssWatchClient.on('user-published', async (user, mediaType) => {
+      await ssWatchClient.subscribe(user, mediaType);
+      if (mediaType === 'video') user.videoTrack.play('ssWatchVideo');
+      if (mediaType === 'audio') user.audioTrack.play();
+    });
+    ssWatchClient.on('user-unpublished', () => {
+      toast('The seller ended the stream.', 'error');
+      window._ssLeaveLive();
+    });
+  } catch (err) {
+    toast('Could not join stream: ' + err.message, 'error');
+    window._ssLeaveLive();
+  }
+};
+
+window._ssLeaveLive = async function() {
+  if (ssWatchClient) { try { await ssWatchClient.leave(); } catch (e) {} ssWatchClient = null; }
+  ssWatchStreamId = null;
+  const v = el('ssWatchVideo'); if (v) v.innerHTML = '';
+  const m = el('ssWatchModal'); if (m) m.style.display = 'none';
+};
 window._ssLiveSend        = ssLiveSend;
 window._ssHandleVideoFile = ssHandleVideoFile;
 window._ssHandleDrop      = function(files){ if(files&&files[0]) ssHandleVideoFile(files[0]); };
@@ -20305,8 +20399,21 @@ function _getFeaturedLives(){ try { return JSON.parse(localStorage.getItem(FEATU
 function _getQueue()       { try { return JSON.parse(localStorage.getItem(APPROVAL_QUEUE_KEY)||'[]'); } catch(e){ return []; } }
 function _saveQueue(q)     { try { localStorage.setItem(APPROVAL_QUEUE_KEY, JSON.stringify(q)); } catch(e){} }
 function _addToQueue(item) { const q=_getQueue(); q.unshift({...item,id:'apq_'+Date.now(),submittedAt:new Date().toISOString(),status:'pending'}); _saveQueue(q); }
-function _getLiveNow()     { try { return JSON.parse(localStorage.getItem(LIVE_NOW_KEY)||'[]'); } catch(e){ return []; } }
-function _saveLiveNow(l)   { try { localStorage.setItem(LIVE_NOW_KEY, JSON.stringify(l)); } catch(e){} }
+function _getLiveNow()     {
+  // Backed by the same real, server-fetched cache the buyer-facing
+  // "Live Now" strip uses (see _refreshLiveNowStrip, refreshed every
+  // 15s) - shows genuine live sellers from any device, not just
+  // whatever was happening in this one browser tab. startedAt is
+  // converted to proper ISO (the same MySQL-timestamp fix applied to
+  // flash deals earlier) so the displayed time is correct regardless
+  // of the admin's own timezone.
+  return (window._liveStreamsCache || []).map(s => ({
+    id: s.id, name: s.seller_business_name || 'Seller', email: s.seller_email,
+    startedAt: s.started_at ? s.started_at.replace(' ', 'T') + 'Z' : null,
+    viewers: s.current_viewers
+  }));
+}
+function _saveLiveNow(l)   { /* no-op - live status now lives on the server, not localStorage */ }
 
 // ── Unique Username Generator ─────────────────────────────────────
 window._generateUsername = function(businessName, email) {
@@ -20448,7 +20555,7 @@ window._renderAdminApprovals = function() {
           <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);flex-wrap:wrap;">
             <span style="background:#e74c3c;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;animation:pulse 1.5s infinite;">🔴 LIVE</span>
             <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:var(--white);">${esc(l.name)}</div><div style="font-size:11px;color:var(--gray);">${l.email} · ${new Date(l.startedAt).toLocaleTimeString('en-KE')}</div></div>
-            <button onclick="window._adminEndLive('${l.email}')" style="background:#e74c3c;border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:600;">End Live</button>
+            <button onclick="window._adminEndLive(${l.id})" style="background:#e74c3c;border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:600;">End Live</button>
           </div>`).join(''):'<div style="color:var(--gray);font-size:13px;">No one is live right now.</div>'}
       </div>
 
@@ -20522,10 +20629,15 @@ window._adminReject = function(itemId) {
   window._renderAdminApprovals();
 };
 
-window._adminEndLive = function(email) {
-  _endLiveRegister(email);
-  window.showToast&&window.showToast('Live session ended by admin.','success');
-  window._renderAdminApprovals();
+window._adminEndLive = async function(streamId) {
+  try {
+    await adminApiCall(`/shopstream/admin/${streamId}/end`, { method: 'POST' });
+    window.showToast && window.showToast('Live session ended by admin.', 'success');
+    await window._refreshLiveNowStrip();
+    window._renderAdminApprovals();
+  } catch (err) {
+    window.showToast && window.showToast('⚠️ ' + err.message, 'error');
+  }
 };
 
 // ── Sort featured products first ──────────────────────────────────
