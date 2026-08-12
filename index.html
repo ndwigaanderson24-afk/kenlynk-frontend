@@ -6922,17 +6922,20 @@ function escapeHtml(str) {
 
   const pageButtons = document.querySelectorAll(".page-btn");
 
-  // Call through window.goToPage explicitly, not the bare identifier -
-  // several features (ShopStream's ssRender trigger among them) wrap
-  // window.goToPage with extra behaviour after this listener is bound.
-  // A bare goToPage(...) call here would keep resolving to this
-  // original, un-wrapped function forever (hoisted local declaration
-  // below), silently skipping everything those later wraps add.
-  pageButtons.forEach(btn=> btn.addEventListener("click", ()=> window.goToPage(btn.dataset.page)));
+  // Call goToPage directly (the local, working implementation below) for
+  // actual navigation - window.goToPage gets wrapped by several features
+  // later on, but that reassignment isn't reliably in place by click time,
+  // so routing through it here breaks navigation entirely. ShopStream's
+  // render-on-arrival is instead triggered directly and explicitly right
+  // here, without depending on that wrapping chain at all.
+  pageButtons.forEach(btn=> btn.addEventListener("click", () => {
+    goToPage(btn.dataset.page);
+    if (btn.dataset.page === 'shopstream') setTimeout(() => window._ssRender && window._ssRender(), 150);
+  }));
 
-  document.getElementById("headerCartBtn").addEventListener("click", ()=> window.goToPage("cart"));
+  document.getElementById("headerCartBtn").addEventListener("click", ()=> goToPage("cart"));
 
-  document.getElementById("cartFloat").addEventListener("click", ()=> window.goToPage("cart"));
+  document.getElementById("cartFloat").addEventListener("click", ()=> goToPage("cart"));
 
 
 
