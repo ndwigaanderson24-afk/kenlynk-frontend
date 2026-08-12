@@ -1865,6 +1865,7 @@
 
   </style>
 
+<script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.22.0.js"></script>
 </head>
 
 <body>
@@ -18003,6 +18004,12 @@ let ssThumbDataUrl = null;
 let ssLiveStream   = null;
 let ssLiveFacing   = 'environment';
 let ssLiveTimer    = null;
+// Real broadcasting state - replaces the old local-only camera preview.
+let ssAgoraClient       = null;
+let ssLocalVideoTrack   = null;
+let ssLocalAudioTrack   = null;
+let ssStreamId          = null;
+let ssViewerReportTimer = null;
 
 // ── Helpers ───────────────────────────────────────────────────────────
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -18397,7 +18404,7 @@ function ssGoLive() {
       </div>
 
       <!-- Camera -->
-      <video id="liveCam" autoplay muted playsinline style="width:100%;height:100%;object-fit:cover;background:#111;"></video>
+      <div id="liveCam" style="width:100%;height:100%;object-fit:cover;background:#111;"></div>
 
       <!-- Pinned product -->
       <div id="livePinned" style="display:none;position:absolute;bottom:140px;left:12px;right:70px;z-index:10;
@@ -18432,31 +18439,56 @@ function ssGoLive() {
 
   el('ssLiveModal').style.display = 'flex';
 
-  // Start camera
-  navigator.mediaDevices?.getUserMedia({video:{facingMode:ssLiveFacing},audio:true})
-    .then(stream => {
-      const v = el('liveCam');
-      if (v) { v.srcObject = stream; }
-      ssLiveStream = stream;
-      toast('🔴 You are now LIVE on ShopStream!','success');
-    })
-    .catch(err => toast('Camera error: '+err.message,'error'));
+  // Go live for real: get a genuine broadcaster token from the server,
+  // join the Agora channel, and publish the camera/mic so the video
+  // actually reaches anyone watching - not just a local preview.
+  (async () => {
+    try {
+      const res = await apiCall('/shopstream/go-live', { method: 'POST', body: JSON.stringify({}) });
+      const { stream_id, channel_name, app_id, token, uid } = res.data;
+      ssStreamId = stream_id;
 
-  // Simulate growing viewers
-  let viewers = 0;
-  ssLiveTimer = setInterval(() => {
-    viewers += Math.floor(Math.random()*4);
-    const e = el('liveViewers');
-    if (e) e.textContent = viewers+' watching';
-    // Simulate viewer comment
-    if (Math.random() > 0.6) {
-      const names = ['Wanjiku','Kamau','Aisha','Brian','Grace','Otieno'];
-      const msgs  = ['🔥 Amazing!','How much?','Available in Nairobi?','Love this!','🛒 Add to cart!','Where can I get this?'];
-      const n = names[Math.floor(Math.random()*names.length)];
-      const m = msgs[Math.floor(Math.random()*msgs.length)];
-      addLiveCmt(n, m, false);
+      if (typeof AgoraRTC === 'undefined') throw new Error('Live streaming failed to load. Please refresh and try again.');
+
+      ssAgoraClient = AgoraRTC.createClient({ mode: 'live', codec: 'vp8' });
+      await ssAgoraClient.setClientRole('host');
+      await ssAgoraClient.join(app_id, channel_name, token, uid);
+
+      ssLocalAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+      ssLocalVideoTrack = await AgoraRTC.createCameraVideoTrack({ facingMode: ssLiveFacing });
+      ssLocalVideoTrack.play('liveCam');
+      await ssAgoraClient.publish([ssLocalAudioTrack, ssLocalVideoTrack]);
+
+      // Real viewer count, straight from Agora's own channel presence -
+      // updates instantly as people join/leave, no simulation involved.
+      const updateViewerUI = () => {
+        const count = ssAgoraClient ? ssAgoraClient.remoteUsers.length : 0;
+        const e = el('liveViewers');
+        if (e) e.textContent = count + ' watching';
+      };
+      ssAgoraClient.on('user-joined', updateViewerUI);
+      ssAgoraClient.on('user-left', updateViewerUI);
+      updateViewerUI();
+
+      // Report the real count to the server every 15s, so admin's
+      // dashboard (and anywhere else that reads live status) sees an
+      // accurate, current number too - not something only visible in
+      // this one browser tab.
+      ssViewerReportTimer = setInterval(() => {
+        if (!ssAgoraClient || !ssStreamId) return;
+        apiCall(`/shopstream/${ssStreamId}/viewers`, {
+          method: 'POST',
+          body: JSON.stringify({ count: ssAgoraClient.remoteUsers.length })
+        }).catch(() => { /* non-fatal - just retry next tick */ });
+      }, 15000);
+
+      toast('🔴 You are now LIVE on ShopStream!', 'success');
+    } catch (err) {
+      toast('Could not go live: ' + err.message, 'error');
+      const m = el('ssLiveModal');
+      if (m) m.style.display = 'none';
     }
-  }, 3500);
+  })();
 }
 
 function addLiveCmt(name, text, isSeller) {
@@ -18471,22 +18503,32 @@ function addLiveCmt(name, text, isSeller) {
 }
 
 function ssEndLive() {
-  if (ssLiveStream) { ssLiveStream.getTracks().forEach(t=>t.stop()); ssLiveStream=null; }
-  clearInterval(ssLiveTimer); ssLiveTimer=null;
+  if (ssLocalAudioTrack) { ssLocalAudioTrack.close(); ssLocalAudioTrack = null; }
+  if (ssLocalVideoTrack) { ssLocalVideoTrack.close(); ssLocalVideoTrack = null; }
+  if (ssAgoraClient) { ssAgoraClient.leave().catch(() => {}); ssAgoraClient = null; }
+  clearInterval(ssViewerReportTimer); ssViewerReportTimer = null;
+  clearInterval(ssLiveTimer); ssLiveTimer = null;
+  if (ssStreamId) {
+    apiCall(`/shopstream/${ssStreamId}/end`, { method: 'POST' }).catch(() => {});
+    ssStreamId = null;
+  }
   const m = el('ssLiveModal');
   if (m) m.style.display = 'none';
   toast('Live session ended. Thanks for streaming! 🎬','success');
 }
 
-function ssLiveFlip() {
+async function ssLiveFlip() {
   ssLiveFacing = ssLiveFacing==='environment'?'user':'environment';
-  if (ssLiveStream) ssLiveStream.getTracks().forEach(t=>t.stop());
-  navigator.mediaDevices?.getUserMedia({video:{facingMode:ssLiveFacing},audio:true})
-    .then(stream => {
-      const v = el('liveCam');
-      if (v) v.srcObject = stream;
-      ssLiveStream = stream;
-    }).catch(()=>{});
+  if (!ssAgoraClient || !ssLocalVideoTrack) return;
+  try {
+    await ssAgoraClient.unpublish([ssLocalVideoTrack]);
+    ssLocalVideoTrack.close();
+    ssLocalVideoTrack = await AgoraRTC.createCameraVideoTrack({ facingMode: ssLiveFacing });
+    ssLocalVideoTrack.play('liveCam');
+    await ssAgoraClient.publish([ssLocalVideoTrack]);
+  } catch (err) {
+    toast('Could not switch camera: ' + err.message, 'error');
+  }
 }
 
 function ssLivePin() {
