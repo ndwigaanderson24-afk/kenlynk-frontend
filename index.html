@@ -2954,6 +2954,7 @@
                   <input type="text" id="sellerPhotoOptionCustomType" placeholder="Type the custom option name" style="display:none; width:100%; margin-top:6px; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:8px 10px; font-size:12.5px;">
                   <div id="sellerPhotoOptionAttrChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
                 </div>
+                <div id="sellerBulkAddPanel"></div>
                 <div id="sellerPhotoOptionsListWrap" style="display:flex; flex-direction:column; gap:10px; margin-bottom:8px;"></div>
                 <button type="button" onclick="window.addPhotoOption('seller')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Option</button>
               </div>
@@ -3543,6 +3544,7 @@
               <input type="text" id="adminPhotoOptionCustomType" placeholder="Type the custom option name" style="display:none; width:100%; margin-top:6px; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:8px 10px; font-size:12.5px;">
               <div id="adminPhotoOptionAttrChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
             </div>
+            <div id="adminBulkAddPanel"></div>
             <div id="adminPhotoOptionsListWrap" style="display:flex; flex-direction:column; gap:10px; margin-bottom:8px;"></div>
             <button type="button" onclick="window.addPhotoOption('admin')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Option</button>
           </div>
@@ -10471,6 +10473,7 @@ window._simpleProductSubmit = async function(mode) {
           const attrNames = [...new Set(optionVariants.flatMap(v => v.options.map(o => o.attribute_name)))];
           window._photoOptionAttrTypes.seller = attrNames;
           window._renderAttrTypeChips('seller');
+          window._renderBulkAddPanel('seller');
         }
         window._photoOptionsState.seller = optionVariants.map(v => ({
           id: v.id,
@@ -10739,6 +10742,7 @@ async function renderAdminProducts() {
             const attrNames = [...new Set(optionVariants.flatMap(v => v.options.map(o => o.attribute_name)))];
             window._photoOptionAttrTypes.admin = attrNames;
             window._renderAttrTypeChips('admin');
+            window._renderBulkAddPanel('admin');
           }
           window._photoOptionsState.admin = optionVariants.map(v => ({
             id: v.id,
@@ -19526,6 +19530,11 @@ window._photoOptionsState = { seller: [], admin: [] };
 // of attribute dimensions (Colour, Size, Storage, RAM, whatever the
 // seller types) rather than being limited to a single "Colour" one.
 window._photoOptionAttrTypes = { seller: ['Colour'], admin: ['Colour'] };
+// Tracks which values are currently ticked in the "bulk add" checklist,
+// per attribute type - lets a seller/admin tick several colours (or
+// sizes, etc) at once and generate one option row per combination,
+// instead of adding rows one at a time.
+window._photoOptionBulkSelections = { seller: {}, admin: {} };
 
 // Common attribute types and their typical values - powers the dropdown
 // pickers so a seller/admin can pick "Storage" and get 64GB/128GB/256GB
@@ -19594,6 +19603,7 @@ window._addPhotoOptionAttrType = function(which) {
   select.value = '';
   if (customInput) { customInput.value = ''; customInput.style.display = 'none'; }
   window._renderAttrTypeChips(which);
+  window._renderBulkAddPanel(which);
   window._renderPhotoOptionsList(which);
 };
 
@@ -19602,7 +19612,9 @@ window._removePhotoOptionAttrType = function(which, typeName) {
   // Clear that type's values off every existing row too, so stale data
   // doesn't linger once the type is no longer configured.
   window._photoOptionsState[which].forEach(opt => { if (opt.values) delete opt.values[typeName]; });
+  delete window._photoOptionBulkSelections[which][typeName];
   window._renderAttrTypeChips(which);
+  window._renderBulkAddPanel(which);
   window._renderPhotoOptionsList(which);
 };
 
@@ -19617,9 +19629,100 @@ window._renderAttrTypeChips = function(which) {
     </span>
   `).join('');
 };
+
+// Bulk-add: for each configured option type that has a preset value
+// list (Colour, Size, Storage, ...), shows a tick-list of its values.
+// Ticking several and clicking "Add Selected" generates one option row
+// per combination across every catalog-backed type at once, instead of
+// clicking "+ Add Option" and picking a value one row at a time.
+window._renderBulkAddPanel = function(which) {
+  const panel = document.getElementById(which + 'BulkAddPanel');
+  if (!panel) return;
+  const types = window._photoOptionAttrTypes[which] || [];
+  const catalogTypes = types.filter(t => VARIANT_ATTRIBUTE_CATALOG[t] && VARIANT_ATTRIBUTE_CATALOG[t].length);
+  if (!catalogTypes.length) { panel.innerHTML = ''; return; }
+  const selections = window._photoOptionBulkSelections[which];
+
+  panel.innerHTML = `
+    <div style="background:var(--surface-2); border:1px solid var(--gold); border-radius:10px; padding:12px; margin-bottom:10px;">
+      <div style="font-size:12.5px; font-weight:700; color:var(--gold); margin-bottom:2px;">🚀 Bulk Add</div>
+      <div style="font-size:11px; color:var(--gray); margin-bottom:10px;">Tick every value this product comes in, then add them all at once - you'll still fill in each one's photo, price and stock afterward.</div>
+      ${catalogTypes.map(attrType => {
+        const values = VARIANT_ATTRIBUTE_CATALOG[attrType];
+        const selectedSet = selections[attrType] || new Set();
+        return `
+        <div style="margin-bottom:10px;">
+          <div style="font-size:11.5px; font-weight:600; color:var(--white); margin-bottom:6px;">${escapeHtml(attrType)}</div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            ${values.map(v => {
+              const isChecked = selectedSet.has(v);
+              return `<label style="display:inline-flex; align-items:center; gap:5px; background:${isChecked ? 'rgba(255,193,7,0.15)' : 'var(--surface-3)'}; border:1px solid ${isChecked ? 'var(--gold)' : 'var(--border-strong)'}; border-radius:999px; padding:4px 10px 4px 6px; font-size:11.5px; color:${isChecked ? 'var(--gold)' : 'var(--white)'}; cursor:pointer;">
+                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="window._toggleBulkSelection('${which}', '${escapeHtml(attrType).replace(/'/g, "\\'")}', '${escapeHtml(v).replace(/'/g, "\\'")}')" style="width:13px; height:13px; margin:0;">
+                ${escapeHtml(v)}
+              </label>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+      <button type="button" onclick="window._generateBulkOptions('${which}')" style="background:var(--gold); color:#111; border:none; border-radius:8px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer;">+ Add Selected</button>
+    </div>
+  `;
+};
+
+window._toggleBulkSelection = function(which, attrType, value) {
+  const selections = window._photoOptionBulkSelections[which];
+  if (!selections[attrType]) selections[attrType] = new Set();
+  if (selections[attrType].has(value)) selections[attrType].delete(value);
+  else selections[attrType].add(value);
+  window._renderBulkAddPanel(which);
+};
+
+window._generateBulkOptions = function(which) {
+  const types = window._photoOptionAttrTypes[which] || [];
+  const catalogTypes = types.filter(t => VARIANT_ATTRIBUTE_CATALOG[t] && VARIANT_ATTRIBUTE_CATALOG[t].length);
+  const selections = window._photoOptionBulkSelections[which];
+
+  for (const attrType of catalogTypes) {
+    if (!selections[attrType] || !selections[attrType].size) {
+      showToast(`Please tick at least one "${attrType}" value before adding.`, 'error');
+      return;
+    }
+  }
+
+  // Cartesian product across every catalog-backed type's ticked values -
+  // e.g. 3 colours x 2 sizes ticked generates 6 rows, one per combination.
+  let combos = [{}];
+  for (const attrType of catalogTypes) {
+    const values = [...selections[attrType]];
+    const next = [];
+    for (const combo of combos) {
+      for (const v of values) next.push({ ...combo, [attrType]: v });
+    }
+    combos = next;
+  }
+
+  const existing = window._photoOptionsState[which];
+  let added = 0, skipped = 0;
+  for (const combo of combos) {
+    const alreadyThere = existing.some(opt =>
+      catalogTypes.every(t => (opt.values && opt.values[t]) === combo[t])
+    );
+    if (alreadyThere) { skipped++; continue; }
+    existing.push({ id: null, values: { ...combo }, image: '', price: '', stock: '', sku: '' });
+    added++;
+  }
+
+  window._photoOptionBulkSelections[which] = {};
+  window._renderBulkAddPanel(which);
+  window._renderPhotoOptionsList(which);
+  showToast(`${added} option${added !== 1 ? 's' : ''} added${skipped ? ` (${skipped} already existed, skipped)` : ''} - fill in each one's photo, price and stock below.`, 'success');
+};
+
 // Show the default "Colour" chip on both forms as soon as the page loads.
 window._renderAttrTypeChips('seller');
 window._renderAttrTypeChips('admin');
+window._renderBulkAddPanel('seller');
+window._renderBulkAddPanel('admin');
 
 window._renderPhotoOptionsList = function(which) {
   const wrap = document.getElementById(which + 'PhotoOptionsListWrap');
@@ -19738,7 +19841,9 @@ window._resetPhotoOptions = function(which) {
   window._photoOptionsState[which] = [];
   window._photoOptionsOriginalIds[which] = [];
   window._photoOptionAttrTypes[which] = ['Colour'];
+  window._photoOptionBulkSelections[which] = {};
   window._renderAttrTypeChips(which);
+  window._renderBulkAddPanel(which);
   window._renderPhotoOptionsList(which);
   const checkbox = document.getElementById(which + 'HasPhotoOptions');
   if (checkbox) checkbox.checked = false;
