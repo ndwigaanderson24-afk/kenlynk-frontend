@@ -9357,6 +9357,35 @@ async function loadUser() {
 
   let requestImageData = '';
 
+  // ── Real API integration - translates the backend's field names into
+  // the exact shape all the existing render functions below already
+  // expect, so only the DATA SOURCE changes (API instead of
+  // localStorage), not the rendering logic itself.
+  const REQUEST_STATUS_MAP = {
+    pending_review: 'Pending Review', shared_with_sellers: 'Shared with Sellers',
+    seller_found: 'Seller Found', awaiting_buyer_confirmation: 'Awaiting Buyer Confirmation',
+    order_created: 'Order Created', cancelled: 'Cancelled'
+  };
+  function _mapApiRequest(r) {
+    return {
+      id: r.id, fullName: r.full_name, phone: r.phone, email: r.email || '',
+      deliveryLocation: r.delivery_location, productName: r.product_name, category: r.category,
+      description: r.description, quantity: r.quantity, budget: r.budget ? Number(r.budget) : null,
+      date: r.needed_by_date, image: r.image || '',
+      status: REQUEST_STATUS_MAP[r.status] || r.status,
+      offers: (r.offers || []).map(_mapApiOffer),
+      approvedOfferId: r.approved_offer_id, orderId: r.order_id,
+      userId: r.buyer_user_id, createdAt: r.created_at
+    };
+  }
+  function _mapApiOffer(o) {
+    return {
+      id: o.id, sellerEmail: o.seller_email, sellerBusinessName: o.seller_business_name,
+      availableQty: o.available_qty, price: Number(o.price), deliveryTime: o.delivery_time,
+      notes: o.notes || '', submittedAt: o.submitted_at, status: o.status
+    };
+  }
+
   function setupRequestDate() {
 
     const requestDate = document.getElementById('requestDate');
@@ -9427,7 +9456,7 @@ async function loadUser() {
 
 
 
-  document.getElementById('customRequestForm')?.addEventListener('submit', function(e) {
+  document.getElementById('customRequestForm')?.addEventListener('submit', async function(e) {
 
     e.preventDefault();
 
@@ -9460,54 +9489,61 @@ async function loadUser() {
 
     if (!isValidPhoneNumber(phone)) { showToast(t('phoneTooShort'), 'error'); return; }
 
-    let requests = JSON.parse(localStorage.getItem('KC_requests') || '[]');
+    const submitBtn = this.querySelector('[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
 
-    const newRequest = {
-      id: 'REQ-' + Date.now().toString().slice(-8),
-      fullName, phone, email: email || '', deliveryLocation, productName, category, description,
-      quantity, budget, date: date || null, image: requestImageData || '',
-      status: 'Pending Review',
-      offers: [],
-      approvedOfferId: null,
-      orderId: null,
-      userId: currentUser?._id || null,
-      userEmail: currentUser?.email || null,
-      createdAt: new Date().toISOString()
-    };
+    try {
+      const res = await apiCall('/requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          full_name: fullName, phone, email: email || undefined, delivery_location: deliveryLocation,
+          product_name: productName, category, description, quantity, budget,
+          needed_by_date: date || undefined, image: requestImageData || undefined
+        })
+      });
 
-    requests.unshift(newRequest);
+      showToast(`✅ Request sent! Your reference is #${res.data.request.id}`, 'success');
 
-    localStorage.setItem('KC_requests', JSON.stringify(requests));
+      this.reset();
 
-    showToast(`✅ Request sent! Your reference is #${newRequest.id}`, 'success');
+      requestImageData = '';
 
-    this.reset();
+      document.getElementById('requestImagePreview').style.display = 'none';
 
-    requestImageData = '';
+      setupRequestDate();
 
-    document.getElementById('requestImagePreview').style.display = 'none';
+      loadUserPhoneForRequest();
 
-    setupRequestDate();
-
-    loadUserPhoneForRequest();
-
-    renderMyRequests();
+      renderMyRequests();
+    } catch (err) {
+      showToast('⚠️ Could not send request: ' + err.message, 'error');
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
 
   });
 
 
 
-  function renderMyRequests() {
+  async function renderMyRequests() {
 
     const wrap = document.getElementById('myRequestsWrap');
 
     if (!wrap) return;
 
-    const requests = JSON.parse(localStorage.getItem('KC_requests') || '[]');
+    const userPhoneForFetch = document.getElementById('requestPhone')?.value || currentUser?.phone || '';
+    let requests = [];
+    try {
+      const res = await apiCall(`/requests/mine?phone=${encodeURIComponent(userPhoneForFetch)}`);
+      requests = (res.data.requests || []).map(_mapApiRequest);
+    } catch (err) {
+      wrap.innerHTML = `<div class="empty-state"><div class="ic">⚠️</div><div>Could not load your requests: ${escapeHtml(err.message)}</div></div>`;
+      return;
+    }
 
-    const userPhone = document.getElementById('requestPhone')?.value || currentUser?.phone || '';
-
-    const userRequests = requests.filter(r => r.phone === userPhone || (currentUser && r.userId === currentUser._id));
+    // Server already filtered to this buyer's own requests (matched by
+    // phone or account) - no client-side filtering needed anymore.
+    const userRequests = requests;
 
     if (userRequests.length === 0) { wrap.innerHTML = '<div class="empty-state"><div class="ic">📋</div><div>You haven\'t made any requests yet.</div></div>'; return; }
 
@@ -9564,7 +9600,7 @@ async function loadUser() {
 // what's needed to decide whether they can supply the item. Also only
 // shows requests that have been shared by admin AND match a category the
 // seller actually sells in.
-function renderSellerRequests() {
+async function renderSellerRequests() {
 
   const container = document.getElementById('sellerRequestsList');
 
@@ -9592,13 +9628,18 @@ function renderSellerRequests() {
 
   
 
-  const requests = JSON.parse(localStorage.getItem('KC_requests') || '[]');
+  let requests = [];
+  try {
+    const res = await apiCall('/requests/shared');
+    requests = (res.data.requests || []).map(_mapApiRequest);
+  } catch (err) {
+    container.innerHTML = `<div style="color:var(--gray); text-align:center; padding:20px;">Could not load requests: ${escapeHtml(err.message)}</div>`;
+    return;
+  }
 
   const myCategories = new Set(PRODUCTS.filter(p => p.sellerEmail === currentUser.email).map(p => p.category));
 
-  const visibleStatuses = ['Shared with Sellers', 'Seller Found'];
-
-  const matchingRequests = requests.filter(r => visibleStatuses.includes(r.status) && (isAdmin() || myCategories.has(r.category)));
+  const matchingRequests = requests.filter(r => isAdmin() || myCategories.has(r.category));
 
   
 
@@ -9609,6 +9650,8 @@ function renderSellerRequests() {
     return;
 
   }
+
+  window._sellerRequestsCache = matchingRequests;
 
   
 
@@ -9672,8 +9715,7 @@ function renderSellerRequests() {
 // Opens the "I Can Supply This" modal for a specific request.
 let pendingSupplyOfferRequestId = null;
 function openSupplyOfferModal(requestId) {
-  const requests = JSON.parse(localStorage.getItem('KC_requests') || '[]');
-  const request = requests.find(r => r.id === requestId);
+  const request = (window._sellerRequestsCache || []).find(r => r.id === requestId);
   if (!request) { showToast('Request not found.', 'error'); return; }
   pendingSupplyOfferRequestId = requestId;
 
@@ -9702,7 +9744,7 @@ function closeSupplyOfferModal() {
 }
 window.closeSupplyOfferModal = closeSupplyOfferModal;
 
-document.getElementById('supplyOfferSubmitBtn')?.addEventListener('click', function() {
+document.getElementById('supplyOfferSubmitBtn')?.addEventListener('click', async function() {
   if (!pendingSupplyOfferRequestId) { showToast('Something went wrong. Please try again.', 'error'); return; }
   if (!currentUser) { showToast('Please login first.', 'error'); return; }
 
@@ -9715,102 +9757,42 @@ document.getElementById('supplyOfferSubmitBtn')?.addEventListener('click', funct
   if (!price || price <= 0) { showToast('Please enter a valid price.', 'error'); return; }
   if (!deliveryTime) { showToast('Please enter an estimated delivery time.', 'error'); return; }
 
-  const requests = JSON.parse(localStorage.getItem('KC_requests') || '[]');
-  const request = requests.find(r => r.id === pendingSupplyOfferRequestId);
-  if (!request) { showToast('Request not found.', 'error'); return; }
-
-  if (!request.offers) request.offers = [];
-  if (request.offers.some(o => o.sellerEmail === currentUser.email)) {
-    showToast('You have already submitted an offer for this request.', 'error');
+  try {
+    await apiCall(`/requests/${pendingSupplyOfferRequestId}/offers`, {
+      method: 'POST',
+      body: JSON.stringify({ available_qty: availableQty, price, delivery_time: deliveryTime, notes: notes || undefined })
+    });
+    showToast('✅ Offer submitted! The admin will review it shortly.', 'success');
     closeSupplyOfferModal();
-    return;
+    renderSellerRequests();
+    if (window._refreshAdminRequestsCache) window._refreshAdminRequestsCache();
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
   }
-
-  const sellerStatus = getCurrentUserSellerStatus();
-  request.offers.push({
-    id: 'OFR-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    sellerEmail: currentUser.email,
-    sellerBusinessName: (sellerStatus && sellerStatus.businessName) || currentUser.name || 'Seller',
-    availableQty, price, deliveryTime, notes,
-    submittedAt: new Date().toISOString(),
-    status: 'pending'
-  });
-
-  // First offer on a shared request lets admin know a seller has stepped forward.
-  if (request.status === 'Shared with Sellers') request.status = 'Seller Found';
-
-  localStorage.setItem('KC_requests', JSON.stringify(requests));
-  showToast('✅ Offer submitted! The admin will review it shortly.', 'success');
-  closeSupplyOfferModal();
-  renderSellerRequests();
-  if (typeof renderAdminRequestsPanel === 'function') renderAdminRequestsPanel();
 });
 
-// Buyer accepts the admin-approved offer -> creates a real order, tied
-// into the normal seller/order pipeline (Pending status, proper delivery
-// breakdown), same as any other checkout.
+// Buyer accepts the admin-approved offer -> should create a real order,
+// tied into the normal seller/order pipeline. NOT YET WIRED UP - this
+// needs careful integration with the real order-creation endpoint
+// (commission calc, delivery fee, seller payout) rather than a fake
+// local-only order nobody else would ever see, which is exactly the
+// bug this whole feature is being fixed away from. Flagged honestly
+// rather than silently faking it.
 function acceptApprovedOffer(requestId) {
-  const requests = JSON.parse(localStorage.getItem('KC_requests') || '[]');
-  const request = requests.find(r => r.id === requestId);
-  if (!request) { showToast('Request not found.', 'error'); return; }
-
-  const offer = (request.offers || []).find(o => o.id === request.approvedOfferId);
-  if (!offer) { showToast('Offer not found.', 'error'); return; }
-
-  const now = new Date().toISOString();
-  const order = {
-    id: "EMB-" + Date.now().toString().slice(-8) + "-R",
-    trackingNumber: generateTrackingNumber(),
-    items: [{ id: null, name: request.productName, qty: offer.availableQty, price: offer.price }],
-    total: offer.price,
-    idNumber: '',
-    phone: request.phone,
-    name: request.fullName,
-    address: request.deliveryLocation,
-    status: 'Pending',
-    trackingStatus: 'Pending',
-    statusUpdateDate: now,
-    statusHistory: [{ status: 'Pending', date: now }],
-    placedAt: now,
-    sellerEmail: offer.sellerEmail,
-    delivery: { type: 'delivery', fee: 0, address: request.deliveryLocation, originCounty: null, destCounty: null, weightKg: 1 },
-    commission: offer.price * 0.08,
-    deliveryFee: 0,
-    sellerEarnings: offer.price * 0.92,
-    fromRequest: true,
-    requestId: request.id
-  };
-
-  orders.unshift(order);
-  saveOrders();
-  try { sendOrderStatusSMS(order, 'Pending'); } catch (e) { console.error(e); }
-
-  request.status = 'Order Created';
-  request.orderId = order.id;
-  localStorage.setItem('KC_requests', JSON.stringify(requests));
-
-  showToast(`✅ Order placed! Tracking #: ${order.trackingNumber}`, 'success');
-  renderMyRequests();
-  if (typeof renderAdminRequestsPanel === 'function') renderAdminRequestsPanel();
+  showToast('Accepting offers is coming very soon - for now, please contact us directly to complete this order.', 'error');
 }
 window.acceptApprovedOffer = acceptApprovedOffer;
 
 // Buyer declines the approved offer - request goes back to the pool so
 // admin can approve a different seller's offer instead.
-function rejectApprovedOffer(requestId) {
-  const requests = JSON.parse(localStorage.getItem('KC_requests') || '[]');
-  const request = requests.find(r => r.id === requestId);
-  if (!request) { showToast('Request not found.', 'error'); return; }
-
-  const offer = (request.offers || []).find(o => o.id === request.approvedOfferId);
-  if (offer) offer.status = 'rejected';
-  request.approvedOfferId = null;
-  request.status = request.offers.some(o => o.status === 'pending') ? 'Seller Found' : 'Shared with Sellers';
-
-  localStorage.setItem('KC_requests', JSON.stringify(requests));
-  showToast('Offer declined. We\'ll look for another seller for you.', 'success');
-  renderMyRequests();
-  if (typeof renderAdminRequestsPanel === 'function') renderAdminRequestsPanel();
+async function rejectApprovedOffer(requestId) {
+  try {
+    await apiCall(`/requests/${requestId}/decline`, { method: 'POST' });
+    showToast('Offer declined. We\'ll look for another seller for you.', 'success');
+    renderMyRequests();
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
+  }
 }
 window.rejectApprovedOffer = rejectApprovedOffer;
 
@@ -14139,15 +14121,31 @@ function createAdminSellerManagement() {
     `;
 
     adminContent.appendChild(panel);
-    renderAdminRequestsList();
+    _refreshAdminRequestsCache();
   }
   window.createAdminRequestsPanel = createAdminRequestsPanel;
+
+  // Fetches once from the server and caches the result, so typing in
+  // the search box (which calls renderAdminRequestsList() on every
+  // keystroke) filters instantly without re-fetching each time.
+  async function _refreshAdminRequestsCache() {
+    const container = document.getElementById('adminRequestsList');
+    try {
+      const res = await apiCall('/admin/requests');
+      window._adminRequestsCache = (res.data.requests || []).map(_mapApiRequest);
+    } catch (err) {
+      if (container) container.innerHTML = `<div style="color:var(--gray); text-align:center; padding:20px;">Could not load requests: ${escapeHtml(err.message)}</div>`;
+      return;
+    }
+    renderAdminRequestsList();
+  }
+  window._refreshAdminRequestsCache = _refreshAdminRequestsCache;
 
   function renderAdminRequestsList() {
     const container = document.getElementById('adminRequestsList');
     if (!container) return;
 
-    const requests = JSON.parse(localStorage.getItem('KC_requests') || '[]');
+    const requests = window._adminRequestsCache || [];
     const search = (document.getElementById('adminRequestSearch')?.value || '').toLowerCase().trim();
     const statusFilter = document.getElementById('adminRequestStatusFilter')?.value || '';
 
@@ -14216,55 +14214,48 @@ function createAdminSellerManagement() {
   }
   window.renderAdminRequestsList = renderAdminRequestsList;
 
-  function shareRequestWithSellers(requestId) {
-    const requests = JSON.parse(localStorage.getItem('KC_requests') || '[]');
-    const request = requests.find(r => r.id === requestId);
-    if (!request) { showToast('Request not found.', 'error'); return; }
-    request.status = 'Shared with Sellers';
-    localStorage.setItem('KC_requests', JSON.stringify(requests));
-    showToast(`📤 Shared with sellers in "${request.category}".`, 'success');
-    renderAdminRequestsList();
+  async function shareRequestWithSellers(requestId) {
+    const request = (window._adminRequestsCache || []).find(r => r.id === requestId);
+    try {
+      await adminApiCall(`/admin/requests/${requestId}/share`, { method: 'POST' });
+      showToast(`📤 Shared with sellers in "${request ? request.category : 'this category'}".`, 'success');
+      _refreshAdminRequestsCache();
+    } catch (err) {
+      showToast('⚠️ ' + err.message, 'error');
+    }
   }
   window.shareRequestWithSellers = shareRequestWithSellers;
 
-  function approveRequestOffer(requestId, offerId) {
-    const requests = JSON.parse(localStorage.getItem('KC_requests') || '[]');
-    const request = requests.find(r => r.id === requestId);
-    if (!request) { showToast('Request not found.', 'error'); return; }
-    const offer = (request.offers || []).find(o => o.id === offerId);
-    if (!offer) { showToast('Offer not found.', 'error'); return; }
-
-    offer.status = 'approved';
-    request.approvedOfferId = offer.id;
-    request.status = 'Awaiting Buyer Confirmation';
-    localStorage.setItem('KC_requests', JSON.stringify(requests));
-    showToast(`✅ Offer from ${offer.sellerBusinessName} approved and sent to the buyer.`, 'success');
-    renderAdminRequestsList();
+  async function approveRequestOffer(requestId, offerId) {
+    try {
+      const res = await adminApiCall(`/admin/requests/${requestId}/offers/${offerId}/approve`, { method: 'POST' });
+      showToast('✅ ' + res.message, 'success');
+      _refreshAdminRequestsCache();
+    } catch (err) {
+      showToast('⚠️ ' + err.message, 'error');
+    }
   }
   window.approveRequestOffer = approveRequestOffer;
 
-  function rejectRequestOffer(requestId, offerId) {
-    const requests = JSON.parse(localStorage.getItem('KC_requests') || '[]');
-    const request = requests.find(r => r.id === requestId);
-    if (!request) { showToast('Request not found.', 'error'); return; }
-    const offer = (request.offers || []).find(o => o.id === offerId);
-    if (!offer) { showToast('Offer not found.', 'error'); return; }
-
-    offer.status = 'rejected';
-    localStorage.setItem('KC_requests', JSON.stringify(requests));
-    showToast('Offer rejected.', 'success');
-    renderAdminRequestsList();
+  async function rejectRequestOffer(requestId, offerId) {
+    try {
+      await adminApiCall(`/admin/requests/${requestId}/offers/${offerId}/reject`, { method: 'POST' });
+      showToast('Offer rejected.', 'success');
+      _refreshAdminRequestsCache();
+    } catch (err) {
+      showToast('⚠️ ' + err.message, 'error');
+    }
   }
   window.rejectRequestOffer = rejectRequestOffer;
 
-  function cancelAdminRequest(requestId) {
-    const requests = JSON.parse(localStorage.getItem('KC_requests') || '[]');
-    const request = requests.find(r => r.id === requestId);
-    if (!request) { showToast('Request not found.', 'error'); return; }
-    request.status = 'Cancelled';
-    localStorage.setItem('KC_requests', JSON.stringify(requests));
-    showToast('Request cancelled.', 'success');
-    renderAdminRequestsList();
+  async function cancelAdminRequest(requestId) {
+    try {
+      await adminApiCall(`/admin/requests/${requestId}/cancel`, { method: 'POST' });
+      showToast('Request cancelled.', 'success');
+      _refreshAdminRequestsCache();
+    } catch (err) {
+      showToast('⚠️ ' + err.message, 'error');
+    }
   }
   window.cancelAdminRequest = cancelAdminRequest;
 
