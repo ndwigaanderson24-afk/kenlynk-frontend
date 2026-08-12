@@ -6922,11 +6922,17 @@ function escapeHtml(str) {
 
   const pageButtons = document.querySelectorAll(".page-btn");
 
-  pageButtons.forEach(btn=> btn.addEventListener("click", ()=> goToPage(btn.dataset.page)));
+  // Call through window.goToPage explicitly, not the bare identifier -
+  // several features (ShopStream's ssRender trigger among them) wrap
+  // window.goToPage with extra behaviour after this listener is bound.
+  // A bare goToPage(...) call here would keep resolving to this
+  // original, un-wrapped function forever (hoisted local declaration
+  // below), silently skipping everything those later wraps add.
+  pageButtons.forEach(btn=> btn.addEventListener("click", ()=> window.goToPage(btn.dataset.page)));
 
-  document.getElementById("headerCartBtn").addEventListener("click", ()=> goToPage("cart"));
+  document.getElementById("headerCartBtn").addEventListener("click", ()=> window.goToPage("cart"));
 
-  document.getElementById("cartFloat").addEventListener("click", ()=> goToPage("cart"));
+  document.getElementById("cartFloat").addEventListener("click", ()=> window.goToPage("cart"));
 
 
 
