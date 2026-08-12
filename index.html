@@ -14131,7 +14131,7 @@ function createAdminSellerManagement() {
   async function _refreshAdminRequestsCache() {
     const container = document.getElementById('adminRequestsList');
     try {
-      const res = await apiCall('/admin/requests');
+      const res = await adminApiCall('/admin/requests');
       window._adminRequestsCache = (res.data.requests || []).map(_mapApiRequest);
     } catch (err) {
       if (container) container.innerHTML = `<div style="color:var(--gray); text-align:center; padding:20px;">Could not load requests: ${escapeHtml(err.message)}</div>`;
