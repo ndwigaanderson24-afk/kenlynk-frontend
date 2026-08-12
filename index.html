@@ -9637,15 +9637,16 @@ async function renderSellerRequests() {
     return;
   }
 
-  const myCategories = new Set(PRODUCTS.filter(p => p.sellerEmail === currentUser.email).map(p => p.category));
-
-  const matchingRequests = requests.filter(r => isAdmin() || myCategories.has(r.category));
+  // Every seller sees every request admin has shared, regardless of
+  // category - no longer restricted to only categories the seller
+  // already has products listed in.
+  const matchingRequests = requests;
 
   
 
   if (matchingRequests.length === 0) {
 
-    container.innerHTML = '<div style="color:var(--gray); text-align:center; padding:20px;">No matching customer requests right now - we\'ll show requests here once they match a category you sell in.</div>';
+    container.innerHTML = '<div style="color:var(--gray); text-align:center; padding:20px;">No customer requests right now - check back soon.</div>';
 
     return;
 
