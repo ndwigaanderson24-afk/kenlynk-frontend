@@ -8200,6 +8200,8 @@ function mapApiOrder(o, sellerEmailHint) {
 // own orders) - this mirrors the admin's "All Orders" view, which can span
 // every seller and shouldn't get mixed into anyone's own list.
 let adminOrdersMirror = [];
+let adminOrdersOffset = 0;
+let adminOrdersHasMore = false;
 
 function mapApiAdminOrder(o) {
   return {
@@ -17840,7 +17842,7 @@ async function _checkAdminNewOrdersBadge() {
 }
 window._checkAdminNewOrdersBadge = _checkAdminNewOrdersBadge;
 
-async function renderAdminOrdersList() {
+async function renderAdminOrdersList(loadMore) {
   const container = document.getElementById('adminOrdersList');
   if (!container) return;
 
@@ -17850,9 +17852,15 @@ async function renderAdminOrdersList() {
   const badgeEl = document.getElementById('adminNewOrdersBadge');
   if (badgeEl) badgeEl.style.display = 'none';
 
+  const PAGE_SIZE = 50;
+  if (!loadMore) adminOrdersOffset = 0;
+
   try {
-    const result = await adminApiCall('/orders/admin/all');
-    adminOrdersMirror = (result.data.orders || []).map(mapApiAdminOrder);
+    const result = await adminApiCall(`/orders/admin/all?limit=${PAGE_SIZE}&offset=${adminOrdersOffset}`);
+    const page = (result.data.orders || []).map(mapApiAdminOrder);
+    adminOrdersMirror = loadMore ? [...adminOrdersMirror, ...page] : page;
+    adminOrdersHasMore = page.length === PAGE_SIZE;
+    adminOrdersOffset += page.length;
   } catch (err) {
     container.innerHTML = `<div style="color:#f44336; text-align:center; padding:20px;">Could not load orders: ${escapeHtml(err.message)}</div>`;
     return;
@@ -17918,7 +17926,10 @@ async function renderAdminOrdersList() {
 </div>
       </div>
     </div>
-  `).join('');
+  `).join('') + (adminOrdersHasMore ? `
+    <button onclick="renderAdminOrdersList(true)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:10px; padding:12px; cursor:pointer; font-weight:600; font-size:13px; margin-top:8px;">
+      ⬇️ Load More Orders (${adminOrdersMirror.length} shown so far)
+    </button>` : '');
 }
 window.renderAdminOrdersList = renderAdminOrdersList;
 
