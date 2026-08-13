@@ -7148,6 +7148,8 @@ function escapeHtml(str) {
 
       createAdminPricingPanel();
 
+      createAdminNotificationsPanel();
+
       _checkAdminNewOrdersBadge();
 
       createAdminCommissionPanel();
@@ -8627,12 +8629,12 @@ async function renderNotifications(containerIds) {
 
   parent.style.display = 'block';
   container.innerHTML = allNotifications.map(n => `
-    <div onclick="markNotificationRead(${n.id})" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); cursor:pointer; ${n.is_read ? 'opacity:0.6;' : ''}">
-      <div>
-        <span style="color:var(--gold);">${n.is_read ? '' : '🔵 '}${escapeHtml(n.title)}</span>
-        <span style="color:var(--white); margin-left:8px;">${escapeHtml(n.message || '')}</span>
+    <div onclick="markNotificationRead(${n.id})" style="padding:10px 0; border-bottom:1px solid var(--border); cursor:pointer; ${n.is_read ? 'opacity:0.6;' : ''}">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap;">
+        <span style="color:var(--gold); font-weight:600; min-width:0;">${n.is_read ? '' : '🔵 '}${escapeHtml(n.title)}</span>
+        <span style="color:var(--gray); font-size:11px; flex-shrink:0;">${new Date(n.created_at).toLocaleDateString('en-KE')}</span>
       </div>
-      <span style="color:var(--gray); font-size:11px;">${new Date(n.created_at).toLocaleDateString('en-KE')}</span>
+      <div style="color:var(--white); font-size:13px; margin-top:3px; line-height:1.4; overflow-wrap:break-word;">${escapeHtml(n.message || '')}</div>
     </div>
   `).join('');
 }
@@ -14588,6 +14590,49 @@ function createAdminSellerManagement() {
     }
     if (btn) { btn.disabled = false; btn.textContent = 'Migrate Existing Products Now'; }
   };
+
+  // ── Admin Notifications panel ──────────────────────────────────────
+  function createAdminNotificationsPanel() {
+    const adminContent = document.getElementById('page-admin');
+    if (!adminContent) return;
+    let existing = document.querySelector('#adminNotificationsPanel');
+    if (existing) existing.remove();
+
+    const panel = document.createElement('div');
+    panel.id = 'adminNotificationsPanel';
+    panel.style.cssText = 'margin-top:24px; background:var(--surface); border:1px solid var(--border-strong); border-radius:16px; padding:24px;';
+
+    panel.innerHTML = `
+      <h3 style="font-family:var(--font-display); margin-bottom:8px;">🔔 Notifications</h3>
+      <p style="color:var(--gray); font-size:13px; margin-bottom:16px;">Every new order, with full details, arrives here the moment it's placed - use the order number to look anything up.</p>
+      <div id="adminNotificationsList"></div>
+    `;
+
+    adminContent.appendChild(panel);
+    _refreshAdminNotifications();
+  }
+  window.createAdminNotificationsPanel = createAdminNotificationsPanel;
+
+  async function _refreshAdminNotifications() {
+    const container = document.getElementById('adminNotificationsList');
+    try {
+      const res = await adminApiCall('/admin/notifications');
+      const notifications = res.data.notifications || [];
+      if (container) {
+        container.innerHTML = notifications.length ? notifications.map(n => `
+          <div style="padding:10px 0; border-bottom:1px solid var(--border);">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap;">
+              <span style="color:var(--gold); font-weight:600; min-width:0;">${escapeHtml(n.title)}</span>
+              <span style="color:var(--gray); font-size:11px; flex-shrink:0;">${new Date(n.created_at).toLocaleString('en-KE')}</span>
+            </div>
+            <div style="color:var(--white); font-size:13px; margin-top:3px; line-height:1.4; overflow-wrap:break-word;">${escapeHtml(n.message || '')}</div>
+          </div>`).join('') : `<div style="text-align:center;padding:24px;color:var(--gray);">No notifications yet.</div>`;
+      }
+    } catch (err) {
+      if (container) container.innerHTML = `<div style="color:var(--gray); text-align:center; padding:20px;">Could not load notifications: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+  window._refreshAdminNotifications = _refreshAdminNotifications;
 
   // Fetches once from the server and caches the result, so typing in
   // the search box (which calls renderAdminRequestsList() on every
