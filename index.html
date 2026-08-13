@@ -356,13 +356,16 @@
     }
     /* Comment panel had no positioning at all before - it was falling
        into normal document flow with no overlay/z-index, effectively
-       unreachable on screen. */
+       unreachable on screen. Using position:fixed instead of absolute -
+       it anchors to the actual screen rather than relying on staying
+       correctly within a card that lives inside a scroll-snap feed,
+       which was pushing it out of view below the visible video. */
     .ss-comments{
-      position:absolute; left:0; right:0; bottom:0; z-index:20;
-      background:rgba(10,10,10,0.92); backdrop-filter:blur(10px);
+      position:fixed; left:0; right:0; bottom:0; z-index:200;
+      background:rgba(10,10,10,0.95); backdrop-filter:blur(10px);
       border-radius:20px 20px 0 0; padding:16px;
-      max-height:50%; display:flex; flex-direction:column;
-      box-shadow:0 -4px 20px rgba(0,0,0,0.4);
+      max-height:55vh; display:flex; flex-direction:column;
+      box-shadow:0 -4px 20px rgba(0,0,0,0.5);
     }
     .ss-live-badge{display:inline-flex;align-items:center;gap:4px;background:#e74c3c;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;animation:pulse 1.5s infinite;}
     .sub-plan-card{ transition:all 0.15s ease; }
@@ -7003,6 +7006,17 @@ function escapeHtml(str) {
     if (target) target.classList.add("active");
 
     pageButtons.forEach(b=> b.classList.toggle("active", b.dataset.page === page));
+
+    // The floating cart/account buttons sit at z-index:60, right in the
+    // same bottom-right corner ShopStream's like/save/comment/share
+    // column uses - they were sitting on top of and physically blocking
+    // taps on those buttons. Hide them specifically on ShopStream,
+    // matching how other short-video apps don't show persistent
+    // floating chrome over the video feed either.
+    const cartFloatEl = document.getElementById("cartFloat");
+    const userBtnEl = document.getElementById("userBtn");
+    if (cartFloatEl) cartFloatEl.style.display = (page === "shopstream") ? "none" : "";
+    if (userBtnEl) userBtnEl.style.display = (page === "shopstream") ? "none" : "";
 
     
 
