@@ -7121,6 +7121,8 @@ function escapeHtml(str) {
 
       createAdminShopstreamPanel();
 
+      createAdminPricingPanel();
+
       createAdminCommissionPanel();
 
       renderAdminLogoPanel();
@@ -14341,6 +14343,186 @@ function createAdminSellerManagement() {
       showToast('⚠️ ' + err.message, 'error');
     }
     _refreshAdminShopstreamCache();
+  };
+
+  // ── Pricing Engine admin panel ─────────────────────────────────────
+  function createAdminPricingPanel() {
+    const adminContent = document.getElementById('page-admin');
+    if (!adminContent) return;
+    let existing = document.querySelector('#adminPricingPanel');
+    if (existing) existing.remove();
+
+    const panel = document.createElement('div');
+    panel.id = 'adminPricingPanel';
+    panel.style.cssText = 'margin-top:24px; background:var(--surface); border:1px solid var(--border-strong); border-radius:16px; padding:24px;';
+
+    panel.innerHTML = `
+      <h3 style="font-family:var(--font-display); margin-bottom:8px;">💰 Pricing Engine</h3>
+      <p style="color:var(--gray); font-size:13px; margin-bottom:16px;">Buyers only ever see the final price - this is where you control what's baked into it. Category/value-specific rules below override these defaults when they match.</p>
+      <div id="adminPricingSettings" style="margin-bottom:20px;"></div>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <h4 style="font-family:var(--font-display); font-size:14px; margin:0;">Category & Value Rules</h4>
+        <button onclick="window._openPricingRuleModal()" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:700;font-size:12px;">+ Add Rule</button>
+      </div>
+      <div id="adminPricingRulesList"></div>
+    `;
+
+    adminContent.appendChild(panel);
+    _refreshAdminPricingPanel();
+  }
+  window.createAdminPricingPanel = createAdminPricingPanel;
+
+  async function _refreshAdminPricingPanel() {
+    const settingsEl = document.getElementById('adminPricingSettings');
+    const rulesEl = document.getElementById('adminPricingRulesList');
+
+    try {
+      const settingsRes = await adminApiCall('/admin/pricing/settings');
+      const s = settingsRes.data.settings;
+      if (settingsEl) {
+        settingsEl.innerHTML = `
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px;">
+            <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:var(--white);">Defaults (used when no rule below matches a product)</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">
+              <div><label style="font-size:11px;color:var(--gray);">Margin type</label>
+                <select id="pDefMarginType" style="width:100%;"><option value="percent" ${s.default_margin_type==='percent'?'selected':''}>%</option><option value="fixed" ${s.default_margin_type==='fixed'?'selected':''}>Fixed KES</option></select></div>
+              <div><label style="font-size:11px;color:var(--gray);">Margin value</label>
+                <input type="number" id="pDefMarginValue" value="${s.default_margin_value}" style="width:100%;"></div>
+              <div><label style="font-size:11px;color:var(--gray);">Delivery type</label>
+                <select id="pDefDeliveryType" style="width:100%;"><option value="percent" ${s.default_delivery_type==='percent'?'selected':''}>%</option><option value="fixed" ${s.default_delivery_type==='fixed'?'selected':''}>Fixed KES</option></select></div>
+              <div><label style="font-size:11px;color:var(--gray);">Delivery value</label>
+                <input type="number" id="pDefDeliveryValue" value="${s.default_delivery_value}" style="width:100%;"></div>
+              <div><label style="font-size:11px;color:var(--gray);">Fragile risk type</label>
+                <select id="pFragileType" style="width:100%;"><option value="percent" ${s.fragile_risk_type==='percent'?'selected':''}>%</option><option value="fixed" ${s.fragile_risk_type==='fixed'?'selected':''}>Fixed KES</option></select></div>
+              <div><label style="font-size:11px;color:var(--gray);">Fragile risk value</label>
+                <input type="number" id="pFragileValue" value="${s.fragile_risk_value}" style="width:100%;"></div>
+            </div>
+            <button onclick="window._saveAdminPricingSettings()" style="margin-top:12px;background:var(--green);border:none;color:#fff;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Save Defaults</button>
+          </div>`;
+      }
+    } catch (err) {
+      if (settingsEl) settingsEl.innerHTML = `<div style="color:var(--gray);">Could not load settings: ${escapeHtml(err.message)}</div>`;
+    }
+
+    try {
+      const rulesRes = await adminApiCall('/admin/pricing/rules');
+      const rules = rulesRes.data.rules || [];
+      window._pricingRulesCache = rules;
+      if (rulesEl) {
+        rulesEl.innerHTML = rules.length ? rules.map(r => `
+          <div style="display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--surface-2);border-radius:10px;margin-bottom:6px;border:1px solid var(--border);${r.active?'':'opacity:0.5;'}">
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;color:var(--white);font-size:13px;">${escapeHtml(r.name)} ${r.active?'':'<span style="color:var(--gray);font-size:10px;">(inactive)</span>'}</div>
+              <div style="font-size:11px;color:var(--gray);margin-top:2px;">
+                ${r.category ? escapeHtml(r.category) : 'All categories'} · KES ${Number(r.min_value).toLocaleString()}${r.max_value!=null?' - '+Number(r.max_value).toLocaleString():'+'}
+                · Margin: ${r.margin_type==='percent'?r.margin_value+'%':'KES '+r.margin_value}
+                · Delivery: ${r.delivery_type==='percent'?r.delivery_value+'%':'KES '+r.delivery_value}
+                · Priority ${r.priority}
+              </div>
+            </div>
+            <button onclick="window._openPricingRuleModal(${r.id})" style="background:var(--surface-3);border:1px solid var(--border-strong);color:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;flex-shrink:0;">✏️ Edit</button>
+            <button onclick="window._deletePricingRule(${r.id})" style="background:#e74c3c;border:none;color:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;flex-shrink:0;">🗑️</button>
+          </div>`).join('') : `<div style="text-align:center;padding:20px;color:var(--gray);">No custom rules yet - every product uses the defaults above.</div>`;
+      }
+    } catch (err) {
+      if (rulesEl) rulesEl.innerHTML = `<div style="color:var(--gray); text-align:center; padding:20px;">Could not load rules: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+  window._refreshAdminPricingPanel = _refreshAdminPricingPanel;
+
+  window._saveAdminPricingSettings = async function() {
+    try {
+      await adminApiCall('/admin/pricing/settings', {
+        method: 'PUT',
+        body: JSON.stringify({
+          default_margin_type: document.getElementById('pDefMarginType').value,
+          default_margin_value: Number(document.getElementById('pDefMarginValue').value),
+          default_delivery_type: document.getElementById('pDefDeliveryType').value,
+          default_delivery_value: Number(document.getElementById('pDefDeliveryValue').value),
+          fragile_risk_type: document.getElementById('pFragileType').value,
+          fragile_risk_value: Number(document.getElementById('pFragileValue').value)
+        })
+      });
+      showToast('✅ Pricing defaults saved.', 'success');
+    } catch (err) {
+      showToast('⚠️ ' + err.message, 'error');
+    }
+  };
+
+  window._openPricingRuleModal = function(ruleId) {
+    const rule = ruleId ? (window._pricingRulesCache || []).find(r => r.id === ruleId) : null;
+    let m = document.getElementById('pricingRuleModal');
+    if (!m) { m = document.createElement('div'); m.id = 'pricingRuleModal'; m.style.cssText = 'display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;padding:20px;'; document.body.appendChild(m); }
+    m.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border-strong);border-radius:16px;padding:24px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto;position:relative;">
+        <button onclick="document.getElementById('pricingRuleModal').style.display='none'" style="position:absolute;top:14px;right:14px;background:var(--surface-2);border:1px solid var(--border-strong);color:var(--white);border-radius:8px;padding:5px 12px;cursor:pointer;">✕</button>
+        <h3 style="font-family:var(--font-display);margin-bottom:14px;">${rule ? 'Edit' : 'Add'} Pricing Rule</h3>
+        <input type="hidden" id="prId" value="${rule ? rule.id : ''}">
+        <div class="field"><label>Rule name *</label><input type="text" id="prName" value="${rule ? escapeHtml(rule.name) : ''}" placeholder="e.g. Electronics over 10k"></div>
+        <div class="field"><label>Category (blank = all categories)</label><input type="text" id="prCategory" value="${rule ? escapeHtml(rule.category||'') : ''}" placeholder="e.g. electronics"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="field"><label>Min value (KES)</label><input type="number" id="prMinValue" value="${rule ? rule.min_value : 0}"></div>
+          <div class="field"><label>Max value (blank = no limit)</label><input type="number" id="prMaxValue" value="${rule && rule.max_value!=null ? rule.max_value : ''}"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="field"><label>Margin type</label><select id="prMarginType"><option value="percent" ${!rule||rule.margin_type==='percent'?'selected':''}>%</option><option value="fixed" ${rule&&rule.margin_type==='fixed'?'selected':''}>Fixed KES</option></select></div>
+          <div class="field"><label>Margin value *</label><input type="number" id="prMarginValue" value="${rule ? rule.margin_value : ''}"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="field"><label>Delivery type</label><select id="prDeliveryType"><option value="fixed" ${!rule||rule.delivery_type==='fixed'?'selected':''}>Fixed KES</option><option value="percent" ${rule&&rule.delivery_type==='percent'?'selected':''}>%</option></select></div>
+          <div class="field"><label>Delivery value *</label><input type="number" id="prDeliveryValue" value="${rule ? rule.delivery_value : ''}"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;">
+          <div class="field"><label>Priority (higher wins ties)</label><input type="number" id="prPriority" value="${rule ? rule.priority : 0}"></div>
+          <div class="field" style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="prActive" style="width:auto;" ${!rule||rule.active?'checked':''}><label style="margin:0;">Active</label></div>
+        </div>
+        <button onclick="window._savePricingRule()" style="width:100%;background:var(--green);border:none;color:#fff;border-radius:10px;padding:12px;cursor:pointer;font-weight:700;font-size:14px;margin-top:8px;">${rule ? 'Save Changes' : 'Create Rule'}</button>
+      </div>`;
+    m.style.display = 'flex';
+  };
+
+  window._savePricingRule = async function() {
+    const id = document.getElementById('prId').value;
+    const name = document.getElementById('prName').value.trim();
+    const marginValue = document.getElementById('prMarginValue').value;
+    const deliveryValue = document.getElementById('prDeliveryValue').value;
+    if (!name || marginValue === '' || deliveryValue === '') {
+      showToast('Name, margin value, and delivery value are required.', 'error');
+      return;
+    }
+    const maxValueRaw = document.getElementById('prMaxValue').value;
+    const body = {
+      name,
+      category: document.getElementById('prCategory').value.trim() || null,
+      min_value: Number(document.getElementById('prMinValue').value) || 0,
+      max_value: maxValueRaw === '' ? null : Number(maxValueRaw),
+      margin_type: document.getElementById('prMarginType').value,
+      margin_value: Number(marginValue),
+      delivery_type: document.getElementById('prDeliveryType').value,
+      delivery_value: Number(deliveryValue),
+      priority: Number(document.getElementById('prPriority').value) || 0,
+      active: document.getElementById('prActive').checked
+    };
+    try {
+      if (id) await adminApiCall(`/admin/pricing/rules/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+      else await adminApiCall('/admin/pricing/rules', { method: 'POST', body: JSON.stringify(body) });
+      showToast(id ? '✅ Rule updated.' : '✅ Rule created.', 'success');
+      document.getElementById('pricingRuleModal').style.display = 'none';
+      _refreshAdminPricingPanel();
+    } catch (err) {
+      showToast('⚠️ ' + err.message, 'error');
+    }
+  };
+
+  window._deletePricingRule = async function(id) {
+    if (!confirm('Delete this pricing rule? Products already priced under it keep their current price - this only affects future calculations.')) return;
+    try {
+      await adminApiCall(`/admin/pricing/rules/${id}`, { method: 'DELETE' });
+      showToast('🗑️ Rule deleted.', 'success');
+    } catch (err) {
+      showToast('⚠️ ' + err.message, 'error');
+    }
+    _refreshAdminPricingPanel();
   };
 
   // Fetches once from the server and caches the result, so typing in
