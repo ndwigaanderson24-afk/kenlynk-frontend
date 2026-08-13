@@ -3670,7 +3670,7 @@
 
     <div style="background:var(--surface); border:1px solid var(--border-strong); border-radius:16px; padding:24px; margin-top:24px;">
 
-      <h3 style="font-family:var(--font-display); margin-bottom:16px;" id="allOrdersAdminTitleEl">📋 All Orders (Admin)</h3>
+      <h3 style="font-family:var(--font-display); margin-bottom:16px; display:flex; align-items:center; gap:10px;" id="allOrdersAdminTitleEl">📋 All Orders (Admin) <span id="adminNewOrdersBadge" style="display:none; background:#e74c3c; color:#fff; font-size:12px; font-weight:700; padding:3px 10px; border-radius:999px;"></span></h3>
 
       <div id="adminSellerEarningsOverview" style="margin-bottom:16px;"></div>
 
@@ -7148,6 +7148,8 @@ function escapeHtml(str) {
 
       createAdminPricingPanel();
 
+      _checkAdminNewOrdersBadge();
+
       createAdminCommissionPanel();
 
       renderAdminLogoPanel();
@@ -8599,9 +8601,10 @@ function updateCartTotals() {
 }
 window.updateCartTotals = updateCartTotals;
 
-async function renderNotifications() {
-  const container = document.getElementById('notificationList');
-  const parent = document.getElementById('buyerNotifications');
+async function renderNotifications(containerIds) {
+  const ids = containerIds || { parent: 'buyerNotifications', list: 'notificationList' };
+  const container = document.getElementById(ids.list);
+  const parent = document.getElementById(ids.parent);
   if (!container || !parent) return;
   if (!currentUser) { parent.style.display = 'none'; return; }
 
@@ -8637,6 +8640,7 @@ async function markNotificationRead(id) {
   try {
     await apiCall(`/auth/notifications/${id}/read`, { method: 'PUT' });
     renderNotifications();
+    renderNotifications({ parent: 'sellerNotifications', list: 'sellerNotificationList' });
   } catch (err) {
     console.error('Could not mark notification read:', err.message);
   }
@@ -16036,6 +16040,11 @@ function renderSellerOverview() {
       </div>
     </div>
 
+    <div id="sellerNotifications" style="display:none; background:var(--surface); border:1px solid var(--border-strong); border-radius:16px; padding:16px; margin-bottom:16px;">
+      <h4 style="font-family:var(--font-display); font-size:14px; margin-bottom:8px;">🔔 Order Notifications</h4>
+      <div id="sellerNotificationList"></div>
+    </div>
+
     <div class="seller-stats-grid">
       <div class="seller-stat-card"><div class="icon">💰</div><div class="value">KES ${Math.round(earnings.total).toLocaleString()}</div><div class="label">${t('sellerOverviewTotalRevenue')}</div></div>
       <div class="seller-stat-card"><div class="icon">🧾</div><div class="value">${earnings.orders}</div><div class="label">${t('sellerOverviewTotalOrders')}</div></div>
@@ -16065,6 +16074,8 @@ function renderSellerOverview() {
         `).join('')}
     </div>
   `;
+
+  renderNotifications({ parent: 'sellerNotifications', list: 'sellerNotificationList' });
 }
 window.renderSellerOverview = renderSellerOverview;
 
@@ -17807,9 +17818,37 @@ function renderAdminSellerEarningsOverview() {
 }
 window.renderAdminSellerEarningsOverview = renderAdminSellerEarningsOverview;
 
+// "New orders since I last checked" badge - the admin's own browser
+// remembers when they last viewed the orders list, and asks the server
+// how many genuinely new orders have come in since then.
+async function _checkAdminNewOrdersBadge() {
+  const badgeEl = document.getElementById('adminNewOrdersBadge');
+  if (!badgeEl) return;
+  const since = localStorage.getItem('kenlynk_admin_orders_last_checked') || new Date(Date.now() - 24*60*60*1000).toISOString();
+  try {
+    const res = await adminApiCall(`/orders/admin/new-count?since=${encodeURIComponent(since)}`);
+    const count = res.data.count || 0;
+    if (count > 0) {
+      badgeEl.textContent = `🆕 ${count} new`;
+      badgeEl.style.display = 'inline-block';
+    } else {
+      badgeEl.style.display = 'none';
+    }
+  } catch (err) {
+    console.error('Could not check new orders count:', err.message);
+  }
+}
+window._checkAdminNewOrdersBadge = _checkAdminNewOrdersBadge;
+
 async function renderAdminOrdersList() {
   const container = document.getElementById('adminOrdersList');
   if (!container) return;
+
+  // Viewing the orders list counts as "seen" - clear the badge and
+  // reset the "last checked" marker for next time.
+  localStorage.setItem('kenlynk_admin_orders_last_checked', new Date().toISOString());
+  const badgeEl = document.getElementById('adminNewOrdersBadge');
+  if (badgeEl) badgeEl.style.display = 'none';
 
   try {
     const result = await adminApiCall('/orders/admin/all');
