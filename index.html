@@ -18009,6 +18009,7 @@ function ssSaved() { try { return JSON.parse(localStorage.getItem(SS_SAVED_KEY)|
 let ssActiveCat = 'all';
 let ssCatOpen   = false;
 let ssVideoBlobUrl = null;
+let ssVideoFile = null; // the actual File object, needed to read+upload real bytes - the blob URL alone is browser-local and can't be sent anywhere
 let ssThumbDataUrl = null;
 let ssLiveStream   = null;
 let ssLiveFacing   = 'environment';
@@ -18051,13 +18052,41 @@ const SS_CATS = [
   {k:'home',l:'🏡 Home'}, {k:'kitchen',l:'🍳 Kitchen'}, {k:'appliances',l:'⚡ Appliances'},
 ];
 
+// Translates the real API's field names into the exact shape buildCard()
+// already expects, so only the data source changes (server instead of
+// localStorage), not the card-rendering logic itself. videoBlobUrl now
+// points at the real /raw endpoint, which serves the actual video bytes
+// directly - a normal <video src="..."> works with it exactly like an
+// <img src="..."> would for a photo.
+function _mapApiShopstreamVideo(v) {
+  return {
+    id: v.id,
+    videoBlobUrl: `${API_BASE}/shopstream-videos/${v.id}/raw`,
+    thumbnail: v.thumbnail || '',
+    productIds: (v.product_ids || '').split(',').filter(Boolean).map(Number),
+    sellerName: v.seller_business_name || v.seller_email || 'KenLynk Seller',
+    sellerEmail: v.seller_email || '',
+    caption: v.caption || '', title: v.title,
+    hashtags: (v.hashtags || '').split(',').filter(Boolean),
+    views: v.view_count || 0, likes: v.like_count || 0, saves: v.save_count || 0,
+    commentCount: v.comment_count || 0,
+    status: v.status, createdAt: v.created_at
+  };
+}
+
 // ── Render feed ───────────────────────────────────────────────────────
-function ssRender() {
+async function ssRender() {
   const feed  = el('ssVideoFeed');
   const empty = el('ssEmpty');
   if (!feed) return;
 
-  const all = ssLoad();
+  let all = [];
+  try {
+    const res = await apiCall('/shopstream-videos');
+    all = (res.data.videos || []).map(_mapApiShopstreamVideo);
+  } catch (err) {
+    console.error('Could not load ShopStream videos:', err.message);
+  }
   const list = ssActiveCat === 'all'
     ? all.filter(v => v.status === 'published')
     : all.filter(v => v.status === 'published' && v.category === ssActiveCat);
@@ -18163,7 +18192,7 @@ function buildCard(v) {
           ${saved?'🔖':'🏷️'}<span>${(v.saves||0).toLocaleString()}</span>
         </button>
         <button onclick="event.stopPropagation();ssToggleComments('${v.id}')" class="ss-act-btn">
-          💬<span>${(v.comments||[]).length}</span>
+          💬<span>${(v.commentCount||0).toLocaleString()}</span>
         </button>
         <button onclick="event.stopPropagation();ssShare('${v.id}')" class="ss-act-btn">
           ↗️<span>Share</span>
@@ -18180,9 +18209,7 @@ function buildCard(v) {
           <button onclick="event.stopPropagation();ssToggleComments('${v.id}')" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;">✕</button>
         </div>
         <div id="ssCmtList_${v.id}" style="max-height:120px;overflow-y:auto;margin-bottom:10px;scrollbar-width:none;">
-          ${(v.comments||[]).length
-            ? (v.comments||[]).map(c=>`<div style="display:flex;gap:6px;margin-bottom:8px;"><div style="width:26px;height:26px;border-radius:50%;background:#333;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;">👤</div><div><div style="color:rgba(255,255,255,0.5);font-size:10px;">${esc(c.name||'Buyer')}</div><div style="color:#fff;font-size:12px;">${esc(c.text)}</div></div></div>`).join('')
-            : '<div style="color:rgba(255,255,255,0.4);font-size:12px;text-align:center;padding:8px 0;">No comments yet. Be first!</div>'}
+          <div style="color:rgba(255,255,255,0.4);font-size:12px;text-align:center;padding:8px 0;">Loading comments…</div>
         </div>
         <div style="display:flex;gap:6px;">
           <input id="ssCmtInp_${v.id}" placeholder="Add a comment…" onclick="event.stopPropagation()"
@@ -18195,80 +18222,97 @@ function buildCard(v) {
 }
 
 // ── Actions ───────────────────────────────────────────────────────────
-function ssLike(id, btn) {
-  const all = ssLoad();
-  const v = all.find(v => v.id === id);
-  if (!v) return;
+async function ssLike(id, btn) {
   const liked = ssLiked();
-  if (liked.includes(id)) {
-    v.likes = Math.max(0,(v.likes||0)-1);
-    localStorage.setItem(SS_LIKED_KEY, JSON.stringify(liked.filter(l=>l!==id)));
-    if (btn) { btn.innerHTML = `🤍<span>${v.likes}</span>`; btn.classList.remove('liked'); }
-  } else {
-    v.likes = (v.likes||0)+1;
-    localStorage.setItem(SS_LIKED_KEY, JSON.stringify([...liked, id]));
-    if (btn) {
-      btn.innerHTML = `❤️<span>${v.likes}</span>`;
-      btn.classList.add('liked');
-      btn.style.transform = 'scale(1.4)';
-      setTimeout(()=>btn.style.transform='', 200);
-    }
+  const alreadyLiked = liked.includes(id);
+  // Instant visual feedback first, so the tap feels responsive - then
+  // sync the real count from the server.
+  if (btn) {
+    if (alreadyLiked) { btn.classList.remove('liked'); }
+    else { btn.classList.add('liked'); btn.style.transform = 'scale(1.4)'; setTimeout(()=>btn.style.transform='', 200); }
   }
-  ssSave(all);
+  localStorage.setItem(SS_LIKED_KEY, JSON.stringify(alreadyLiked ? liked.filter(l=>l!==id) : [...liked, id]));
+
+  if (alreadyLiked) return; // no "unlike" on the server side - likes are a simple running count, matching the live-stream reaction style
+  try {
+    const res = await apiCall(`/shopstream-videos/${id}/like`, { method: 'POST' });
+    if (btn) btn.innerHTML = `❤️<span>${res.data.like_count.toLocaleString()}</span>`;
+  } catch (err) { /* non-fatal - the tap still felt responsive */ }
 }
 
-function ssSaveVid(id, btn) {
-  const all = ssLoad();
-  const v = all.find(v => v.id === id);
-  if (!v) return;
+async function ssSaveVid(id, btn) {
   const saved = ssSaved();
   if (saved.includes(id)) { toast('Already saved!','error'); return; }
-  v.saves = (v.saves||0)+1;
   localStorage.setItem(SS_SAVED_KEY, JSON.stringify([...saved, id]));
-  ssSave(all);
-  if (btn) btn.innerHTML = `🔖<span>${v.saves}</span>`;
-  toast('Video saved! 🔖','success');
+  try {
+    const res = await apiCall(`/shopstream-videos/${id}/save`, { method: 'POST' });
+    if (btn) btn.innerHTML = `🔖<span>${res.data.save_count.toLocaleString()}</span>`;
+    toast('Video saved! 🔖','success');
+  } catch (err) {
+    toast('⚠️ ' + err.message, 'error');
+  }
 }
 
 function ssShare(id) {
+  const shareUrl = `${location.origin}${location.pathname}?video=${id}`;
   if (navigator.share) {
-    navigator.share({title:'KenLynk ShopStream', text:'Check this out!', url:'https://kenlynk.com'});
+    navigator.share({title:'KenLynk ShopStream', text:'Check this out!', url: shareUrl});
   } else {
-    navigator.clipboard?.writeText('https://kenlynk.com');
+    navigator.clipboard?.writeText(shareUrl);
     toast('Link copied! Share KenLynk 🎉','success');
   }
 }
 
-function ssToggleComments(id) {
+async function ssToggleComments(id) {
   document.querySelectorAll('.ss-comments').forEach(p => {
     if (p.id !== 'ssCmts_'+id) p.style.display = 'none';
   });
   const panel = el('ssCmts_'+id);
-  if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  if (!panel) return;
+  const opening = panel.style.display === 'none';
+  panel.style.display = opening ? 'block' : 'none';
+  if (!opening || panel.dataset.loaded) return;
+
+  const list = el('ssCmtList_'+id);
+  try {
+    const res = await apiCall(`/shopstream-videos/${id}/comments`);
+    const comments = res.data.comments || [];
+    if (list) {
+      list.innerHTML = comments.length
+        ? comments.map(c=>`<div style="display:flex;gap:6px;margin-bottom:8px;"><div style="width:26px;height:26px;border-radius:50%;background:#333;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;">👤</div><div><div style="color:rgba(255,255,255,0.5);font-size:10px;">${esc(c.sender_name||'Buyer')}</div><div style="color:#fff;font-size:12px;">${esc(c.comment)}</div></div></div>`).join('')
+        : '<div style="color:rgba(255,255,255,0.4);font-size:12px;text-align:center;padding:8px 0;">No comments yet. Be first!</div>';
+    }
+    panel.dataset.loaded = '1';
+  } catch (err) {
+    if (list) list.innerHTML = `<div style="color:rgba(255,255,255,0.4);font-size:12px;text-align:center;padding:8px 0;">Could not load comments.</div>`;
+  }
 }
 
-function ssPostComment(id) {
+async function ssPostComment(id) {
   const inp = el('ssCmtInp_'+id);
   const text = inp?.value.trim();
   if (!text) return;
+  if (inp) inp.value = '';
   const user = getUser();
-  const all = ssLoad();
-  const v = all.find(v => v.id === id);
-  if (!v) return;
-  if (!v.comments) v.comments = [];
-  const c = {name: user?.name||'Buyer', text, ts: Date.now()};
-  v.comments.push(c);
-  ssSave(all);
+  try {
+    await apiCall(`/shopstream-videos/${id}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ comment: text, sender_name: user?.name || 'Guest' })
+    });
+  } catch (err) {
+    toast('⚠️ Could not post comment: ' + err.message, 'error');
+    return;
+  }
   const list = el('ssCmtList_'+id);
   if (list) {
+    if (list.querySelector('div[style*="No comments yet"]')) list.innerHTML = '';
     list.insertAdjacentHTML('beforeend',
       `<div style="display:flex;gap:6px;margin-bottom:8px;">
         <div style="width:26px;height:26px;border-radius:50%;background:#00673f;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;">👤</div>
-        <div><div style="color:rgba(255,255,255,0.5);font-size:10px;">${esc(c.name)}</div><div style="color:#fff;font-size:12px;">${esc(text)}</div></div>
+        <div><div style="color:rgba(255,255,255,0.5);font-size:10px;">${esc(user?.name||'Guest')}</div><div style="color:#fff;font-size:12px;">${esc(text)}</div></div>
       </div>`);
     list.scrollTop = list.scrollHeight;
   }
-  if (inp) inp.value = '';
 }
 
 // ── Category strip ────────────────────────────────────────────────────
@@ -18283,9 +18327,12 @@ function ssRenderCats() {
 // ── Video file handling ───────────────────────────────────────────────
 function ssHandleVideoFile(file) {
   if (!file || !file.type.startsWith('video/')) { toast('Please select a video file.','error'); return; }
-  if (file.size > 250*1024*1024) { toast('Video too large. Max 250MB.','error'); return; }
+  // ~12MB raw keeps the base64-encoded upload safely under the server's
+  // request size limit - short clips (20-30s) work well at this size.
+  if (file.size > 12*1024*1024) { toast('Video too large. Please keep clips under 12MB (about 20-30 seconds) or compress first.','error'); return; }
   if (ssVideoBlobUrl) URL.revokeObjectURL(ssVideoBlobUrl);
   ssVideoBlobUrl = URL.createObjectURL(file);
+  ssVideoFile = file;
 
   const preview = el('ssVideoPreview');
   const wrap    = el('ssVideoPreviewWrap');
@@ -18306,6 +18353,7 @@ function ssHandleVideoFile(file) {
 
 function ssClearVideo() {
   if (ssVideoBlobUrl) { URL.revokeObjectURL(ssVideoBlobUrl); ssVideoBlobUrl = null; }
+  ssVideoFile = null;
   const preview = el('ssVideoPreview');
   const wrap    = el('ssVideoPreviewWrap');
   const dropzone= el('ssVideoDropzone');
@@ -18349,42 +18397,57 @@ function ssOpenUpload() {
   if (modal) modal.style.display = 'flex';
 }
 
-function ssSaveVideo(status) {
+async function ssSaveVideo(status) {
   const title    = el('ssTitle')?.value.trim();
   const caption  = el('ssCaption')?.value.trim();
   const category = el('ssCategorySelect')?.value || 'all';
   const hashRaw  = el('ssHashtags')?.value || '';
   const hashtags = hashRaw.split(',').map(h=>h.trim().replace('#','')).filter(Boolean);
-  const user     = getUser();
 
   if (!title) { toast('Video title is required.','error'); return; }
-  if (!ssVideoBlobUrl) { toast('Please upload a video first.','error'); return; }
+  if (!ssVideoFile) { toast('Please upload a video first.','error'); return; }
 
   const checked = [...(el('ssProductPicker')?.querySelectorAll('input[type=checkbox]:checked')||[])];
   const productIds = checked.map(c=>Number(c.value));
 
-  const all = ssLoad();
-  all.unshift({
-    id: 'ss_'+Date.now(), title, caption,
-    videoBlobUrl: ssVideoBlobUrl,
-    thumbnail: ssThumbDataUrl||'',
-    category, hashtags, productIds, status,
-    sellerName: user?.seller_business_name||user?.name||'KenLynk Seller',
-    sellerEmail: user?.email||'',
-    likes:0, saves:0, views:0, comments:[],
-    createdAt: new Date().toISOString()
-  });
-  ssSave(all);
+  const saveBtn = document.querySelector('#ssUploadModal [onclick*="ssSaveVideo"]');
+  if (saveBtn) saveBtn.disabled = true;
+  toast('Uploading video…', 'success');
 
-  // Keep the blob URL alive — don't revoke
-  ssVideoBlobUrl = null;
-  ssThumbDataUrl = null;
+  try {
+    // Read the real file's bytes as base64 - the blob URL used for the
+    // local preview is browser-only and can't be sent to the server.
+    const videoData = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('Could not read the video file.'));
+      reader.readAsDataURL(ssVideoFile);
+    });
 
-  const modal = el('ssUploadModal');
-  if (modal) modal.style.display = 'none';
-  toast(status==='published'?'🚀 Video is live on ShopStream!':'💾 Draft saved!','success');
-  if (status==='published') ssRender();
-  window._ssRenderSellerPanel&&window._ssRenderSellerPanel();
+    const body = JSON.stringify({
+      title, caption, category, hashtags: hashtags.join(','),
+      video_data: videoData, thumbnail: ssThumbDataUrl || undefined,
+      product_ids: productIds, status
+    });
+
+    const isAdminUser = window.isAdmin && window.isAdmin();
+    if (isAdminUser) await adminApiCall('/admin/shopstream-videos', { method: 'POST', body });
+    else await apiCall('/shopstream-videos', { method: 'POST', body });
+
+    ssVideoBlobUrl = null;
+    ssVideoFile = null;
+    ssThumbDataUrl = null;
+
+    const modal = el('ssUploadModal');
+    if (modal) modal.style.display = 'none';
+    toast(status==='published'?'🚀 Video is live on ShopStream!':'💾 Draft saved!','success');
+    if (status==='published') ssRender();
+    window._ssRenderSellerPanel&&window._ssRenderSellerPanel();
+  } catch (err) {
+    toast('⚠️ Could not upload video: ' + err.message, 'error');
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
 }
 
 // ── GO LIVE ───────────────────────────────────────────────────────────
