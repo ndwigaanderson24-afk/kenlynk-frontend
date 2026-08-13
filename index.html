@@ -6539,6 +6539,7 @@ let currentUser = null;
 // page locally against your own laptop's backend again, temporarily swap
 // this back to the localhost line below it.
 const API_BASE = 'https://embu-marketplace-backend.onrender.com/api';
+window.API_BASE = API_BASE; // exposed globally - some ShopStream code lives in a separate script block and can't see the bare const otherwise
 // const API_BASE = `http://${window.location.hostname || 'localhost'}:5000/api`;
 
 // Only the JWT lives in localStorage now - the actual user data is always
@@ -18061,7 +18062,7 @@ const SS_CATS = [
 function _mapApiShopstreamVideo(v) {
   return {
     id: v.id,
-    videoBlobUrl: `${API_BASE}/shopstream-videos/${v.id}/raw`,
+    videoBlobUrl: `${window.API_BASE}/shopstream-videos/${v.id}/raw`,
     thumbnail: v.thumbnail || '',
     productIds: (v.product_ids || '').split(',').filter(Boolean).map(Number),
     sellerName: v.seller_business_name || v.seller_email || 'KenLynk Seller',
@@ -18329,7 +18330,10 @@ function ssHandleVideoFile(file) {
   if (!file || !file.type.startsWith('video/')) { toast('Please select a video file.','error'); return; }
   // ~12MB raw keeps the base64-encoded upload safely under the server's
   // request size limit - short clips (20-30s) work well at this size.
-  if (file.size > 12*1024*1024) { toast('Video too large. Please keep clips under 12MB (about 20-30 seconds) or compress first.','error'); return; }
+  // ~25MB raw comfortably fits a 30-second clip at typical compressed
+  // bitrates - raised from the earlier 12MB cap since that only really
+  // allowed a few seconds of decent-quality footage.
+  if (file.size > 25*1024*1024) { toast('Video too large. Please keep clips under 25MB (about 30 seconds) or compress first.','error'); return; }
   if (ssVideoBlobUrl) URL.revokeObjectURL(ssVideoBlobUrl);
   ssVideoBlobUrl = URL.createObjectURL(file);
   ssVideoFile = file;
