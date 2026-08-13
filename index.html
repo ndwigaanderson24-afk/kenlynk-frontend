@@ -8485,7 +8485,11 @@ function updateDeliveryPrice() {
   const isHomeDelivery = selectedDeliveryType !== 'pickup';
 
   const plan = computeDeliveryPlan(dest, isHomeDelivery, weightOverride);
-  deliveryFee = plan.totalFee;
+  // Delivery is already baked into each product's displayed price - this
+  // plan is still computed for weight/origin/destination display and for
+  // the seller-payout records, but its fee is never added to what the
+  // buyer is charged.
+  deliveryFee = 0;
   lastDeliveryWeight = plan.totalWeight;
   lastDeliveryPlan = plan;
 
@@ -8508,7 +8512,7 @@ function updateDeliveryPrice() {
   const weightEl = document.getElementById('cartWeightDisplay');
   if (weightEl) weightEl.textContent = plan.totalWeight.toFixed(1) + ' kg';
   const feeEl = document.getElementById('deliveryFeeDisplay');
-  if (feeEl) feeEl.textContent = deliveryFee === 0 ? t('freeLabel') : 'KES ' + deliveryFee.toLocaleString();
+  if (feeEl) feeEl.textContent = t('freeLabel');
 
   // Refresh the grand total & breakdown immediately (no need to re-render the cart item list)
   updateCartTotals();
@@ -8516,10 +8520,11 @@ function updateDeliveryPrice() {
 window.updateDeliveryPrice = updateDeliveryPrice;
 
 // Refreshes the "Total" line and the itemized breakdown box.
-// Grand Total = Cart Subtotal + Delivery Fee
+// Grand Total = Cart Subtotal only - delivery is already included in
+// each product's price, never added again here.
 function updateCartTotals() {
   const subtotal = cartTotal();
-  const grandTotal = subtotal + (deliveryFee || 0);
+  const grandTotal = subtotal;
   
   const totalEl = document.getElementById("cartTotal");
   if (totalEl) totalEl.textContent = "KES " + grandTotal.toLocaleString();
@@ -8534,15 +8539,10 @@ function updateCartTotals() {
     
     breakdownDiv.innerHTML = `
       <div style="border-top:1px solid var(--border); padding-top:10px; margin-top:10px;">
-        <div style="display:flex; justify-content:space-between; color:var(--gray); font-size:12px;">
-          <span>${t('subtotalLabel')}</span>
-          <span>KES ${subtotal.toLocaleString()}</span>
-        </div>
-        <div style="display:flex; justify-content:space-between; color:var(--gray); font-size:12px;">
-          <span>${selectedDeliveryType === 'pickup' ? t('pickupFeeLabel') : t('homeDeliveryFeeLabel')}</span>
-          <span>${deliveryFee === 0 ? t('freeLabel') : 'KES ' + deliveryFee.toLocaleString()}</span>
-        </div>
-        <div style="display:flex; justify-content:space-between; color:var(--gold); font-weight:600; font-size:16px; margin-top:8px; border-top:2px solid var(--gold); padding-top:8px;">
+        ${selectedDeliveryType === 'pickup' ? '' : `<div style="display:flex; justify-content:center; margin-bottom:8px;">
+          <span style="background:var(--green);color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;">${t('freeLabel')} ${t('homeDeliveryFeeLabel')}</span>
+        </div>`}
+        <div style="display:flex; justify-content:space-between; color:var(--gold); font-weight:600; font-size:16px; border-top:2px solid var(--gold); padding-top:8px;">
           <span>${t('grandTotalLabel')}</span>
           <span>KES ${grandTotal.toLocaleString()}</span>
         </div>
