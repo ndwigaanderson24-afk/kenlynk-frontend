@@ -12578,24 +12578,21 @@ function resetSellerApplication() {
     if (!sellerEmail) return false;
 
     // For the logged-in seller checking their own status, use the real
-    // backend fields directly - falls back to local data only for anyone
-    // else (e.g. an admin view not yet migrated off local storage).
+    // backend fields directly. For anyone else (e.g. an admin viewing a
+    // seller list), use the same real, server-fetched cache the seller
+    // applications panel already populates - not local-only data.
     if (currentUser && currentUser.email === sellerEmail) {
       const notExpired = currentUser.subscription_end && new Date(currentUser.subscription_end) > new Date();
       return currentUser.subscription_status === 'active' && !!notExpired;
     }
 
-    const subscriptions = loadSubscriptions();
+    const app = (window._sellerApplicationsCache || []).find(a => a.email === sellerEmail);
 
-    const sub = subscriptions.find(s => s.email === sellerEmail);
+    if (!app) return false;
 
-    if (!sub) return false;
+    const notExpired = app.subscriptionEnd && new Date(app.subscriptionEnd) > new Date();
 
-    const expiryDate = new Date(sub.expiryDate);
-
-    const now = new Date();
-
-    return sub.status === 'active' && expiryDate > now;
+    return app.subscriptionStatus === 'active' && !!notExpired;
 
   }
 
@@ -12621,9 +12618,18 @@ function resetSellerApplication() {
       };
     }
 
-    const subscriptions = loadSubscriptions();
+    const app = (window._sellerApplicationsCache || []).find(a => a.email === sellerEmail);
 
-    return subscriptions.find(s => s.email === sellerEmail) || null;
+    if (!app || (app.subscriptionStatus === 'none' && !app.subscriptionEnd)) return null;
+
+    return {
+      email: app.email,
+      status: app.subscriptionStatus,
+      startDate: app.subscriptionStart,
+      expiryDate: app.subscriptionEnd,
+      businessName: app.businessName,
+      sellerName: app.fullName
+    };
 
   }
 
@@ -14416,7 +14422,10 @@ function createAdminSellerManagement() {
       status: u.seller_status,
       rejectionReason: u.seller_rejection_reason,
       submittedAt: u.created_at,
-      verified: !!u.verified
+      verified: !!u.verified,
+      subscriptionStatus: u.subscription_status,
+      subscriptionStart: u.subscription_start,
+      subscriptionEnd: u.subscription_end
     };
   }
 
