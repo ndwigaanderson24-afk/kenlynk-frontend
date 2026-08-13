@@ -345,13 +345,24 @@
     }
     .ss-icon-badge svg{ width:22px; height:22px; }
     .ss-act-btn span{
-      font-size:12px; font-weight:700; color:#fff;
+      font-size:11px; font-weight:700; color:#fff;
       text-shadow:0 1px 3px rgba(0,0,0,0.6);
+      max-width:56px; text-align:center; line-height:1.2;
     }
     @media (max-width:480px){
       .ss-icon-badge{ width:42px; height:42px; }
       .ss-icon-badge svg{ width:20px; height:20px; }
       .ss-actions{ right:8px; bottom:100px; gap:16px; }
+    }
+    /* Comment panel had no positioning at all before - it was falling
+       into normal document flow with no overlay/z-index, effectively
+       unreachable on screen. */
+    .ss-comments{
+      position:absolute; left:0; right:0; bottom:0; z-index:20;
+      background:rgba(10,10,10,0.92); backdrop-filter:blur(10px);
+      border-radius:20px 20px 0 0; padding:16px;
+      max-height:50%; display:flex; flex-direction:column;
+      box-shadow:0 -4px 20px rgba(0,0,0,0.4);
     }
     .ss-live-badge{display:inline-flex;align-items:center;gap:4px;background:#e74c3c;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;animation:pulse 1.5s infinite;}
     .sub-plan-card{ transition:all 0.15s ease; }
@@ -18235,8 +18246,12 @@ async function ssRender() {
     entries.forEach(e => {
       const v = e.target.querySelector('video');
       if (!v) return;
-      if (e.isIntersecting) v.play().catch(()=>{});
-      else { v.pause(); v.currentTime = 0; }
+      if (e.isIntersecting) {
+        v.play().catch(()=>{});
+        ssStartStatsPolling(e.target.dataset.id, e.target);
+      } else {
+        v.pause(); v.currentTime = 0;
+      }
     });
   }, { threshold: 0.75 });
   feed.querySelectorAll('.ss-card').forEach(c => obs.observe(c));
@@ -18252,6 +18267,31 @@ async function ssRender() {
   });
 
   ssRenderCats();
+}
+
+// Keeps whichever video is currently on screen showing real, current
+// like/save/comment counts - so if someone else likes a video you're
+// watching, the number updates for you too, not just for the person
+// who tapped it. Only polls the ONE visible card, not the whole feed.
+let ssStatsPollTimer = null;
+let ssStatsPollCardId = null;
+function ssStartStatsPolling(id, cardEl) {
+  if (ssStatsPollCardId === id) return; // already polling this one
+  clearInterval(ssStatsPollTimer);
+  ssStatsPollCardId = id;
+  const poll = async () => {
+    try {
+      const res = await apiCall(`/shopstream-videos/${id}`);
+      const v = res.data.video;
+      if (!v || !cardEl.isConnected) return;
+      const likeBtn = cardEl.querySelector('.ss-act-btn:nth-child(1) span:last-child');
+      const saveBtn = cardEl.querySelector('.ss-act-btn:nth-child(2) span:last-child');
+      if (likeBtn) likeBtn.textContent = `${(v.like_count||0).toLocaleString()} Like${(v.like_count||0)===1?'':'s'}`;
+      if (saveBtn) saveBtn.textContent = `${(v.save_count||0).toLocaleString()} Save${(v.save_count||0)===1?'':'s'}`;
+    } catch (err) { /* non-fatal - just retry next tick */ }
+  };
+  poll();
+  ssStatsPollTimer = setInterval(poll, 6000);
 }
 
 function buildCard(v) {
@@ -18317,15 +18357,15 @@ function buildCard(v) {
       <div class="ss-actions">
         <button onclick="event.stopPropagation();ssLike('${v.id}',this)" class="ss-act-btn ${liked?'active':''}">
           <span class="ss-icon-badge">${ssIconSvg('like', liked)}</span>
-          <span>${(v.likes||0).toLocaleString()}</span>
+          <span>${(v.likes||0).toLocaleString()} Like${(v.likes||0)===1?'':'s'}</span>
         </button>
         <button onclick="event.stopPropagation();ssSaveVid('${v.id}',this)" class="ss-act-btn ${saved?'active':''}">
           <span class="ss-icon-badge">${ssIconSvg('save', saved)}</span>
-          <span>${(v.saves||0).toLocaleString()}</span>
+          <span>${(v.saves||0).toLocaleString()} Save${(v.saves||0)===1?'':'s'}</span>
         </button>
         <button onclick="event.stopPropagation();ssToggleComments('${v.id}')" class="ss-act-btn">
           <span class="ss-icon-badge">${ssIconSvg('comment', false)}</span>
-          <span>${(v.commentCount||0).toLocaleString()}</span>
+          <span>${(v.commentCount||0).toLocaleString()} Comment${(v.commentCount||0)===1?'':'s'}</span>
         </button>
         <button onclick="event.stopPropagation();ssShare('${v.id}')" class="ss-act-btn">
           <span class="ss-icon-badge">${ssIconSvg('share', false)}</span>
@@ -18407,6 +18447,7 @@ function ssShare(id) {
   }
 }
 
+let ssCommentsPollTimer = null;
 async function ssToggleComments(id) {
   document.querySelectorAll('.ss-comments').forEach(p => {
     if (p.id !== 'ssCmts_'+id) p.style.display = 'none';
@@ -18415,20 +18456,57 @@ async function ssToggleComments(id) {
   if (!panel) return;
   const opening = panel.style.display === 'none';
   panel.style.display = opening ? 'block' : 'none';
-  if (!opening || panel.dataset.loaded) return;
+
+  clearInterval(ssCommentsPollTimer);
+  if (!opening) return;
 
   const list = el('ssCmtList_'+id);
-  try {
-    const res = await apiCall(`/shopstream-videos/${id}/comments`);
-    const comments = res.data.comments || [];
-    if (list) {
-      list.innerHTML = comments.length
-        ? comments.map(c=>`<div style="display:flex;gap:6px;margin-bottom:8px;"><div style="width:26px;height:26px;border-radius:50%;background:#333;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;">👤</div><div><div style="color:rgba(255,255,255,0.5);font-size:10px;">${esc(c.sender_name||'Buyer')}</div><div style="color:#fff;font-size:12px;">${esc(c.comment)}</div></div></div>`).join('')
-        : '<div style="color:rgba(255,255,255,0.4);font-size:12px;text-align:center;padding:8px 0;">No comments yet. Be first!</div>';
+  const renderComments = (comments) => {
+    if (!list) return;
+    list.innerHTML = comments.length
+      ? comments.map(c=>`
+        <div style="display:flex;gap:6px;margin-bottom:8px;align-items:flex-start;">
+          <div style="width:26px;height:26px;border-radius:50%;background:#333;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;">👤</div>
+          <div style="flex:1;min-width:0;">
+            <div style="color:rgba(255,255,255,0.5);font-size:10px;">${esc(c.sender_name||'Buyer')}</div>
+            <div style="color:#fff;font-size:12px;">${esc(c.comment)}</div>
+          </div>
+          ${ssCanDeleteComment(c) ? `<button onclick="event.stopPropagation();ssDeleteComment(${id}, ${c.id})" style="background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;font-size:14px;flex-shrink:0;">🗑️</button>` : ''}
+        </div>`).join('')
+      : '<div style="color:rgba(255,255,255,0.4);font-size:12px;text-align:center;padding:8px 0;">No comments yet. Be first!</div>';
+  };
+
+  // Polls every 5s while the panel stays open, so comments from other
+  // people appear without needing to close and reopen the panel.
+  const poll = async () => {
+    try {
+      const res = await apiCall(`/shopstream-videos/${id}/comments`);
+      renderComments(res.data.comments || []);
+    } catch (err) {
+      if (list && !list.children.length) list.innerHTML = `<div style="color:rgba(255,255,255,0.4);font-size:12px;text-align:center;padding:8px 0;">Could not load comments.</div>`;
     }
-    panel.dataset.loaded = '1';
+  };
+  poll();
+  ssCommentsPollTimer = setInterval(poll, 5000);
+}
+
+// A comment can be deleted by whoever posted it (matched by name, since
+// ShopStream allows guest comments with no account) or by an admin.
+function ssCanDeleteComment(c) {
+  const user = getUser();
+  if (window.isAdmin && window.isAdmin()) return true;
+  return !!(user && c.sender_name === (user.name || 'Guest'));
+}
+
+async function ssDeleteComment(videoId, commentId) {
+  if (!confirm('Delete this comment?')) return;
+  try {
+    const isAdminUser = window.isAdmin && window.isAdmin();
+    if (isAdminUser) await adminApiCall(`/admin/shopstream-videos/comments/${commentId}`, { method: 'DELETE' });
+    else await apiCall(`/shopstream-videos/${videoId}/comments/${commentId}`, { method: 'DELETE' });
+    toast('Comment deleted.', 'success');
   } catch (err) {
-    if (list) list.innerHTML = `<div style="color:rgba(255,255,255,0.4);font-size:12px;text-align:center;padding:8px 0;">Could not load comments.</div>`;
+    toast('⚠️ ' + err.message, 'error');
   }
 }
 
@@ -18447,16 +18525,26 @@ async function ssPostComment(id) {
     toast('⚠️ Could not post comment: ' + err.message, 'error');
     return;
   }
-  const list = el('ssCmtList_'+id);
-  if (list) {
-    if (list.querySelector('div[style*="No comments yet"]')) list.innerHTML = '';
-    list.insertAdjacentHTML('beforeend',
-      `<div style="display:flex;gap:6px;margin-bottom:8px;">
-        <div style="width:26px;height:26px;border-radius:50%;background:#00673f;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;">👤</div>
-        <div><div style="color:rgba(255,255,255,0.5);font-size:10px;">${esc(user?.name||'Guest')}</div><div style="color:#fff;font-size:12px;">${esc(text)}</div></div>
-      </div>`);
-    list.scrollTop = list.scrollHeight;
-  }
+  // The comment panel polls every 5s while open (see ssToggleComments),
+  // so it'll pick this up on its own - but refresh right away too, so
+  // the person who just typed doesn't wait for the next poll tick.
+  try {
+    const res = await apiCall(`/shopstream-videos/${id}/comments`);
+    const comments = res.data.comments || [];
+    const list = el('ssCmtList_'+id);
+    if (list) {
+      list.innerHTML = comments.map(c=>`
+        <div style="display:flex;gap:6px;margin-bottom:8px;align-items:flex-start;">
+          <div style="width:26px;height:26px;border-radius:50%;background:#333;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;">👤</div>
+          <div style="flex:1;min-width:0;">
+            <div style="color:rgba(255,255,255,0.5);font-size:10px;">${esc(c.sender_name||'Buyer')}</div>
+            <div style="color:#fff;font-size:12px;">${esc(c.comment)}</div>
+          </div>
+          ${ssCanDeleteComment(c) ? `<button onclick="event.stopPropagation();ssDeleteComment(${id}, ${c.id})" style="background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;font-size:14px;flex-shrink:0;">🗑️</button>` : ''}
+        </div>`).join('');
+      list.scrollTop = list.scrollHeight;
+    }
+  } catch (err) { /* non-fatal - the next 5s poll will pick it up */ }
 }
 
 // ── Category strip ────────────────────────────────────────────────────
@@ -18931,6 +19019,7 @@ window.ssSaveVid          = ssSaveVid;
 window.ssShare            = ssShare;
 window.ssToggleComments   = ssToggleComments;
 window.ssPostComment      = ssPostComment;
+window.ssDeleteComment    = ssDeleteComment;
 window._ssEndLive         = ssEndLive;
 window._ssLiveFlip        = ssLiveFlip;
 window._ssLivePin         = ssLivePin;
