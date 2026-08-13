@@ -2921,8 +2921,16 @@
               <input type="hidden" id="sellerCategory">
               <div id="sellerCatBreadcrumb" style="display:none; font-size:11px; color:var(--gray); margin-top:4px;"></div>
             </div>
-            <div class="field"><label>Selling Price (KES) *</label><input type="number" id="sellerPrice" min="1" placeholder="0"></div>
+            <div class="field">
+              <label>Your Price (KES) *</label>
+              <input type="number" id="sellerPrice" min="1" placeholder="0" oninput="window._updateSellerPricePreview()">
+              <div id="sellerPricePreview" style="font-size:12px; color:var(--gray); margin-top:4px;"></div>
+            </div>
             <div class="field"><label>Original Price (optional)</label><input type="number" id="sellerOriginalPrice" min="0" placeholder="For showing a discount"></div>
+            <div class="field" style="display:flex; align-items:center; gap:8px;">
+              <input type="checkbox" id="sellerFragile" style="width:auto;" onchange="window._updateSellerPricePreview()">
+              <label style="margin:0;">⚠️ Fragile item (glass, electronics, etc)</label>
+            </div>
             <div class="field"><label>Stock Quantity *</label><input type="number" id="sellerStock" min="0" placeholder="0"></div>
             <div class="field"><label>Low Stock Alert (optional)</label><input type="number" id="sellerLowStock" min="0" placeholder="5"></div>
             <div class="field"><label>Weight (kg)</label><input type="number" id="sellerWeight" min="0" step="0.1" value="1"></div>
@@ -3509,7 +3517,15 @@
 
           <div class="field"><label>Product Name *</label><input type="text" id="adminName" placeholder="Product name"></div>
 
-          <div class="field"><label>Price (KES) *</label><input type="number" id="adminPrice" placeholder="850"></div>
+          <div class="field">
+            <label>Seller Price (KES) *</label>
+            <input type="number" id="adminPrice" placeholder="850" oninput="window._updateAdminPricePreview()">
+            <div id="adminPricePreview" style="font-size:12px; color:var(--gray); margin-top:4px;"></div>
+          </div>
+          <div class="field" style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="adminFragile" style="width:auto;" onchange="window._updateAdminPricePreview()">
+            <label style="margin:0;">⚠️ Fragile item (glass, electronics, etc)</label>
+          </div>
 
         </div>
 
@@ -10365,6 +10381,58 @@ window._toggleFlashDealField = function(which) {
   }
 };
 
+// Live "buyer will pay" preview - debounced so it doesn't call the
+// server on every keystroke, and computed entirely server-side (the
+// same real pricing engine product creation uses) so there's never a
+// risk of the preview disagreeing with what actually gets saved.
+let _sellerPricePreviewTimer = null;
+window._updateSellerPricePreview = function() {
+  clearTimeout(_sellerPricePreviewTimer);
+  const previewEl = document.getElementById('sellerPricePreview');
+  const priceVal = parseFloat(document.getElementById('sellerPrice')?.value);
+  if (!priceVal || priceVal <= 0) { if (previewEl) previewEl.textContent = ''; return; }
+  if (previewEl) previewEl.textContent = 'Calculating…';
+  _sellerPricePreviewTimer = setTimeout(async () => {
+    try {
+      const catId = document.getElementById('sellerCategory')?.value;
+      const catNode = catId ? CATEGORY_FLAT.find(c => c.id === Number(catId)) : null;
+      const cat = catNode ? (catNode.slug || catNode.name.toLowerCase()) : '';
+      const fragile = document.getElementById('sellerFragile')?.checked || false;
+      const res = await apiCall('/products/preview-price', {
+        method: 'POST',
+        body: JSON.stringify({ seller_price: priceVal, category: cat, fragile })
+      });
+      if (previewEl) previewEl.innerHTML = `Buyer will pay: <strong style="color:var(--gold);">KES ${res.data.price.toLocaleString()}</strong> <span style="color:var(--green-light);">(free delivery included)</span>`;
+    } catch (err) {
+      if (previewEl) previewEl.textContent = '';
+    }
+  }, 500);
+};
+
+let _adminPricePreviewTimer = null;
+window._updateAdminPricePreview = function() {
+  clearTimeout(_adminPricePreviewTimer);
+  const previewEl = document.getElementById('adminPricePreview');
+  const priceVal = parseFloat(document.getElementById('adminPrice')?.value);
+  if (!priceVal || priceVal <= 0) { if (previewEl) previewEl.textContent = ''; return; }
+  if (previewEl) previewEl.textContent = 'Calculating…';
+  _adminPricePreviewTimer = setTimeout(async () => {
+    try {
+      const catId = document.getElementById('adminCategory')?.value;
+      const catNode = catId ? CATEGORY_FLAT.find(c => c.id === Number(catId)) : null;
+      const cat = catNode ? (catNode.slug || catNode.name.toLowerCase()) : '';
+      const fragile = document.getElementById('adminFragile')?.checked || false;
+      const res = await adminApiCall('/products/admin/preview-price', {
+        method: 'POST',
+        body: JSON.stringify({ seller_price: priceVal, category: cat, fragile })
+      });
+      if (previewEl) previewEl.innerHTML = `Buyer will pay: <strong style="color:var(--gold);">KES ${res.data.price.toLocaleString()}</strong> <span style="color:var(--green-light);">(free delivery included)</span>`;
+    } catch (err) {
+      if (previewEl) previewEl.textContent = '';
+    }
+  }, 500);
+};
+
 window._simpleProductSubmit = async function(mode) {
   const name = document.getElementById('sellerName')?.value.trim();
   const desc = document.getElementById('sellerDesc')?.value.trim();
@@ -10385,6 +10453,7 @@ window._simpleProductSubmit = async function(mode) {
   const weight = parseFloat(document.getElementById('sellerWeight')?.value) || 1;
   const brand = document.getElementById('sellerBrand')?.value.trim();
   const hot = document.getElementById('sellerHot')?.checked;
+  const fragile = document.getElementById('sellerFragile')?.checked || false;
   const isNewArrival = document.getElementById('sellerNewArrival')?.checked;
   const isBestRated = document.getElementById('sellerBestRated')?.checked;
   const countryOfOrigin = document.getElementById('sellerCountryOfOrigin')?.value || undefined;
@@ -10419,7 +10488,8 @@ window._simpleProductSubmit = async function(mode) {
   if (btn) { btn.disabled = true; btn.textContent = mode === 'draft' ? '💾 Saving…' : '⏳ Publishing…'; }
 
   const payload = {
-    name, description: desc, category: cat, category_id: catId ? Number(catId) : undefined, price, original_price: orig,
+    name, description: desc, category: cat, category_id: catId ? Number(catId) : undefined, seller_price: price, original_price: orig,
+    fragile,
     stock: isNaN(stock) ? 0 : stock, weight, brand: brand || undefined, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt,
     images: window._getUploadedImages(),
     wholesale_tiers: wholesaleTiers,
@@ -11536,6 +11606,8 @@ window.loadManualData = loadManualData;
 
     const isBestRated = document.getElementById("adminBestRated")?.value === 'true';
 
+    const fragile = document.getElementById("adminFragile")?.checked || false;
+
     const countryOfOrigin = document.getElementById("adminCountryOfOrigin")?.value || undefined;
 
     const flashDealEndsAtRaw = document.getElementById("adminFlashDealEndsAt")?.value;
@@ -11577,7 +11649,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall(`/products/admin/${editingProductId}`, {
           method: 'PUT',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
+          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
         savedId = editingProductId;
         showToast("Product updated successfully!", "success");
@@ -11594,7 +11666,7 @@ window.loadManualData = loadManualData;
 
         const createRes = await adminApiCall('/products/admin', {
           method: 'POST',
-          body: JSON.stringify({ name, price, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
+          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
         savedId = createRes.data.product.id;
         showToast("Product added successfully!", "success");
@@ -20005,7 +20077,7 @@ function _wizardBuildPreview() {
   const brand  = document.getElementById('sellerBrand')?.value || '—';
   const cat    = document.getElementById('sellerCatBreadcrumb')?.textContent || '—';
   const weight = document.getElementById('sellerWeight')?.value || '—';
-  const fragile= document.getElementById('sellerFragile')?.value === 'true' ? 'Yes' : 'No';
+  const fragile= document.getElementById('sellerFragile')?.checked ? 'Yes' : 'No';
   det.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;">
     <div><span style="color:var(--gray);">Name:</span> ${escapeHtml(name)}</div>
     <div><span style="color:var(--gray);">Brand:</span> ${escapeHtml(brand)}</div>
@@ -20583,7 +20655,7 @@ window._wizardSubmit = async function(mode) {
   const desc   = (document.getElementById('sellerDesc')?.value||'').trim();
   const brand  = (document.getElementById('sellerBrand')?.value||'').trim()||null;
   const weight = parseFloat(document.getElementById('sellerWeight')?.value)||1;
-  const fragile= document.getElementById('sellerFragile')?.value === 'true';
+  const fragile= document.getElementById('sellerFragile')?.checked||false;
   const cat    = document.getElementById('sellerCategory')?.value||'';
   const hot    = document.getElementById('lblHot')?.checked||false;
 
@@ -20611,7 +20683,7 @@ window._wizardSubmit = async function(mode) {
   if (btn) { btn.disabled = true; btn.textContent = mode==='draft' ? '💾 Saving…' : '⏳ Publishing…'; }
 
   const lowStockThreshold = parseInt(document.getElementById('sellerLowStock')?.value, 10);
-  const payload = { name, price, original_price: orig, category: cat, hot, description: desc,
+  const payload = { name, seller_price: price, original_price: orig, category: cat, hot, description: desc,
     image: window._getUploadedImage()||undefined, weight, fragile, stock, brand: brand||undefined,
     has_variants: hasVariants?1:0, status: mode==='draft'?'draft':'active',
     wholesale_tiers: wholesaleTiers,
