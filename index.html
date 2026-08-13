@@ -311,6 +311,48 @@
     #catTabBar{ -webkit-overflow-scrolling:touch; }
     #catTabBar::-webkit-scrollbar{ display:none; }
     @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(231,76,60,0.5);}50%{opacity:0.85;box-shadow:0 0 0 6px rgba(231,76,60,0);}}
+
+    /* ── ShopStream video cards - never had CSS before, was relying on
+       browser defaults only (tiny buttons, no proper overlay layout) ── */
+    .ss-card{
+      position:relative; width:100%; height:100%;
+      scroll-snap-align:start; scroll-snap-stop:always;
+      background:#000; overflow:hidden;
+    }
+    .ss-actions{
+      position:absolute; right:10px; bottom:110px; z-index:15;
+      display:flex; flex-direction:column; align-items:center; gap:18px;
+    }
+    /* Custom KenLynk icon badges - a glass-morphism circle with a brand
+       gold ring, distinct from the plain white icons most short-video
+       apps use. Fills solid green + glows gold once activated. */
+    .ss-act-btn{
+      background:none; border:none; cursor:pointer; padding:0;
+      display:flex; flex-direction:column; align-items:center; gap:4px;
+      color:#fff; transition:transform 0.15s ease;
+    }
+    .ss-act-btn:active{ transform:scale(0.88); }
+    .ss-icon-badge{
+      width:46px; height:46px; border-radius:50%;
+      background:rgba(20,20,20,0.55); backdrop-filter:blur(6px);
+      border:1.5px solid rgba(255,215,0,0.35);
+      display:flex; align-items:center; justify-content:center;
+      transition:all 0.2s ease;
+    }
+    .ss-act-btn.active .ss-icon-badge{
+      background:var(--green); border-color:var(--gold);
+      box-shadow:0 0 14px rgba(255,215,0,0.55);
+    }
+    .ss-icon-badge svg{ width:22px; height:22px; }
+    .ss-act-btn span{
+      font-size:12px; font-weight:700; color:#fff;
+      text-shadow:0 1px 3px rgba(0,0,0,0.6);
+    }
+    @media (max-width:480px){
+      .ss-icon-badge{ width:42px; height:42px; }
+      .ss-icon-badge svg{ width:20px; height:20px; }
+      .ss-actions{ right:8px; bottom:100px; gap:16px; }
+    }
     .ss-live-badge{display:inline-flex;align-items:center;gap:4px;background:#e74c3c;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;animation:pulse 1.5s infinite;}
     .sub-plan-card{ transition:all 0.15s ease; }
     .sub-plan-card:hover{ transform:translateY(-2px); }
@@ -7035,6 +7077,8 @@ function escapeHtml(str) {
       createAdminReferralsPanel();
 
       createAdminRequestsPanel();
+
+      createAdminShopstreamPanel();
 
       createAdminCommissionPanel();
 
@@ -14128,6 +14172,63 @@ function createAdminSellerManagement() {
   }
   window.createAdminRequestsPanel = createAdminRequestsPanel;
 
+  function createAdminShopstreamPanel() {
+    const adminContent = document.getElementById('page-admin');
+    if (!adminContent) return;
+    let existing = document.querySelector('#adminShopstreamPanel');
+    if (existing) existing.remove();
+
+    const panel = document.createElement('div');
+    panel.id = 'adminShopstreamPanel';
+    panel.style.cssText = 'margin-top:24px; background:var(--surface); border:1px solid var(--border-strong); border-radius:16px; padding:24px;';
+
+    panel.innerHTML = `
+      <h3 style="font-family:var(--font-display); margin-bottom:8px;">🎬 ShopStream Videos</h3>
+      <p style="color:var(--gray); font-size:13px; margin-bottom:16px;">Every video posted by every seller - remove anything that shouldn't be up.</p>
+      <div id="adminShopstreamList"></div>
+    `;
+
+    adminContent.appendChild(panel);
+    _refreshAdminShopstreamCache();
+  }
+  window.createAdminShopstreamPanel = createAdminShopstreamPanel;
+
+  async function _refreshAdminShopstreamCache() {
+    const container = document.getElementById('adminShopstreamList');
+    try {
+      const res = await adminApiCall('/admin/shopstream-videos');
+      const videos = res.data.videos || [];
+      if (container) {
+        container.innerHTML = videos.length ? videos.map(v => `
+          <div style="display:flex;gap:10px;align-items:center;padding:12px;background:var(--surface-2);border-radius:10px;margin-bottom:8px;border:1px solid var(--border);">
+            ${v.thumbnail ? `<img src="${escapeHtml(v.thumbnail)}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;flex-shrink:0;">` : `<div style="width:56px;height:56px;background:var(--surface-3);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">▶️</div>`}
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;color:var(--white);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(v.title)}</div>
+              <div style="font-size:11px;color:var(--gray);margin-top:2px;">🏪 ${escapeHtml(v.seller_business_name||v.seller_email||'Seller')} · ${v.status === 'published' ? '<span style="color:var(--green-light);">● Live</span>' : '<span style="color:var(--gray);">● Draft</span>'} · ${new Date(v.created_at).toLocaleDateString('en-KE')}</div>
+              <div style="display:flex;gap:10px;margin-top:5px;font-size:11px;color:var(--gray);">
+                <span>👁️ ${v.view_count||0}</span><span>❤️ ${v.like_count||0}</span><span>🔖 ${v.save_count||0}</span>
+              </div>
+            </div>
+            <button onclick="window._adminDeleteShopstreamVideo(${v.id})" style="background:#e74c3c;border:none;color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:11px;flex-shrink:0;">🗑️ Delete</button>
+          </div>`).join('') : `<div style="text-align:center;padding:24px;color:var(--gray);">No videos posted yet.</div>`;
+      }
+    } catch (err) {
+      if (container) container.innerHTML = `<div style="color:var(--gray); text-align:center; padding:20px;">Could not load videos: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+  window._refreshAdminShopstreamCache = _refreshAdminShopstreamCache;
+
+  window._adminDeleteShopstreamVideo = async function(id) {
+    if (!confirm('Delete this video? This cannot be undone.')) return;
+    try {
+      await adminApiCall(`/admin/shopstream-videos/${id}`, { method: 'DELETE' });
+      showToast('🗑️ Video deleted.', 'success');
+    } catch (err) {
+      showToast('⚠️ ' + err.message, 'error');
+    }
+    _refreshAdminShopstreamCache();
+  };
+
   // Fetches once from the server and caches the result, so typing in
   // the search box (which calls renderAdminRequestsList() on every
   // keystroke) filters instantly without re-fetching each time.
@@ -18025,6 +18126,34 @@ let ssLiveChatTimer     = null;
 
 // ── Helpers ───────────────────────────────────────────────────────────
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Custom KenLynk icon set for the ShopStream action bar - hand-drawn
+// SVGs instead of the generic heart/bookmark/speech-bubble emoji every
+// short-video app already uses, so the icons carry an identity of
+// their own rather than looking identical to TikTok/Instagram/etc.
+const SS_ICONS = {
+  // Heart with slightly squared lobes, gives it a distinct silhouette
+  // from the default emoji heart.
+  like: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7.5-4.6-10-9.3C.3 8.4 2 4.5 6 4.5c2.3 0 3.7 1.3 6 3.5 2.3-2.2 3.7-3.5 6-3.5 4 0 5.7 3.9 4 7.2C19.5 16.4 12 21 12 21z"/></svg>`,
+  // A price-tag shape rather than a plain bookmark rectangle - ties the
+  // "save" action to a marketplace context (saving a product video).
+  save: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l6 6-9 9-9-9V6a3 3 0 0 1 3-3z"/><circle cx="9.5" cy="8.5" r="1.1" fill="currentColor" stroke="none"/></svg>`,
+  // Chat bubble with a side tail and three dots, instead of the usual
+  // rounded rectangle bubble.
+  comment: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><circle cx="8" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/></svg>`,
+  // Three connected nodes - a "broadcast/network" share icon, a
+  // deliberately different shape family from the usual curved arrow.
+  share: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><line x1="8.3" y1="10.7" x2="15.7" y2="6.3"/><line x1="8.3" y1="13.3" x2="15.7" y2="17.7"/></svg>`
+};
+// active=true fills the badge solid (see .ss-act-btn.active in CSS) and
+// switches the icon itself to a filled variant for like/save, since a
+// filled heart/tag reads as "on" far more clearly than an outline does.
+function ssIconSvg(type, active) {
+  return active && (type === 'like' || type === 'save')
+    ? SS_ICONS[type].replace('fill="none"', 'fill="currentColor"')
+    : SS_ICONS[type];
+}
+
 function toast(msg, type) { if (window.showToast) window.showToast(msg, type); }
 function el(id) { return document.getElementById(id); }
 function getP(id) { return (window.PRODUCTS||[]).find(p => p.id === id || p.id === Number(id)); }
@@ -18186,17 +18315,21 @@ function buildCard(v) {
 
       <!-- Action buttons -->
       <div class="ss-actions">
-        <button onclick="event.stopPropagation();ssLike('${v.id}',this)" class="ss-act-btn ${liked?'liked':''}">
-          ${liked?'❤️':'🤍'}<span>${(v.likes||0).toLocaleString()}</span>
+        <button onclick="event.stopPropagation();ssLike('${v.id}',this)" class="ss-act-btn ${liked?'active':''}">
+          <span class="ss-icon-badge">${ssIconSvg('like', liked)}</span>
+          <span>${(v.likes||0).toLocaleString()}</span>
         </button>
-        <button onclick="event.stopPropagation();ssSaveVid('${v.id}',this)" class="ss-act-btn">
-          ${saved?'🔖':'🏷️'}<span>${(v.saves||0).toLocaleString()}</span>
+        <button onclick="event.stopPropagation();ssSaveVid('${v.id}',this)" class="ss-act-btn ${saved?'active':''}">
+          <span class="ss-icon-badge">${ssIconSvg('save', saved)}</span>
+          <span>${(v.saves||0).toLocaleString()}</span>
         </button>
         <button onclick="event.stopPropagation();ssToggleComments('${v.id}')" class="ss-act-btn">
-          💬<span>${(v.commentCount||0).toLocaleString()}</span>
+          <span class="ss-icon-badge">${ssIconSvg('comment', false)}</span>
+          <span>${(v.commentCount||0).toLocaleString()}</span>
         </button>
         <button onclick="event.stopPropagation();ssShare('${v.id}')" class="ss-act-btn">
-          ↗️<span>Share</span>
+          <span class="ss-icon-badge">${ssIconSvg('share', false)}</span>
+          <span>Share</span>
         </button>
       </div>
 
@@ -18229,15 +18362,20 @@ async function ssLike(id, btn) {
   // Instant visual feedback first, so the tap feels responsive - then
   // sync the real count from the server.
   if (btn) {
-    if (alreadyLiked) { btn.classList.remove('liked'); }
-    else { btn.classList.add('liked'); btn.style.transform = 'scale(1.4)'; setTimeout(()=>btn.style.transform='', 200); }
+    if (alreadyLiked) { btn.classList.remove('active'); }
+    else {
+      btn.classList.add('active');
+      const badge = btn.querySelector('.ss-icon-badge');
+      if (badge) badge.innerHTML = ssIconSvg('like', true);
+      btn.style.transform = 'scale(1.4)'; setTimeout(()=>btn.style.transform='', 200);
+    }
   }
   localStorage.setItem(SS_LIKED_KEY, JSON.stringify(alreadyLiked ? liked.filter(l=>l!==id) : [...liked, id]));
 
   if (alreadyLiked) return; // no "unlike" on the server side - likes are a simple running count, matching the live-stream reaction style
   try {
     const res = await apiCall(`/shopstream-videos/${id}/like`, { method: 'POST' });
-    if (btn) btn.innerHTML = `❤️<span>${res.data.like_count.toLocaleString()}</span>`;
+    if (btn) { const countEl = btn.querySelector('span:last-child'); if (countEl) countEl.textContent = res.data.like_count.toLocaleString(); }
   } catch (err) { /* non-fatal - the tap still felt responsive */ }
 }
 
@@ -18245,9 +18383,14 @@ async function ssSaveVid(id, btn) {
   const saved = ssSaved();
   if (saved.includes(id)) { toast('Already saved!','error'); return; }
   localStorage.setItem(SS_SAVED_KEY, JSON.stringify([...saved, id]));
+  if (btn) {
+    btn.classList.add('active');
+    const badge = btn.querySelector('.ss-icon-badge');
+    if (badge) badge.innerHTML = ssIconSvg('save', true);
+  }
   try {
     const res = await apiCall(`/shopstream-videos/${id}/save`, { method: 'POST' });
-    if (btn) btn.innerHTML = `🔖<span>${res.data.save_count.toLocaleString()}</span>`;
+    if (btn) { const countEl = btn.querySelector('span:last-child'); if (countEl) countEl.textContent = res.data.save_count.toLocaleString(); }
     toast('Video saved! 🔖','success');
   } catch (err) {
     toast('⚠️ ' + err.message, 'error');
@@ -18779,6 +18922,15 @@ window._ssOpenUpload      = ssOpenUpload;
 window._ssSaveVideo       = ssSaveVideo;
 window._ssOpenAnalytics   = ssOpenAnalytics;
 window._ssGoLive          = ssGoLive;
+// These are called via bare onclick="..." attributes in the feed cards,
+// which execute in the global scope - without these exports they'd
+// fail with "not defined" the moment anyone tapped like/save/share/
+// comment, exactly like the API_BASE bug found earlier.
+window.ssLike             = ssLike;
+window.ssSaveVid          = ssSaveVid;
+window.ssShare            = ssShare;
+window.ssToggleComments   = ssToggleComments;
+window.ssPostComment      = ssPostComment;
 window._ssEndLive         = ssEndLive;
 window._ssLiveFlip        = ssLiveFlip;
 window._ssLivePin         = ssLivePin;
@@ -20409,7 +20561,7 @@ window.cancelEditProduct = function() {
 };
 
 // Seller ShopStream management tab
-window._ssRenderSellerPanel = function() {
+window._ssRenderSellerPanel = async function() {
   if (!currentUser) return;
 
   // Go Live / Upload are only shown once the seller's application has been
@@ -20424,22 +20576,25 @@ window._ssRenderSellerPanel = function() {
   if (_ssDashUploadBtn) _ssDashUploadBtn.style.display = _ssDashEligible ? '' : 'none';
   if (_ssDashLockedNote) _ssDashLockedNote.style.display = _ssDashEligible ? 'none' : 'block';
 
-  try { _ssVideos = JSON.parse(localStorage.getItem(SS_KEY)||'[]'); } catch(e){ _ssVideos=[]; }
-  const myVids = _ssVideos.filter(v => v.sellerEmail === currentUser.email);
+  let myVids = [];
+  try {
+    const res = await apiCall('/shopstream-videos/mine/list');
+    myVids = res.data.videos || [];
+  } catch (err) {
+    console.error('Could not load your ShopStream videos:', err.message);
+  }
 
   // Analytics summary
   const sumEl = document.getElementById('sellerSSAnalyticsSummary');
   if (sumEl) {
-    const totalViews = myVids.reduce((s,v)=>s+(v.views||0),0);
-    const totalLikes = myVids.reduce((s,v)=>s+(v.likes||0),0);
-    const totalSaves = myVids.reduce((s,v)=>s+(v.saves||0),0);
-    const totalComments = myVids.reduce((s,v)=>s+(v.comments||[]).length,0);
+    const totalViews = myVids.reduce((s,v)=>s+(v.view_count||0),0);
+    const totalLikes = myVids.reduce((s,v)=>s+(v.like_count||0),0);
+    const totalSaves = myVids.reduce((s,v)=>s+(v.save_count||0),0);
     sumEl.innerHTML = [
       ['▶️', myVids.length, 'Videos'],
       ['👁️', totalViews.toLocaleString(), 'Views'],
-      ['❤️', totalLikes, 'Likes'],
-      ['🔖', totalSaves, 'Saves'],
-      ['💬', totalComments, 'Comments'],
+      ['❤️', totalLikes.toLocaleString(), 'Likes'],
+      ['🔖', totalSaves.toLocaleString(), 'Saves'],
     ].map(([icon, val, label]) => `
       <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
         <div style="font-size:20px;">${icon}</div>
@@ -20456,24 +20611,53 @@ window._ssRenderSellerPanel = function() {
         ${v.thumbnail ? `<img src="${escapeHtml(v.thumbnail)}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;flex-shrink:0;">` : `<div style="width:56px;height:56px;background:var(--surface-3);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">▶️</div>`}
         <div style="flex:1;min-width:0;">
           <div style="font-weight:700;color:var(--white);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(v.title)}</div>
-          <div style="font-size:11px;color:var(--gray);margin-top:2px;">${v.status === 'published' ? '<span style="color:var(--green-light);">● Live</span>' : '<span style="color:var(--gray);">● Draft</span>'} · ${new Date(v.createdAt).toLocaleDateString('en-KE')}</div>
+          <div style="font-size:11px;color:var(--gray);margin-top:2px;">${v.status === 'published' ? '<span style="color:var(--green-light);">● Live</span>' : '<span style="color:var(--gray);">● Draft</span>'} · ${new Date(v.created_at).toLocaleDateString('en-KE')}</div>
           <div style="display:flex;gap:10px;margin-top:5px;font-size:11px;color:var(--gray);">
-            <span>👁️ ${v.views||0}</span><span>❤️ ${v.likes||0}</span><span>🔖 ${v.saves||0}</span><span>💬 ${(v.comments||[]).length}</span>
+            <span>👁️ ${v.view_count||0}</span><span>❤️ ${v.like_count||0}</span><span>🔖 ${v.save_count||0}</span>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;">
-          ${v.status === 'draft' ? `<button onclick="window._ssPublishDraft('${v.id}')" style="background:var(--green);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:600;">🚀 Publish</button>` : ''}
-          <button onclick="window._ssDeleteVideo('${v.id}')" style="background:#e74c3c;border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;">🗑️ Delete</button>
+          ${v.status === 'draft' ? `<button onclick="window._ssPublishDraft(${v.id})" style="background:var(--green);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:600;">🚀 Publish</button>` : ''}
+          <button onclick="window._ssEditVideo(${v.id}, '${escapeHtml(v.title).replace(/'/g,"\\'")}', '${escapeHtml(v.caption||'').replace(/'/g,"\\'")}')" style="background:var(--surface-3);border:1px solid var(--border-strong);color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;">✏️ Edit</button>
+          <button onclick="window._ssDeleteVideo(${v.id})" style="background:#e74c3c;border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;">🗑️ Delete</button>
         </div>
       </div>`).join('') : `<div style="text-align:center;padding:24px;color:var(--gray);">No videos yet. Upload your first product video!</div>`;
   }
 };
 
-window._ssPublishDraft = function(id) {
-  try { _ssVideos = JSON.parse(localStorage.getItem(SS_KEY)||'[]'); } catch(e){ _ssVideos=[]; }
-  const v = _ssVideos.find(v => v.id === id);
-  if (v) { v.status = 'published'; localStorage.setItem(SS_KEY, JSON.stringify(_ssVideos)); }
-  showToast('🚀 Video is now live on ShopStream!', 'success');
+window._ssEditVideo = function(id, currentTitle, currentCaption) {
+  const newTitle = prompt('Edit video title:', currentTitle);
+  if (newTitle === null) return; // cancelled
+  const newCaption = prompt('Edit caption:', currentCaption);
+  if (newCaption === null) return;
+  if (!newTitle.trim()) { showToast('Title cannot be empty.', 'error'); return; }
+  apiCall(`/shopstream-videos/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ title: newTitle.trim(), caption: newCaption.trim() })
+  }).then(() => {
+    showToast('✅ Video updated.', 'success');
+    window._ssRenderSellerPanel();
+  }).catch(err => showToast('⚠️ ' + err.message, 'error'));
+};
+
+window._ssPublishDraft = async function(id) {
+  try {
+    await apiCall(`/shopstream-videos/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'published' }) });
+    showToast('🚀 Video is now live on ShopStream!', 'success');
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
+  }
+  window._ssRenderSellerPanel();
+};
+
+window._ssDeleteVideo = async function(id) {
+  if (!confirm('Delete this video? This cannot be undone.')) return;
+  try {
+    await apiCall(`/shopstream-videos/${id}`, { method: 'DELETE' });
+    showToast('🗑️ Video deleted.', 'success');
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
+  }
   window._ssRenderSellerPanel();
 };
 
