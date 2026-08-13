@@ -7567,7 +7567,7 @@ if(page === "admin") {
       <div class="card-img-wrap">
         <img src="${img}" alt="${escapeHtml(p.name)}"
              onerror="this.onerror=null;this.src='${DEFAULT_PRODUCT_IMAGE}';" loading="lazy">
-        ${disc ? `<span class="card-discount-badge">-${disc}%</span>` : (p.hot ? `<span class="card-hot-badge">🔥 HOT</span>` : '')}
+        ${p.isFeatured ? `<span class="card-hot-badge" style="background:var(--gold); color:#111;">⭐ Featured</span>` : disc ? `<span class="card-discount-badge">-${disc}%</span>` : (p.hot ? `<span class="card-hot-badge">🔥 HOT</span>` : '')}
         ${p.has_variants ? `<span class="card-variants-badge">🎯 Options</span>` : ''}
         <button class="card-wish-btn" data-id="${p.id}">${inWish ? '❤️' : '🤍'}</button>
       </div>
@@ -14113,7 +14113,7 @@ function createAdminSellerManagement() {
 
   // much commission has been paid out, and the most recent activity.
 
-  function createAdminReferralsPanel() {
+  async function createAdminReferralsPanel() {
 
     const adminContent = document.getElementById('page-admin');
 
@@ -14129,9 +14129,20 @@ function createAdminSellerManagement() {
 
     panel.style.cssText = 'margin-top:24px; background:var(--surface); border:1px solid var(--border-strong); border-radius:16px; padding:24px;';
 
-    const totalCommission = REFERRAL_EARNINGS.reduce((s, e) => s + e.commission, 0);
+    // Was reading from a localStorage array nothing ever wrote real data
+    // into (awardReferralCommission, the only writer, was dead code) -
+    // always showed empty/zero regardless of real referral activity.
+    let earnings = [];
+    let totalCommission = 0;
+    try {
+      const result = await adminApiCall('/admin/referrals');
+      earnings = result.data.earnings || [];
+      totalCommission = result.data.total_paid_out || 0;
+    } catch (err) {
+      console.error('Could not load referral overview:', err.message);
+    }
 
-    const recent = [...REFERRAL_EARNINGS].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 15);
+    const recent = earnings.slice(0, 15);
 
     const rowsHtml = recent.length === 0
 
@@ -14141,17 +14152,17 @@ function createAdminSellerManagement() {
 
           <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px;">
 
-            <span>${escapeHtml(e.referrerName || e.referrerEmail)} ← ${escapeHtml(e.referredName || e.referredEmail)}</span>
+            <span>${escapeHtml(e.referrer_name || e.referrer_email || 'Seller')}</span>
 
-            <span style="color:var(--gray);">Order KES ${e.orderTotal.toLocaleString()}</span>
+            <span style="color:var(--gray);">Order KES ${Number(e.order_total || 0).toLocaleString()}</span>
 
-            <span style="color:var(--gold); font-weight:600;">+KES ${e.commission.toLocaleString()}</span>
+            <span style="color:var(--gold); font-weight:600;">+KES ${Number(e.commission || 0).toLocaleString()}</span>
 
           </div>
 
         `).join('');
 
-    panel.innerHTML = `<h3 style="font-family:var(--font-display); margin-bottom:8px;">${t('referralProgramTitle')}</h3><div style="color:var(--gray); font-size:13px; margin-bottom:12px;">${t('referralCommissionDesc')} KES ${REFERRAL_MIN_ORDER_TOTAL.toLocaleString()} • ${t('referralTotalPaidOut')} <strong style="color:var(--gold);">KES ${totalCommission.toLocaleString()}</strong></div>${rowsHtml}`;
+    panel.innerHTML = `<h3 style="font-family:var(--font-display); margin-bottom:8px;">${t('referralProgramTitle')}</h3><div style="color:var(--gray); font-size:13px; margin-bottom:12px;">${t('referralCommissionDesc')} KES ${REFERRAL_MIN_ORDER_TOTAL.toLocaleString()} • ${t('referralTotalPaidOut')} <strong style="color:var(--gold);">KES ${Number(totalCommission).toLocaleString()}</strong></div>${rowsHtml}`;
 
     adminContent.appendChild(panel);
 
@@ -14419,6 +14430,10 @@ function createAdminSellerManagement() {
     try {
       const result = await adminApiCall('/admin/sellers');
       applications = (result.data.sellers || []).map(mapApiSellerApplication);
+      // Cached so "View Details" can look an application up instantly
+      // without a second fetch - the real, working replacement for the
+      // dead localStorage array this used to read from.
+      window._sellerApplicationsCache = applications;
     } catch (err) {
       container.innerHTML = `<div style="color:#f44336; text-align:center; padding:30px;">Could not load seller applications: ${escapeHtml(err.message)}</div>`;
       return;
@@ -14551,17 +14566,17 @@ function createAdminSellerManagement() {
 
 
 
-  window.resetSellerApplicationById = function(applicationId) {
+  window.resetSellerApplicationById = async function(applicationId) {
 
     if (!confirm('Reset this application so the seller can reapply?')) return;
 
-    const applications = loadSellerApplications();
-
-    const filtered = applications.filter(a => a.id !== applicationId);
-
-    saveSellerApplications(filtered);
-
-    showToast('Application reset. Seller can now reapply.', 'success');
+    try {
+      await adminApiCall(`/admin/sellers/${applicationId}/reset`, { method: 'POST' });
+      showToast('Application reset. Seller can now reapply.', 'success');
+    } catch (err) {
+      showToast('⚠️ ' + err.message, 'error');
+      return;
+    }
 
     renderAdminSellerApplicationsList();
 
@@ -14573,9 +14588,9 @@ function createAdminSellerManagement() {
 
   window.viewSellerDetail = function(applicationId) {
 
-    const applications = loadSellerApplications();
+    const applications = window._sellerApplicationsCache || [];
 
-    const app = applications.find(a => a.id === applicationId);
+    const app = applications.find(a => a.id == applicationId);
 
     if (!app) { showToast('Application not found.', 'error'); return; }
 
@@ -16075,6 +16090,8 @@ window.renderSMSLog = renderSMSLog;
       isBestRated: !!p.is_best_rated,
       madeInKenya: !!p.made_in_kenya,
       countryOfOrigin: p.country_of_origin || null,
+      isFeatured: !!p.is_featured && (!p.featured_until || new Date(p.featured_until) > new Date()),
+      featuredUntil: p.featured_until || null,
       // MySQL returns DATETIME values as "YYYY-MM-DD HH:MM:SS" (space,
       // no timezone marker) - it's genuinely UTC (that's what got
       // stored, via toISOString() at save time), but new Date() on that
@@ -19273,14 +19290,14 @@ window._renderSellerAnalytics = async function() {
     return s + ((prod && prod.sellerEmail === currentUser.email) ? (i.qty || 1) : 0);
   }, 0), 0);
 
-  // Video views from this seller's ShopStream videos (localStorage-backed).
-  // Uses the raw storage key directly since SS_KEY is scoped inside the
-  // ShopStream IIFE and isn't accessible from here.
+  // Video views from this seller's ShopStream videos - reads the real,
+  // server-tracked count now (was reading a dead localStorage key that
+  // nothing has written to since ShopStream moved to a real backend).
   let videoViews = 0;
   try {
-    const vids = JSON.parse(localStorage.getItem('kenlynk_ss_videos') || '[]');
-    videoViews = vids.filter(v => v.sellerEmail === currentUser.email).reduce((s, v) => s + (v.views || 0), 0);
-  } catch (e) { /* ignore */ }
+    const vidsRes = await apiCall('/shopstream-videos/mine/list');
+    videoViews = (vidsRes.data.videos || []).reduce((s, v) => s + (v.view_count || 0), 0);
+  } catch (e) { /* ignore - seller may not be approved yet, or has no videos */ }
 
   // Real page-view / click / conversion numbers require backend event
   // tracking (see window._trackProductView / _trackProductClick below,
@@ -20966,19 +20983,54 @@ window._selFeatDur = function(days, el) {
   const btn=document.getElementById('featPayBtn');
   if(btn) btn.textContent=`💳 Pay KES ${price} — Feature for ${days===1?'24 Hours':'7 Days'}`;
 };
-window._submitFeatProd = function() {
+window._submitFeatProd = async function() {
   const days=parseInt(document.getElementById('featDays')?.value||7,10);
   const id=parseInt(document.getElementById('featProdId')?.value,10);
-  const name=document.getElementById('featProdName')?.value||'Product';
   const btn=document.getElementById('featPayBtn');
+  const originalText = btn ? btn.textContent : '';
   if(btn){btn.disabled=true;btn.textContent='⏳ Sending M-Pesa prompt…';}
-  setTimeout(()=>{
-    const u=window.currentUser;
-    _addToQueue({type:'featured_product',productId:id,productName:name,days,price:days===1?100:500,sellerName:u?.seller_business_name||u?.name||'Seller',sellerEmail:u?.email||''});
-    document.getElementById('featureProductModal').style.display='none';
-    window.showToast&&window.showToast('✅ Payment submitted! Admin will activate your feature shortly.','success');
-    if(btn){btn.disabled=false;}
-  },1200);
+
+  try {
+    const initResult = await apiCall('/intasend/feature-product', {
+      method: 'POST',
+      body: JSON.stringify({ product_id: id, days })
+    });
+    const apiRef = initResult.data.api_ref;
+    if (btn) btn.textContent = '📱 Check your phone — enter M-Pesa PIN...';
+    showToast('✅ M-Pesa prompt sent! Check your phone and enter your PIN.', 'success');
+
+    // Poll every 4s for up to 80s, same pattern as the real subscription
+    // payment flow - the actual pending request only gets created once
+    // IntaSend's webhook confirms this payment completed.
+    const maxAttempts = 20;
+    let attempt = 0;
+    let finalStatus = null;
+    while (attempt < maxAttempts) {
+      await new Promise(r => setTimeout(r, 4000));
+      attempt++;
+      try {
+        const statusResult = await apiCall(`/intasend/status/${apiRef}`);
+        const s = statusResult.data.status;
+        if (s === 'COMPLETE') { finalStatus = 'completed'; break; }
+        if (s === 'FAILED')   { finalStatus = 'failed';    break; }
+        if (btn) btn.textContent = `📱 Waiting for PIN… (${attempt * 4}s)`;
+      } catch (pollErr) { console.warn('Poll attempt failed:', pollErr.message); }
+    }
+
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+
+    if (finalStatus === 'completed') {
+      document.getElementById('featureProductModal').style.display='none';
+      showToast('✅ Payment confirmed! Admin will review and activate your feature shortly.', 'success');
+    } else if (finalStatus === 'failed') {
+      showToast('❌ Payment failed. Please try again.', 'error');
+    } else {
+      showToast('Still waiting for confirmation - check your Orders/Payments page shortly.', 'error');
+    }
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+    showToast('⚠️ ' + err.message, 'error');
+  }
 };
 
 // ── Feature Live — payment → approval queue ───────────────────────
@@ -21011,11 +21063,31 @@ window._submitFeatLive = function(videoId, videoTitle) {
 };
 
 // ── Admin Approvals Panel ─────────────────────────────────────────
-window._renderAdminApprovals = function() {
+window._renderAdminApprovals = async function() {
   let m=document.getElementById('adminApprovalsModal');
   if(!m){m=document.createElement('div');m.id='adminApprovalsModal';m.style.cssText='display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.92);overflow-y:auto;padding:16px;align-items:flex-start;justify-content:center;';document.body.appendChild(m);}
 
-  const queue=_getQueue(), liveNow=_getLiveNow();
+  // Real, paid-for "Feature My Product" requests - fetched from the
+  // server so admin sees them regardless of device, unlike the old
+  // localStorage queue. featured_live (ShopStream feature) isn't wired
+  // to a real backend yet, so those still come from the legacy local
+  // queue for now - each is tagged so approve/reject knows which path
+  // to use.
+  let realFeatureRequests = [];
+  try {
+    const res = await adminApiCall('/admin/featured-requests');
+    realFeatureRequests = (res.data.requests || []).map(r => ({
+      id: r.id, _real: true, type: 'featured_product',
+      status: r.status === 'pending_approval' ? 'pending' : r.status,
+      price: Number(r.price), submittedAt: r.created_at,
+      sellerName: r.seller_business_name || r.seller_email,
+      sellerEmail: r.seller_email, productName: r.product_name, days: r.days
+    }));
+  } catch (err) { console.error('Could not load featured requests:', err.message); }
+
+  const localQueue = _getQueue().filter(q => q.type !== 'featured_product'); // avoid double-listing now that these are real
+  const queue = [...realFeatureRequests, ...localQueue];
+  const liveNow=_getLiveNow();
   const pending=queue.filter(q=>q.status==='pending');
   const recent=queue.filter(q=>q.status!=='pending').slice(0,10);
   const tLabel={featured_product:'⭐ Featured Product',featured_live:'📡 Featured Live',subscription:'💳 Subscription'};
@@ -21074,19 +21146,30 @@ window._renderAdminApprovals = function() {
   m.style.display='flex';
 };
 
-window._adminApprove = function(itemId) {
+window._adminApprove = async function(itemId) {
+  // Real featured_product requests are tagged with a numeric id and no
+  // 'apq_' prefix - route those to the real backend; anything else
+  // (featured_live, still not wired to a real backend yet) keeps using
+  // the legacy local-only path for now.
+  const isReal = typeof itemId === 'number' || !String(itemId).startsWith('apq_');
+  if (isReal) {
+    try {
+      await adminApiCall(`/admin/featured-requests/${itemId}/approve`, { method: 'POST' });
+      showToast('✅ Product is now featured!', 'success');
+      window.renderProducts&&window.renderProducts();
+      window.renderShopCollections&&window.renderShopCollections();
+    } catch (err) {
+      showToast('⚠️ ' + err.message, 'error');
+      return;
+    }
+    window._renderAdminApprovals(); window._renderRevenuePanel&&window._renderRevenuePanel();
+    return;
+  }
+
   const q=_getQueue(), item=q.find(i=>i.id===itemId);
   if(!item) return;
   item.status='approved'; item.approvedAt=new Date().toISOString();
-  if(item.type==='featured_product') {
-    const f=_getFeatured(), until=Date.now()+item.days*86400000;
-    const idx=f.findIndex(x=>x.id===item.productId);
-    if(idx>=0) f[idx]={...f[idx],until,approved:true};
-    else f.push({id:item.productId,until,days:item.days,price:item.price,approved:true});
-    _saveFeatured(f);
-    window.renderProducts&&window.renderProducts();
-    window.renderShopCollections&&window.renderShopCollections();
-  } else if(item.type==='featured_live') {
+  if(item.type==='featured_live') {
     const l=_getFeaturedLives();
     l.push({id:item.videoId,until:Date.now()+86400000,price:item.price,approved:true});
     localStorage.setItem(FEATURED_LIVE_KEY,JSON.stringify(l));
@@ -21100,8 +21183,22 @@ window._adminApprove = function(itemId) {
   window._renderAdminApprovals(); window._renderRevenuePanel&&window._renderRevenuePanel();
 };
 
-window._adminReject = function(itemId) {
+window._adminReject = async function(itemId) {
   if(!confirm('Reject this payment request?')) return;
+
+  const isReal = typeof itemId === 'number' || !String(itemId).startsWith('apq_');
+  if (isReal) {
+    try {
+      await adminApiCall(`/admin/featured-requests/${itemId}/reject`, { method: 'POST' });
+      showToast('❌ Request rejected.', 'error');
+    } catch (err) {
+      showToast('⚠️ ' + err.message, 'error');
+      return;
+    }
+    window._renderAdminApprovals();
+    return;
+  }
+
   const q=_getQueue(), item=q.find(i=>i.id===itemId);
   if(item){item.status='rejected';item.rejectedAt=new Date().toISOString();}
   _saveQueue(q);
@@ -21124,27 +21221,38 @@ window._adminEndLive = async function(streamId) {
 const _origGetFP = window.getFilteredProducts;
 window.getFilteredProducts = function() {
   const list=_origGetFP?_origGetFP():(window.PRODUCTS||[]);
-  const now=Date.now();
-  const fIds=_getFeatured().filter(f=>f.until>now&&f.approved).map(f=>f.id);
+  const fIds = list.filter(p => p.isFeatured).map(p => p.id);
   if(!fIds.length) return list;
   return [...list].sort((a,b)=>(fIds.includes(b.id)?1:0)-(fIds.includes(a.id)?1:0));
 };
 
 // ── Revenue Panel ─────────────────────────────────────────────────
-window._renderRevenuePanel = function() {
+window._renderRevenuePanel = async function() {
   const panel=document.getElementById('adminRevenuePanel');
   if(!panel) return;
   const q=_getQueue(), liveNow=_getLiveNow();
-  const approved=q.filter(x=>x.status==='approved');
-  const pending=q.filter(x=>x.status==='pending');
-  const featRev=approved.filter(x=>x.type==='featured_product').reduce((s,x)=>s+(x.price||0),0);
+
+  // Real featured-product revenue, from the same backend the approvals
+  // panel uses - the local queue no longer receives these once approved
+  // for real, so this can't be computed from _getQueue() anymore.
+  let featRev = 0, featPendingCount = 0;
+  try {
+    const res = await adminApiCall('/admin/featured-requests');
+    const requests = res.data.requests || [];
+    featRev = requests.filter(r => r.status === 'approved').reduce((s, r) => s + Number(r.price || 0), 0);
+    featPendingCount = requests.filter(r => r.status === 'pending_approval').length;
+  } catch (err) { console.error('Could not load featured request revenue:', err.message); }
+
+  const localQueue = q.filter(x => x.type !== 'featured_product');
+  const approved=localQueue.filter(x=>x.status==='approved');
+  const pending=localQueue.filter(x=>x.status==='pending').length + featPendingCount;
   const liveRev=approved.filter(x=>x.type==='featured_live').reduce((s,x)=>s+(x.price||0),0);
   const subRev=approved.filter(x=>x.type==='subscription').reduce((s,x)=>s+(x.price||0),0);
   panel.innerHTML=`
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
       <h4 style="font-family:var(--font-display);font-size:15px;margin:0;">💰 Revenue & Approvals</h4>
-      <button onclick="window._renderAdminApprovals()" style="background:${pending.length?'#e74c3c':'var(--surface-2)'};border:none;color:#fff;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px;">
-        ${pending.length?`⏳ ${pending.length} Pending`:'✅ Approvals'}${liveNow.length?` · 🔴 ${liveNow.length} Live`:''}
+      <button onclick="window._renderAdminApprovals()" style="background:${pending?'#e74c3c':'var(--surface-2)'};border:none;color:#fff;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px;">
+        ${pending?`⏳ ${pending} Pending`:'✅ Approvals'}${liveNow.length?` · 🔴 ${liveNow.length} Live`:''}
       </button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:12px;">
