@@ -18748,8 +18748,12 @@ function ssGoLive() {
           <span id="liveViewers" style="color:#fff;font-size:13px;font-weight:600;">0 watching</span>
           <span id="liveLikes" style="color:#fff;font-size:13px;font-weight:600;">❤️ 0</span>
         </div>
-        <button onclick="window._ssEndLive()"
-          style="background:rgba(231,76,60,0.9);border:none;color:#fff;border-radius:8px;padding:7px 16px;cursor:pointer;font-weight:700;font-size:13px;">✕ End Live</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button onclick="window._openFeatureLive()"
+            style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-weight:700;font-size:13px;">📡 Promote</button>
+          <button onclick="window._ssEndLive()"
+            style="background:rgba(231,76,60,0.9);border:none;color:#fff;border-radius:8px;padding:7px 16px;cursor:pointer;font-weight:700;font-size:13px;">✕ End Live</button>
+        </div>
       </div>
 
       <!-- Camera -->
@@ -21043,32 +21047,70 @@ window._submitFeatProd = async function() {
 };
 
 // ── Feature Live — payment → approval queue ───────────────────────
-window._openFeatureLive = function(videoId, videoTitle) {
+window._openFeatureLive = function() {
+  if (!ssStreamId) { showToast('You need to be live to promote your stream.', 'error'); return; }
   let m=document.getElementById('featureLiveModal');
   if(!m){m=document.createElement('div');m.id='featureLiveModal';m.style.cssText='display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.88);align-items:center;justify-content:center;padding:20px;';document.body.appendChild(m);}
   m.innerHTML=`
     <div style="background:var(--surface);border:1px solid var(--border-strong);border-radius:18px;padding:24px;max-width:420px;width:100%;position:relative;">
       <button onclick="document.getElementById('featureLiveModal').style.display='none'" style="position:absolute;top:14px;right:14px;background:var(--surface-2);border:1px solid var(--border-strong);color:var(--white);border-radius:8px;padding:5px 12px;cursor:pointer;">✕</button>
       <h3 style="font-family:var(--font-display);margin-bottom:8px;">📡 Promote Your Live</h3>
-      <p style="color:var(--gray);font-size:13px;margin-bottom:14px;"><strong style="color:var(--white);">${window.escapeHtml?window.escapeHtml(videoTitle||'Your Live'):(videoTitle||'Your Live')}</strong><br>Promoted lives appear first in ShopStream for 24 hours.</p>
+      <p style="color:var(--gray);font-size:13px;margin-bottom:14px;">Promoted streams sort first in ShopStream's Live Now strip for as long as you're broadcasting.</p>
       <div style="background:var(--surface-2);border:2px solid #e74c3c;border-radius:12px;padding:16px;margin-bottom:12px;text-align:center;">
         <div style="font-size:32px;">🔴</div>
-        <div style="font-weight:700;color:var(--white);font-size:14px;margin:6px 0;">24-Hour Promotion</div>
+        <div style="font-weight:700;color:var(--white);font-size:14px;margin:6px 0;">Priority Placement</div>
         <div style="font-size:24px;font-weight:800;color:var(--gold);">KES 200</div>
       </div>
       <div style="background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.3);border-radius:10px;padding:10px;margin-bottom:12px;font-size:12px;color:var(--gray);">⏳ Admin will review and promote your live after payment — usually within minutes.</div>
-      <button onclick="window._submitFeatLive('${videoId}','${window.escapeHtml?window.escapeHtml(videoTitle||''):(videoTitle||'')}')" style="width:100%;background:#e74c3c;border:none;color:#fff;border-radius:10px;padding:12px;cursor:pointer;font-weight:700;font-size:14px;">💳 Pay KES 200 — Promote Live</button>
+      <button id="featLivePayBtn" onclick="window._submitFeatLive()" style="width:100%;background:#e74c3c;border:none;color:#fff;border-radius:10px;padding:12px;cursor:pointer;font-weight:700;font-size:14px;">💳 Pay KES 200 — Promote Live</button>
       <p style="color:var(--gray);font-size:11px;text-align:center;margin-top:8px;">Via M-Pesa · Admin approval required</p>
     </div>`;
   m.style.display='flex';
 };
-window._submitFeatLive = function(videoId, videoTitle) {
-  const u=window.currentUser;
-  setTimeout(()=>{
-    _addToQueue({type:'featured_live',videoId,videoTitle,price:200,sellerName:u?.seller_business_name||u?.name||'Seller',sellerEmail:u?.email||''});
-    document.getElementById('featureLiveModal').style.display='none';
-    window.showToast&&window.showToast('✅ Payment submitted! Admin will promote your live shortly.','success');
-  },1200);
+window._submitFeatLive = async function() {
+  if (!ssStreamId) { showToast('You are no longer live.', 'error'); return; }
+  const btn = document.getElementById('featLivePayBtn');
+  const originalText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending M-Pesa prompt…'; }
+
+  try {
+    const initResult = await apiCall('/intasend/feature-live', {
+      method: 'POST',
+      body: JSON.stringify({ stream_id: ssStreamId })
+    });
+    const apiRef = initResult.data.api_ref;
+    if (btn) btn.textContent = '📱 Check your phone — enter M-Pesa PIN...';
+    showToast('✅ M-Pesa prompt sent! Check your phone and enter your PIN.', 'success');
+
+    const maxAttempts = 20;
+    let attempt = 0;
+    let finalStatus = null;
+    while (attempt < maxAttempts) {
+      await new Promise(r => setTimeout(r, 4000));
+      attempt++;
+      try {
+        const statusResult = await apiCall(`/intasend/status/${apiRef}`);
+        const s = statusResult.data.status;
+        if (s === 'COMPLETE') { finalStatus = 'completed'; break; }
+        if (s === 'FAILED')   { finalStatus = 'failed';    break; }
+        if (btn) btn.textContent = `📱 Waiting for PIN… (${attempt * 4}s)`;
+      } catch (pollErr) { console.warn('Poll attempt failed:', pollErr.message); }
+    }
+
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+
+    if (finalStatus === 'completed') {
+      document.getElementById('featureLiveModal').style.display='none';
+      showToast('✅ Payment confirmed! Admin will review and promote your live shortly.', 'success');
+    } else if (finalStatus === 'failed') {
+      showToast('❌ Payment failed. Please try again.', 'error');
+    } else {
+      showToast('Still waiting for confirmation - check back shortly.', 'error');
+    }
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+    showToast('⚠️ ' + err.message, 'error');
+  }
 };
 
 // ── Admin Approvals Panel ─────────────────────────────────────────
@@ -21076,12 +21118,9 @@ window._renderAdminApprovals = async function() {
   let m=document.getElementById('adminApprovalsModal');
   if(!m){m=document.createElement('div');m.id='adminApprovalsModal';m.style.cssText='display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.92);overflow-y:auto;padding:16px;align-items:flex-start;justify-content:center;';document.body.appendChild(m);}
 
-  // Real, paid-for "Feature My Product" requests - fetched from the
-  // server so admin sees them regardless of device, unlike the old
-  // localStorage queue. featured_live (ShopStream feature) isn't wired
-  // to a real backend yet, so those still come from the legacy local
-  // queue for now - each is tagged so approve/reject knows which path
-  // to use.
+  // Real, paid-for "Feature My Product" and "Promote Your Live" requests -
+  // both fetched from the server so admin sees them regardless of
+  // device, unlike the old localStorage queue.
   let realFeatureRequests = [];
   try {
     const res = await adminApiCall('/admin/featured-requests');
@@ -21094,8 +21133,21 @@ window._renderAdminApprovals = async function() {
     }));
   } catch (err) { console.error('Could not load featured requests:', err.message); }
 
-  const localQueue = _getQueue().filter(q => q.type !== 'featured_product'); // avoid double-listing now that these are real
-  const queue = [...realFeatureRequests, ...localQueue];
+  let realLiveRequests = [];
+  try {
+    const res = await adminApiCall('/admin/featured-live-requests');
+    realLiveRequests = (res.data.requests || []).map(r => ({
+      id: r.id, _real: true, _live: true, type: 'featured_live',
+      status: r.status === 'pending_approval' ? 'pending' : r.status,
+      price: Number(r.price), submittedAt: r.created_at,
+      sellerName: r.seller_business_name || r.seller_email,
+      sellerEmail: r.seller_email,
+      videoTitle: r.stream_status === 'live' ? 'Live now' : 'Stream ended'
+    }));
+  } catch (err) { console.error('Could not load featured live requests:', err.message); }
+
+  const localQueue = _getQueue().filter(q => q.type !== 'featured_product' && q.type !== 'featured_live'); // avoid double-listing now that these are real
+  const queue = [...realFeatureRequests, ...realLiveRequests, ...localQueue];
   const liveNow=_getLiveNow();
   const pending=queue.filter(q=>q.status==='pending');
   const recent=queue.filter(q=>q.status!=='pending').slice(0,10);
@@ -21138,8 +21190,8 @@ window._renderAdminApprovals = async function() {
             ${item.videoTitle?` · Live: <strong style="color:var(--white);">${esc(item.videoTitle)}</strong>`:''}
           </div>
           <div style="display:flex;gap:8px;">
-            <button onclick="window._adminApprove('${item.id}')" style="flex:1;background:var(--green);border:none;color:#fff;border-radius:8px;padding:8px;cursor:pointer;font-weight:700;font-size:13px;">✅ Approve & Activate</button>
-            <button onclick="window._adminReject('${item.id}')" style="flex:1;background:#e74c3c;border:none;color:#fff;border-radius:8px;padding:8px;cursor:pointer;font-weight:600;font-size:13px;">❌ Reject</button>
+            <button onclick="window._adminApprove('${item.id}', '${item.type}')" style="flex:1;background:var(--green);border:none;color:#fff;border-radius:8px;padding:8px;cursor:pointer;font-weight:700;font-size:13px;">✅ Approve & Activate</button>
+            <button onclick="window._adminReject('${item.id}', '${item.type}')" style="flex:1;background:#e74c3c;border:none;color:#fff;border-radius:8px;padding:8px;cursor:pointer;font-weight:600;font-size:13px;">❌ Reject</button>
           </div>
         </div>`).join(''):'<div style="color:var(--gray);font-size:13px;padding:12px 0;">No pending approvals 🎉</div>'}
 
@@ -21155,18 +21207,22 @@ window._renderAdminApprovals = async function() {
   m.style.display='flex';
 };
 
-window._adminApprove = async function(itemId) {
-  // Real featured_product requests are tagged with a numeric id and no
-  // 'apq_' prefix - route those to the real backend; anything else
-  // (featured_live, still not wired to a real backend yet) keeps using
-  // the legacy local-only path for now.
-  const isReal = typeof itemId === 'number' || !String(itemId).startsWith('apq_');
+window._adminApprove = async function(itemId, itemType) {
+  // Real featured_product and featured_live requests are tagged with a
+  // numeric id and no 'apq_' prefix - route those to the right real
+  // endpoint based on type; anything else (e.g. subscription, not yet
+  // wired to a real backend) keeps using the legacy local-only path.
+  const isReal = !String(itemId).startsWith('apq_') && (itemType === 'featured_product' || itemType === 'featured_live');
   if (isReal) {
+    const endpoint = itemType === 'featured_live'
+      ? `/admin/featured-live-requests/${itemId}/approve`
+      : `/admin/featured-requests/${itemId}/approve`;
     try {
-      await adminApiCall(`/admin/featured-requests/${itemId}/approve`, { method: 'POST' });
-      showToast('✅ Product is now featured!', 'success');
+      await adminApiCall(endpoint, { method: 'POST' });
+      showToast(itemType === 'featured_live' ? '✅ Live stream promoted!' : '✅ Product is now featured!', 'success');
       window.renderProducts&&window.renderProducts();
       window.renderShopCollections&&window.renderShopCollections();
+      window._refreshLiveNowStrip&&window._refreshLiveNowStrip();
     } catch (err) {
       showToast('⚠️ ' + err.message, 'error');
       return;
@@ -21178,12 +21234,7 @@ window._adminApprove = async function(itemId) {
   const q=_getQueue(), item=q.find(i=>i.id===itemId);
   if(!item) return;
   item.status='approved'; item.approvedAt=new Date().toISOString();
-  if(item.type==='featured_live') {
-    const l=_getFeaturedLives();
-    l.push({id:item.videoId,until:Date.now()+86400000,price:item.price,approved:true});
-    localStorage.setItem(FEATURED_LIVE_KEY,JSON.stringify(l));
-    window._ssRender&&window._ssRender();
-  } else if(item.type==='subscription' && item.plan) {
+  if(item.type==='subscription' && item.plan) {
     // Upgrade seller plan in the UI (backend would persist this in real scenario)
     window.showToast&&window.showToast(`✅ ${item.sellerName} upgraded to ${item.plan.toUpperCase()} plan!`,'success');
   }
@@ -21192,13 +21243,16 @@ window._adminApprove = async function(itemId) {
   window._renderAdminApprovals(); window._renderRevenuePanel&&window._renderRevenuePanel();
 };
 
-window._adminReject = async function(itemId) {
+window._adminReject = async function(itemId, itemType) {
   if(!confirm('Reject this payment request?')) return;
 
-  const isReal = typeof itemId === 'number' || !String(itemId).startsWith('apq_');
+  const isReal = !String(itemId).startsWith('apq_') && (itemType === 'featured_product' || itemType === 'featured_live');
   if (isReal) {
+    const endpoint = itemType === 'featured_live'
+      ? `/admin/featured-live-requests/${itemId}/reject`
+      : `/admin/featured-requests/${itemId}/reject`;
     try {
-      await adminApiCall(`/admin/featured-requests/${itemId}/reject`, { method: 'POST' });
+      await adminApiCall(endpoint, { method: 'POST' });
       showToast('❌ Request rejected.', 'error');
     } catch (err) {
       showToast('⚠️ ' + err.message, 'error');
@@ -21241,9 +21295,10 @@ window._renderRevenuePanel = async function() {
   if(!panel) return;
   const q=_getQueue(), liveNow=_getLiveNow();
 
-  // Real featured-product revenue, from the same backend the approvals
-  // panel uses - the local queue no longer receives these once approved
-  // for real, so this can't be computed from _getQueue() anymore.
+  // Real featured-product and featured-live revenue, from the same
+  // backend the approvals panel uses - the local queue no longer
+  // receives these once approved for real, so this can't be computed
+  // from _getQueue() anymore.
   let featRev = 0, featPendingCount = 0;
   try {
     const res = await adminApiCall('/admin/featured-requests');
@@ -21252,10 +21307,17 @@ window._renderRevenuePanel = async function() {
     featPendingCount = requests.filter(r => r.status === 'pending_approval').length;
   } catch (err) { console.error('Could not load featured request revenue:', err.message); }
 
-  const localQueue = q.filter(x => x.type !== 'featured_product');
+  let liveRev = 0, livePendingCount = 0;
+  try {
+    const res = await adminApiCall('/admin/featured-live-requests');
+    const requests = res.data.requests || [];
+    liveRev = requests.filter(r => r.status === 'approved').reduce((s, r) => s + Number(r.price || 0), 0);
+    livePendingCount = requests.filter(r => r.status === 'pending_approval').length;
+  } catch (err) { console.error('Could not load featured live revenue:', err.message); }
+
+  const localQueue = q.filter(x => x.type !== 'featured_product' && x.type !== 'featured_live');
   const approved=localQueue.filter(x=>x.status==='approved');
-  const pending=localQueue.filter(x=>x.status==='pending').length + featPendingCount;
-  const liveRev=approved.filter(x=>x.type==='featured_live').reduce((s,x)=>s+(x.price||0),0);
+  const pending=localQueue.filter(x=>x.status==='pending').length + featPendingCount + livePendingCount;
   const subRev=approved.filter(x=>x.type==='subscription').reduce((s,x)=>s+(x.price||0),0);
   panel.innerHTML=`
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
