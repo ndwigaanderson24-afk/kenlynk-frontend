@@ -922,6 +922,15 @@
 
     .status-pill.delivered{ background:rgba(0,150,136,0.15); color:#4db6ac; }
 
+    /* New order-status vocabulary */
+    .status-pill.pending-payment{ background:rgba(255,193,7,0.15); color:#ffc107; }
+    .status-pill.paid{ background:rgba(33,150,243,0.15); color:#64b5f6; }
+    .status-pill.processing{ background:rgba(156,39,176,0.15); color:#ba68c8; }
+    .status-pill.ready-for-delivery{ background:rgba(255,152,0,0.15); color:#ffb74d; }
+    .status-pill.out-for-delivery{ background:rgba(255,152,0,0.2); color:#ffa726; }
+    .status-pill.cancelled{ background:rgba(244,67,54,0.15); color:#ef5350; }
+    .status-pill.refunded{ background:rgba(158,158,158,0.15); color:#bdbdbd; }
+
 
     .ticket-items{ color:var(--gray); font-size:13px; margin-bottom:10px; line-height:1.6; }
 
@@ -17342,7 +17351,7 @@ function generateTrackingNumber() {
 
 // input/result element ids.
 
-function trackOrder(inputId, resultId) {
+async function trackOrder(inputId, resultId) {
 
   inputId = inputId || 'trackOrderInput';
 
@@ -17376,23 +17385,25 @@ function trackOrder(inputId, resultId) {
 
   }
 
-  
+  resultDiv.style.display = 'block';
+  resultDiv.style.background = 'var(--surface)';
+  resultDiv.style.color = 'var(--gray)';
+  resultDiv.style.padding = '15px';
+  resultDiv.style.borderRadius = '10px';
+  resultDiv.innerHTML = 'Looking up your order…';
 
-  const order = orders.find(o => o.id === input || o.trackingNumber === input);
-
-  
-
-  if (!order) {
-
-    resultDiv.style.display = 'block';
+  // Real lookup against the server - works for any order (including a
+  // guest's, or one not yet loaded into this browser's own order list),
+  // matching how the public tracking endpoint is meant to be used.
+  let order;
+  try {
+    const result = await apiCall(`/orders/${encodeURIComponent(input)}/track`);
+    order = result.data.order;
+  } catch (err) {
 
     resultDiv.style.background = 'rgba(244,67,54,0.2)';
 
     resultDiv.style.color = '#f44336';
-
-    resultDiv.style.padding = '15px';
-
-    resultDiv.style.borderRadius = '10px';
 
     resultDiv.innerHTML = '❌ Order not found. Please check your order number.';
 
@@ -17412,231 +17423,127 @@ window.trackOrder = trackOrder
 
 
 
-function renderTrackingResult(order, resultDiv) {
+async function renderTrackingResult(order, resultDiv) {
 
-  const statuses = ['Pending', 'Accepted', 'Packed', 'In Transit', 'Delivered', 'Completed'];
+  const STATUS_FLOW = ['Pending Payment', 'Paid', 'Processing', 'Ready for Delivery', 'Out for Delivery', 'Delivered', 'Completed'];
+  const STATUS_ICONS = { 'Pending Payment': '⏳', 'Paid': '💳', 'Processing': '⚙️', 'Ready for Delivery': '📦', 'Out for Delivery': '🚚', 'Delivered': '🏠', 'Completed': '✅', 'Cancelled': '❌', 'Refunded': '↩️' };
+  const currentStatus = order.status || 'Pending Payment';
+  const isTerminalOffTrack = currentStatus === 'Cancelled' || currentStatus === 'Refunded';
+  const currentIndex = STATUS_FLOW.indexOf(currentStatus);
 
-  const statusIcons = ['📥', '👍', '📦', '🚚', '🏠', '✅'];
+  // Real status history from the server - falls back gracefully if the
+  // viewer isn't allowed to see it (e.g. a guest tracking a registered
+  // customer's order), since tracking itself is meant to work without
+  // requiring a login.
+  let history = [];
+  try {
+    const histRes = await apiCall(`/orders/${order.id}/history`);
+    history = histRes.data.history || [];
+  } catch (err) { /* non-fatal - the stepper still works without dates per step */ }
 
-  const currentStatus = order.status || 'Pending';
-
-  const currentIndex = statuses.indexOf(currentStatus);
-
-  
-
-  let stepsHtml = statuses.map((s, index) => {
-
+  const stepsHtml = isTerminalOffTrack ? '' : STATUS_FLOW.map((s, index) => {
     const isCompleted = index <= currentIndex;
-
     const isActive = index === currentIndex;
-
-    
-
-    // Find status date from history
-
-    let statusDate = '';
-
-    if (order.statusHistory) {
-
-      const found = order.statusHistory.find(h => h.status === s);
-
-      if (found) {
-
-        statusDate = new Date(found.date).toLocaleDateString('en-KE');
-
-      }
-
-    }
-
-    
-
+    const found = history.find(h => h.to_status === s);
+    const statusDate = found ? new Date(found.created_at).toLocaleDateString('en-KE') : '';
     return `
-
       <div class="tracking-step ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''}">
-
         <div class="step-circle">${isCompleted ? (isActive ? '📍' : '✅') : '⏳'}</div>
-
         <div class="step-label">${s}</div>
-
         <div class="step-date">${statusDate || ''}</div>
-
       </div>
-
     `;
-
   }).join('');
 
-  
-
   resultDiv.style.display = 'block';
-
   resultDiv.style.background = 'var(--surface)';
-
   resultDiv.style.border = '1px solid var(--border-strong)';
-
   resultDiv.style.borderRadius = '12px';
-
   resultDiv.style.padding = '20px';
+  resultDiv.style.color = '';
+
+  const canConfirm = currentStatus === 'Delivered' && window.currentUser && order.customer_user_id === window.currentUser.id;
 
   resultDiv.innerHTML = `
-
     <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
-
       <div>
-
-        <h4 style="font-family:var(--font-display);">Order #${order.id}</h4>
-
-        <div style="color:var(--gray); font-size:13px;">📅 ${new Date(order.placedAt).toLocaleDateString('en-KE')}</div>
-
-        <div style="color:var(--gray); font-size:13px;">📦 ${order.items.map(i => i.name).join(', ')}</div>
-
-        <div style="color:var(--gold); font-weight:600; font-size:16px; margin-top:4px;">KES ${order.total.toLocaleString()}</div>
-
+        <h4 style="font-family:var(--font-display);">Order #${escapeHtml(order.order_number || order.id)}</h4>
+        <div style="color:var(--gray); font-size:13px;">📅 ${new Date(order.placed_at).toLocaleDateString('en-KE')}</div>
+        <div style="color:var(--gray); font-size:13px;">📦 ${(order.items || []).map(i => escapeHtml(i.product_name) + (i.variant_name ? ` (${escapeHtml(i.variant_name)})` : '')).join(', ')}</div>
+        <div style="color:var(--gold); font-weight:600; font-size:16px; margin-top:4px;">KES ${Number(order.total).toLocaleString()}</div>
         <div style="color:var(--gray); font-size:12px; margin-top:4px;">
-
-          🔢 Tracking: <span style="color:var(--white); font-family:var(--font-mono);">${order.trackingNumber || 'N/A'}</span>
-
+          🔢 Tracking: <span style="color:var(--white); font-family:var(--font-mono);">${escapeHtml(order.tracking_number || 'N/A')}</span>
         </div>
-
       </div>
-
       <div style="text-align:right;">
-
         <div style="margin-top:8px;">
-
-          <span class="status-pill ${order.status.toLowerCase().replace(/\s+/g, '-')}">${order.status}</span>
-
+          <span class="status-pill ${currentStatus.toLowerCase().replace(/\s+/g, '-')}">${STATUS_ICONS[currentStatus] || ''} ${currentStatus}</span>
         </div>
-
-        <div style="color:var(--gray); font-size:12px; margin-top:4px;">
-
-          📍 <span style="color:var(--gold);">${currentStatus}</span>
-
-        </div>
-
       </div>
-
     </div>
-
+    ${!isTerminalOffTrack ? `
     <div style="border-top:1px solid var(--border); margin-top:16px; padding-top:16px;">
-
       <h5 style="font-family:var(--font-display); font-size:14px; margin-bottom:12px;">📊 Tracking Progress</h5>
-
       <div class="tracking-steps">
-
         ${stepsHtml}
-
       </div>
-
     </div>
-
-    <!-- Rider Info -->
-
-    ${order.rider ? `
-
-    <div style="border-top:1px solid var(--border); margin-top:16px; padding-top:16px;">
-
-      <h5 style="font-family:var(--font-display); font-size:14px; margin-bottom:12px;">🚴 Rider Details</h5>
-
-      <div style="display:flex; align-items:center; gap:16px; background:var(--surface-2); border-radius:12px; padding:16px; border:1px solid var(--border);">
-
-        <div style="width:56px; height:56px; border-radius:50%; background:var(--surface-3); display:flex; align-items:center; justify-content:center; font-size:28px; flex-shrink:0;">${order.rider.photo || '👤'}</div>
-
-        <div style="flex:1;">
-
-          <div style="font-weight:600; font-size:16px;">${escapeHtml(order.rider.name)}</div>
-
-          <div style="color:var(--gray); font-size:13px;">📱 <a href="tel:${order.rider.phone}" style="color:var(--green-light); text-decoration:none;">${order.rider.phone}</a></div>
-
-          ${order.rider.rating ? `<div style="color:var(--gold); font-size:14px;">⭐ ${order.rider.rating}/5</div>` : ''}
-
-        </div>
-
-        ${order.status === 'Completed' && !order.rider.rated ? `
-
-        <button onclick="rateRider('${order.id}', prompt('Rate rider 1-5:'))" style="background:var(--gold); color:#111; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:600;">⭐ Rate</button>
-
-        ` : ''}
-
-      </div>
-
-    </div>
-
-    ` : ''}
-
-    
-
-    <!-- ETA Countdown -->
-
-    ${(order.trackingStatus === 'In Transit' || order.trackingStatus === 'Near You') ? `
-
-    <div style="border-top:1px solid var(--border); margin-top:16px; padding-top:16px;">
-
-      <h5 style="font-family:var(--font-display); font-size:14px; margin-bottom:12px;">⏱️ Estimated Arrival</h5>
-
-      <div style="text-align:center; padding:16px; background:var(--surface-2); border-radius:12px; border:1px solid var(--border-strong);">
-
-        <div style="font-size:32px; font-weight:700; color:var(--gold); font-family:var(--font-mono);">${Math.floor(Math.random() * 25) + 5} min</div>
-
-        <div style="color:var(--gray); font-size:12px;">Estimated arrival time</div>
-
-      </div>
-
-    </div>
-
-    ` : ''}
-
-    
-
-    <!-- Delivery Proof -->
-
-    ${order.deliveryProof && order.deliveryProof.photo ? `
-
-    <div style="border-top:1px solid var(--border); margin-top:16px; padding-top:16px;">
-
-      <h5 style="font-family:var(--font-display); font-size:14px; margin-bottom:12px;">📸 Delivery Proof</h5>
-
-      <img src="${order.deliveryProof.photo}" alt="Delivery proof" style="width:100%; max-height:200px; object-fit:cover; border-radius:12px; border:1px solid var(--border-strong);">
-
-      <div style="color:var(--gray); font-size:11px; margin-top:4px;">Delivered at: ${new Date(order.deliveryProof.deliveredAt).toLocaleString('en-KE')}</div>
-
-    </div>
-
-    ` : ''}
-
-
-
-
-
-
-
-
-
-    ${order.status === 'Delivered' || currentStatus === 'Delivered' ? `
-
-      <div style="background:rgba(0,107,63,0.2); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--green-light);">
-
-        ✅ Order delivered successfully!
-
-      </div>
-
     ` : `
-
-      <div style="background:rgba(255,215,0,0.1); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--gold); font-size:13px;">
-
-        🚚 Your order is being processed. Check back for updates!
-
-      </div>
-
+    <div style="border-top:1px solid var(--border); margin-top:16px; padding-top:16px; text-align:center; color:var(--gray); font-size:13px;">
+      This order was ${currentStatus.toLowerCase()}.
+    </div>
     `}
 
+    ${(order.rider_name) ? `
+    <div style="border-top:1px solid var(--border); margin-top:16px; padding-top:16px;">
+      <h5 style="font-family:var(--font-display); font-size:14px; margin-bottom:12px;">🚴 Rider Details</h5>
+      <div style="display:flex; align-items:center; gap:16px; background:var(--surface-2); border-radius:12px; padding:16px; border:1px solid var(--border);">
+        <div style="width:56px; height:56px; border-radius:50%; background:var(--surface-3); display:flex; align-items:center; justify-content:center; font-size:28px; flex-shrink:0;">${order.rider_photo ? `<img src="${order.rider_photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : '👤'}</div>
+        <div style="flex:1;">
+          <div style="font-weight:600; font-size:16px;">${escapeHtml(order.rider_name)}</div>
+          <div style="color:var(--gray); font-size:13px;">📱 <a href="tel:${escapeHtml(order.rider_phone||'')}" style="color:var(--green-light); text-decoration:none;">${escapeHtml(order.rider_phone||'')}</a></div>
+        </div>
+      </div>
+    </div>
+    ` : ''}
+
+    ${canConfirm ? `
+    <div style="border-top:1px solid var(--border); margin-top:16px; padding-top:16px;">
+      <button onclick="window._confirmOrderReceipt(${order.id})" style="width:100%; background:var(--green); border:none; color:#fff; border-radius:10px; padding:12px; cursor:pointer; font-weight:700; font-size:14px;">✅ I've received this order</button>
+    </div>
+    ` : ''}
+
+    ${currentStatus === 'Delivered' ? `
+      <div style="background:rgba(0,107,63,0.2); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--green-light);">
+        ✅ Order delivered successfully!
+      </div>
+    ` : currentStatus === 'Completed' ? `
+      <div style="background:rgba(0,107,63,0.2); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--green-light);">
+        🎉 Order completed - thanks for confirming!
+      </div>
+    ` : !isTerminalOffTrack ? `
+      <div style="background:rgba(255,215,0,0.1); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--gold); font-size:13px;">
+        🚚 Your order is being processed. Check back for updates!
+      </div>
+    ` : ''}
   `;
 
-  
-
   resultDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
 }
+
+window._confirmOrderReceipt = async function(orderId) {
+  if (!confirm('Confirm that you have received this order?')) return;
+  try {
+    await apiCall(`/orders/${orderId}/confirm-receipt`, { method: 'PUT' });
+    showToast('✅ Thanks for confirming! Order marked as completed.', 'success');
+    const resultDiv = document.getElementById('trackResult');
+    if (resultDiv) trackOrder();
+    if (window.renderOrders) window.renderOrders();
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
+  }
+};
+
 
 
 
