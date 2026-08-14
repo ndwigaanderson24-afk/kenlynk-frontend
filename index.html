@@ -14393,11 +14393,17 @@ function createAdminSellerManagement() {
       <h3 style="font-family:var(--font-display); margin-bottom:8px;">💰 Pricing Engine</h3>
       <p style="color:var(--gray); font-size:13px; margin-bottom:16px;">Buyers only ever see the final price - this is where you control what's baked into it. Category/value-specific rules below override these defaults when they match.</p>
       <div id="adminPricingSettings" style="margin-bottom:20px;"></div>
-      <div id="adminPricingMigrateBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px; margin-bottom:20px;">
+      <div id="adminPricingMigrateBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px; margin-bottom:12px;">
         <div style="font-weight:700; font-size:13px; color:var(--white); margin-bottom:4px;">🔄 Migrate Existing Products</div>
         <p style="color:var(--gray); font-size:12px; margin-bottom:10px;">Products created before today have a plain price with no pricing breakdown. This one-time action treats each one's current price as the seller's asking price, then computes a new final price on top of it using the rules above - <strong style="color:var(--white);">every existing product's displayed price on the live Shop will change immediately.</strong> Safe to run more than once - it never touches a product twice.</p>
         <button onclick="window._runPricingMigration()" id="pricingMigrateBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Migrate Existing Products Now</button>
         <div id="pricingMigrateResult" style="margin-top:10px; font-size:12px;"></div>
+      </div>
+      <div id="adminVariantPricingMigrateBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px; margin-bottom:20px;">
+        <div style="font-weight:700; font-size:13px; color:var(--white); margin-bottom:4px;">🔄 Migrate Existing Variants</div>
+        <p style="color:var(--gray); font-size:12px; margin-bottom:10px;">Same idea, for product variants (colours, sizes, etc). Every existing variant's current price becomes the seller's asking price, and a real final price gets computed on top of it. <strong style="color:var(--white);">Run the products migration above first</strong> if you haven't already, then run this. Safe to run more than once.</p>
+        <button onclick="window._runVariantPricingMigration()" id="variantPricingMigrateBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Migrate Existing Variants Now</button>
+        <div id="variantPricingMigrateResult" style="margin-top:10px; font-size:12px;"></div>
       </div>
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
         <h4 style="font-family:var(--font-display); font-size:14px; margin:0;">Category & Value Rules</h4>
@@ -14589,6 +14595,33 @@ function createAdminSellerManagement() {
       showToast('⚠️ ' + err.message, 'error');
     }
     if (btn) { btn.disabled = false; btn.textContent = 'Migrate Existing Products Now'; }
+  };
+
+  window._runVariantPricingMigration = async function() {
+    const confirmed = confirm(
+      'This will recalculate the displayed price for every existing product variant right now, using the current pricing rules and defaults. Buyers browsing the Shop will see new variant prices immediately. This cannot be undone (though you can always edit individual variants afterwards). Continue?'
+    );
+    if (!confirmed) return;
+
+    const btn = document.getElementById('variantPricingMigrateBtn');
+    const resultEl = document.getElementById('variantPricingMigrateResult');
+    if (btn) { btn.disabled = true; btn.textContent = 'Migrating…'; }
+    if (resultEl) resultEl.textContent = '';
+
+    try {
+      const res = await adminApiCall('/admin/pricing/migrate-existing-variants', { method: 'POST' });
+      const { totalFound, migrated, errors } = res.data;
+      let msg = `✅ Migrated ${migrated} of ${totalFound} variant${totalFound===1?'':'s'}.`;
+      if (errors && errors.length) msg += ` ${errors.length} failed - check individual variants.`;
+      if (resultEl) resultEl.innerHTML = `<span style="color:${errors&&errors.length?'#e74c3c':'var(--green-light)'};">${msg}</span>`;
+      showToast(migrated > 0 ? '✅ Variants migrated to the new pricing model.' : 'No variants needed migrating.', 'success');
+      window.renderProducts && window.renderProducts();
+      window.renderShopCollections && window.renderShopCollections();
+    } catch (err) {
+      if (resultEl) resultEl.innerHTML = `<span style="color:#e74c3c;">⚠️ ${escapeHtml(err.message)}</span>`;
+      showToast('⚠️ ' + err.message, 'error');
+    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Migrate Existing Variants Now'; }
   };
 
   // ── Admin Notifications panel ──────────────────────────────────────
@@ -20786,7 +20819,7 @@ window._renderPhotoOptionsList = function(which) {
           </div>`;
         }).join('')}
         <div>
-          <label style="font-size:10px; color:var(--gray); display:block;">Price (KES)</label>
+          <label style="font-size:10px; color:var(--gray); display:block;">Your Price (KES)</label>
           <input type="number" min="1" value="${opt.price ?? ''}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'price', this.value)">
         </div>
         <div>
@@ -20945,7 +20978,7 @@ async function _savePhotoOptionVariants(productId, options, isAdminMode) {
   for (const opt of options) {
     const comboLabel = Object.entries(opt.values).map(([k, v]) => `${k}: ${v}`).join(', ');
     const body = JSON.stringify({
-      price: opt.price, stock: opt.stock, sku: opt.sku,
+      seller_price: opt.price, stock: opt.stock, sku: opt.sku,
       images_json: JSON.stringify([opt.image]),
       options: Object.entries(opt.values)
         .filter(([attrName]) => attrIdByName[attrName])
@@ -21042,7 +21075,7 @@ window._wizardSubmit = async function(mode) {
         const am = {}; (ar?.data?.attributes||[]).forEach(a => { am[a.name] = a.id; });
         for (const vRow of variantPayload.variants) {
           const opts = vRow.options.map(o=>({ attribute_id:am[o.attrName], value:o.value })).filter(o=>o.attribute_id);
-          await (isAdmin() ? adminApiCall : apiCall)(`/products/${savedId}/variants`, { method:'POST', body:JSON.stringify({ price:vRow.price, stock:vRow.stock, sku:vRow.sku||null, original_price:vRow.original_price||null, images_json:vRow.images_json||null, is_active:vRow.is_active, cost_price:vRow.cost_price||null, weight:vRow.weight||null, low_stock_threshold:vRow.low_stock_threshold||null, options:opts }) });
+          await (isAdmin() ? adminApiCall : apiCall)(`/products/${savedId}/variants`, { method:'POST', body:JSON.stringify({ seller_price:vRow.price, stock:vRow.stock, sku:vRow.sku||null, original_price:vRow.original_price||null, images_json:vRow.images_json||null, is_active:vRow.is_active, cost_price:vRow.cost_price||null, weight:vRow.weight||null, low_stock_threshold:vRow.low_stock_threshold||null, options:opts }) });
         }
       } catch(ve) { showToast('Product saved but variants failed: '+ve.message, 'error'); }
     }
