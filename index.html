@@ -14495,11 +14495,17 @@ function createAdminSellerManagement() {
         <button onclick="window._runPricingMigration()" id="pricingMigrateBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Migrate Existing Products Now</button>
         <div id="pricingMigrateResult" style="margin-top:10px; font-size:12px;"></div>
       </div>
-      <div id="adminVariantPricingMigrateBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px; margin-bottom:20px;">
+      <div id="adminVariantPricingMigrateBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px; margin-bottom:12px;">
         <div style="font-weight:700; font-size:13px; color:var(--white); margin-bottom:4px;">🔄 Clear Variant Pricing</div>
         <p style="color:var(--gray); font-size:12px; margin-bottom:10px;">Variants no longer have a price of their own - every colour/size now always uses its parent product's price. This one-time action clears out any leftover price still sitting on existing variants from before that change. Safe to run more than once.</p>
         <button onclick="window._runClearVariantPricing()" id="variantPricingMigrateBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Clear Variant Pricing Now</button>
         <div id="variantPricingMigrateResult" style="margin-top:10px; font-size:12px;"></div>
+      </div>
+      <div id="adminCategoryCommissionBackfillBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px; margin-bottom:20px;">
+        <div style="font-weight:700; font-size:13px; color:var(--white); margin-bottom:4px;">🔄 Backfill Category Commission</div>
+        <p style="color:var(--gray); font-size:12px; margin-bottom:10px;">Products that already have a seller's asking price were priced before the per-category commission existed. This one-time action recalculates their final price using the current category commission rates below, on top of the existing margin/delivery/fragile-risk - <strong style="color:var(--white);">every affected product's displayed price on the live Shop will change immediately.</strong> Safe to run more than once.</p>
+        <button onclick="window._runCategoryCommissionBackfill()" id="categoryCommissionBackfillBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Backfill Category Commission Now</button>
+        <div id="categoryCommissionBackfillResult" style="margin-top:10px; font-size:12px;"></div>
       </div>
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
         <h4 style="font-family:var(--font-display); font-size:14px; margin:0;">Category & Value Rules</h4>
@@ -14717,6 +14723,33 @@ function createAdminSellerManagement() {
       showToast('⚠️ ' + err.message, 'error');
     }
     if (btn) { btn.disabled = false; btn.textContent = 'Clear Variant Pricing Now'; }
+  };
+
+  window._runCategoryCommissionBackfill = async function() {
+    const confirmed = confirm(
+      'This will recalculate the displayed price for every product that already has a seller price, folding in the current category commission rates. Buyers browsing the Shop will see new prices immediately. This cannot be undone (though you can always edit individual products afterwards). Continue?'
+    );
+    if (!confirmed) return;
+
+    const btn = document.getElementById('categoryCommissionBackfillBtn');
+    const resultEl = document.getElementById('categoryCommissionBackfillResult');
+    if (btn) { btn.disabled = true; btn.textContent = 'Backfilling…'; }
+    if (resultEl) resultEl.textContent = '';
+
+    try {
+      const res = await adminApiCall('/admin/pricing/backfill-category-commission', { method: 'POST' });
+      const { totalFound, migrated, errors } = res.data;
+      let msg = `✅ Recalculated pricing for ${migrated} of ${totalFound} product${totalFound===1?'':'s'}.`;
+      if (errors && errors.length) msg += ` ${errors.length} failed - check individual products.`;
+      if (resultEl) resultEl.innerHTML = `<span style="color:${errors&&errors.length?'#e74c3c':'var(--green-light)'};">${msg}</span>`;
+      showToast(migrated > 0 ? '✅ Category commission backfilled.' : 'No products needed backfilling.', 'success');
+      window.renderProducts && window.renderProducts();
+      window.renderShopCollections && window.renderShopCollections();
+    } catch (err) {
+      if (resultEl) resultEl.innerHTML = `<span style="color:#e74c3c;">⚠️ ${escapeHtml(err.message)}</span>`;
+      showToast('⚠️ ' + err.message, 'error');
+    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Backfill Category Commission Now'; }
   };
 
   // ── Admin Notifications panel ──────────────────────────────────────
