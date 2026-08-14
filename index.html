@@ -14543,7 +14543,10 @@ function createAdminSellerManagement() {
                 <select id="pFragileType" style="width:100%;"><option value="percent" ${s.fragile_risk_type==='percent'?'selected':''}>%</option><option value="fixed" ${s.fragile_risk_type==='fixed'?'selected':''}>Fixed KES</option></select></div>
               <div><label style="font-size:11px;color:var(--gray);">Fragile risk value</label>
                 <input type="number" id="pFragileValue" value="${s.fragile_risk_value}" style="width:100%;"></div>
+              <div><label style="font-size:11px;color:var(--gray);">Category commission rate (%)</label>
+                <input type="number" id="pDefCategoryCommission" value="${s.default_category_commission_rate}" style="width:100%;"></div>
             </div>
+            <p style="color:var(--gray);font-size:11px;margin-top:8px;">Category commission is a genuinely separate cut, always a % of the seller's own price - added on top of margin/delivery/fragile risk, not instead of them. This is the fallback used when a category rule below doesn't set its own rate.</p>
             <button onclick="window._saveAdminPricingSettings()" style="margin-top:12px;background:var(--green);border:none;color:#fff;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Save Defaults</button>
           </div>`;
       }
@@ -14564,6 +14567,7 @@ function createAdminSellerManagement() {
                 ${r.category ? escapeHtml(r.category) : 'All categories'} · KES ${Number(r.min_value).toLocaleString()}${r.max_value!=null?' - '+Number(r.max_value).toLocaleString():'+'}
                 · Margin: ${r.margin_type==='percent'?r.margin_value+'%':'KES '+r.margin_value}
                 · Delivery: ${r.delivery_type==='percent'?r.delivery_value+'%':'KES '+r.delivery_value}
+                · Commission: ${r.category_commission_rate!=null?r.category_commission_rate+'%':'default'}
                 · Priority ${r.priority}
               </div>
             </div>
@@ -14587,7 +14591,8 @@ function createAdminSellerManagement() {
           default_delivery_type: document.getElementById('pDefDeliveryType').value,
           default_delivery_value: Number(document.getElementById('pDefDeliveryValue').value),
           fragile_risk_type: document.getElementById('pFragileType').value,
-          fragile_risk_value: Number(document.getElementById('pFragileValue').value)
+          fragile_risk_value: Number(document.getElementById('pFragileValue').value),
+          default_category_commission_rate: Number(document.getElementById('pDefCategoryCommission').value)
         })
       });
       showToast('✅ Pricing defaults saved.', 'success');
@@ -14619,6 +14624,7 @@ function createAdminSellerManagement() {
           <div class="field"><label>Delivery type</label><select id="prDeliveryType"><option value="fixed" ${!rule||rule.delivery_type==='fixed'?'selected':''}>Fixed KES</option><option value="percent" ${rule&&rule.delivery_type==='percent'?'selected':''}>%</option></select></div>
           <div class="field"><label>Delivery value *</label><input type="number" id="prDeliveryValue" value="${rule ? rule.delivery_value : ''}"></div>
         </div>
+        <div class="field"><label>Category commission rate (%, blank = use global default)</label><input type="number" id="prCategoryCommission" value="${rule && rule.category_commission_rate!=null ? rule.category_commission_rate : ''}" placeholder="e.g. 7"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;">
           <div class="field"><label>Priority (higher wins ties)</label><input type="number" id="prPriority" value="${rule ? rule.priority : 0}"></div>
           <div class="field" style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="prActive" style="width:auto;" ${!rule||rule.active?'checked':''}><label style="margin:0;">Active</label></div>
@@ -14638,6 +14644,7 @@ function createAdminSellerManagement() {
       return;
     }
     const maxValueRaw = document.getElementById('prMaxValue').value;
+    const categoryCommissionRaw = document.getElementById('prCategoryCommission').value;
     const body = {
       name,
       category: document.getElementById('prCategory').value.trim() || null,
@@ -14647,6 +14654,7 @@ function createAdminSellerManagement() {
       margin_value: Number(marginValue),
       delivery_type: document.getElementById('prDeliveryType').value,
       delivery_value: Number(deliveryValue),
+      category_commission_rate: categoryCommissionRaw === '' ? null : Number(categoryCommissionRaw),
       priority: Number(document.getElementById('prPriority').value) || 0,
       active: document.getElementById('prActive').checked
     };
