@@ -7084,6 +7084,20 @@ function escapeHtml(str) {
 
 }
 
+// Turns whatever format a buyer/seller typed their number in (local
+// "0712345678", already-international "254712345678"/"+254712345678",
+// or just the 9 digits "712345678") into the one format wa.me actually
+// needs - full international, digits only, no leading 0 or +. People
+// are never asked to type a country code themselves; this is what
+// silently adds it before we ever build a wa.me link.
+function toWhatsappNumber(phone) {
+  let digits = (phone || '').replace(/[^0-9]/g, '');
+  if (digits.startsWith('254')) return digits;
+  if (digits.startsWith('0')) return '254' + digits.slice(1);
+  if (digits.length === 9) return '254' + digits; // e.g. "712345678"
+  return digits;
+}
+
 
 
   const launcher = document.getElementById("launcher");
@@ -13339,7 +13353,27 @@ window.approveSeller = approveSeller;
 
 // Expose core helpers for outer script blocks (wizard, ShopStream, etc.)
 window.PRODUCTS = PRODUCTS;
+// Full-screen view of a single image - tapping any photo that uses this
+// (starting with buyer request photos) shows just that photo large,
+// instead of forcing the whole page to pinch-zoom to see detail.
+window._openImageLightbox = function(src) {
+  if (!src) return;
+  let m = document.getElementById('imageLightbox');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'imageLightbox';
+    m.style.cssText = 'display:none;position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,0.92);align-items:center;justify-content:center;padding:20px;';
+    m.onclick = function() { m.style.display = 'none'; };
+    document.body.appendChild(m);
+  }
+  m.innerHTML = `
+    <img src="${src}" style="max-width:95vw;max-height:95vh;object-fit:contain;border-radius:8px;touch-action:pinch-zoom;" onclick="event.stopPropagation();">
+    <button onclick="document.getElementById('imageLightbox').style.display='none'" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:16px;">✕</button>`;
+  m.style.display = 'flex';
+};
+
 window.escapeHtml = escapeHtml;
+window.toWhatsappNumber = toWhatsappNumber;
 window.showToast = showToast;
 window.isAdmin = isAdmin;
 Object.defineProperty(window, 'currentUser', { get: () => currentUser, set: (v) => { currentUser = v; } });
@@ -14848,7 +14882,7 @@ function createAdminSellerManagement() {
 
     container.innerHTML = filtered.map(r => {
       const offers = r.offers || [];
-      const waLink = `https://wa.me/${(r.phone || '').replace(/[^0-9]/g, '')}`;
+      const waLink = `https://wa.me/${toWhatsappNumber(r.phone)}`;
       return `
       <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
@@ -14860,7 +14894,7 @@ function createAdminSellerManagement() {
             <div style="color:var(--gray); font-size:12px;">👤 ${escapeHtml(r.fullName)} • 📱 ${escapeHtml(r.phone)} ${r.email ? `• ✉️ ${escapeHtml(r.email)}` : ''}</div>
             <div style="color:var(--gray); font-size:12px;">📍 ${escapeHtml(r.deliveryLocation)}</div>
             <div style="color:var(--gray); font-size:11px; margin-top:4px;">📅 Requested: ${new Date(r.createdAt).toLocaleDateString('en-KE')}</div>
-            ${r.image ? `<img src="${r.image}" alt="Request image" style="max-width:80px; max-height:80px; border-radius:8px; margin-top:8px;">` : ''}
+            ${r.image ? `<img src="${r.image}" alt="Request image" onclick="window._openImageLightbox('${r.image}')" style="max-width:80px; max-height:80px; border-radius:8px; margin-top:8px; cursor:pointer;">` : ''}
           </div>
           <div style="display:flex; flex-direction:column; gap:8px; min-width:170px; align-items:flex-end;">
             <span class="status-badge ${r.status.toLowerCase().replace(/\s+/g, '-')}">${r.status}</span>
