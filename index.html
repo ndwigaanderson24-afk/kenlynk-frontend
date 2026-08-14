@@ -17569,10 +17569,32 @@ function clearTrackResult(inputId, resultId) {
 
 // Admin version of updateOrderStatus - updates ANY order regardless of
 // which seller it belongs to, using the admin-only backend endpoint.
-async function updateAdminOrderStatus(dbId, newStatus) {
-  const validStatuses = ['Pending', 'Accepted', 'Packed', 'In Transit', 'Delivered', 'Completed'];
-  if (!validStatuses.includes(newStatus)) { showToast('Invalid status.', 'error'); return; }
+// Mirrors the legal next-steps from models/orderStatus.js, scoped to
+// what a seller or admin can actually do (Pending Payment -> Paid is
+// system/webhook-only; Delivered -> Completed is customer-only) - this
+// is what lets the dropdown only ever offer real, legal moves instead
+// of showing all 9 statuses and relying on the server to reject bad
+// ones. The server is still the final authority either way.
+function _nextOrderStatusOptions(currentStatus, isAdmin) {
+  const SELLER_MAP = {
+    'Paid': ['Processing', 'Cancelled'],
+    'Processing': ['Ready for Delivery'],
+    'Ready for Delivery': ['Out for Delivery'],
+    'Out for Delivery': ['Delivered']
+  };
+  const ADMIN_MAP = {
+    'Paid': ['Processing', 'Cancelled', 'Refunded'],
+    'Processing': ['Ready for Delivery', 'Cancelled', 'Refunded'],
+    'Ready for Delivery': ['Out for Delivery', 'Refunded'],
+    'Out for Delivery': ['Delivered', 'Refunded'],
+    'Delivered': ['Refunded'],
+    'Completed': ['Refunded']
+  };
+  const map = isAdmin ? ADMIN_MAP : SELLER_MAP;
+  return map[currentStatus] || [];
+}
 
+async function updateAdminOrderStatus(dbId, newStatus) {
   try {
     await adminApiCall(`/orders/admin/${dbId}/status`, {
       method: 'PUT',
@@ -17590,22 +17612,17 @@ window.updateAdminOrderStatus = updateAdminOrderStatus;
 
 async function updateOrderStatus(orderId, newStatus) {
 
-  // Canonical order lifecycle: Pending -> Accepted -> Packed -> In Transit
-  // -> Delivered -> Completed. Sellers are only paid out once Completed.
-  const validStatuses = ['Pending', 'Accepted', 'Packed', 'In Transit', 'Delivered', 'Completed'];
+  // The real lifecycle now lives server-side in models/orderStatus.js -
+  // an invalid move (like skipping straight to Completed) is rejected
+  // there with a specific error message, which is what gets shown below
+  // rather than a generic "Invalid status".
 
-  if (!validStatuses.includes(newStatus)) {
-    showToast('Invalid status.', 'error');
-    return;
-  }
-
-  // A real numeric backend id (from the seller's own order list, which
-  // sends order.dbId) vs. the older order_number string (still used by
-  // the admin order list, which has no backend status-update endpoint
-  // yet - that's the next piece of the admin dashboard still to wire up).
+  // Sanity check: this function expects a real numeric backend order id
+  // (from the seller's own order list, which sends order.dbId) - guards
+  // against ever calling the status endpoint with something malformed.
   const isRealBackendId = /^\d+$/.test(String(orderId));
   if (!isRealBackendId) {
-    showToast('⚠️ Admin order status updates aren\'t connected to the server yet - this is still a planned next step.', 'error');
+    showToast('⚠️ Could not identify this order - please refresh and try again.', 'error');
     return;
   }
 
@@ -17891,12 +17908,8 @@ async function renderAdminOrdersList(loadMore) {
   ${o.status === 'Completed' ? `<span style="color:var(--green-light); font-size:11px;">✅ Seller paid out</span>` : `<span style="color:var(--gray); font-size:11px;">⏳ Not yet payable</span>`}
 
   <select onchange="updateAdminOrderStatus('${o.dbId}', this.value)" style="background:var(--surface-3); color:var(--white); border:1px solid var(--border-strong); border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer;">
-    <option value="Pending" ${o.status === 'Pending' ? 'selected' : ''}>Pending</option>
-    <option value="Accepted" ${o.status === 'Accepted' ? 'selected' : ''}>Accepted</option>
-    <option value="Packed" ${o.status === 'Packed' ? 'selected' : ''}>Packed</option>
-    <option value="In Transit" ${o.status === 'In Transit' ? 'selected' : ''}>In Transit</option>
-    <option value="Delivered" ${o.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
-    <option value="Completed" ${o.status === 'Completed' ? 'selected' : ''}>Completed (pays seller)</option>
+    <option value="${o.status}" selected>${o.status} (current)</option>
+    ${_nextOrderStatusOptions(o.status, true).map(s => `<option value="${s}">→ ${s}</option>`).join('')}
   </select>
 
   ${o.rider ? `
@@ -17957,12 +17970,8 @@ function renderSellerOrdersList() {
           <span class="status-pill ${o.status.toLowerCase().replace(/\s+/g, '-')}">${o.status}</span>
           ${o.status === 'Completed' ? `<span style="color:var(--green-light); font-size:11px;">✅ Paid out</span>` : `<span style="color:var(--gray); font-size:11px;">⏳ Paid once Completed</span>`}
           <select onchange="updateOrderStatus('${o.dbId}', this.value)" style="background:var(--surface-3); color:var(--white); border:1px solid var(--border-strong); border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer;">
-            <option value="Pending" ${o.status === 'Pending' ? 'selected' : ''}>Pending</option>
-            <option value="Accepted" ${o.status === 'Accepted' ? 'selected' : ''}>Accepted</option>
-            <option value="Packed" ${o.status === 'Packed' ? 'selected' : ''}>Packed</option>
-            <option value="In Transit" ${o.status === 'In Transit' ? 'selected' : ''}>In Transit</option>
-            <option value="Delivered" ${o.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
-            <option value="Completed" ${o.status === 'Completed' ? 'selected' : ''}>Completed</option>
+            <option value="${o.status}" selected>${o.status} (current)</option>
+            ${_nextOrderStatusOptions(o.status, false).map(s => `<option value="${s}">→ ${s}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -18244,175 +18253,9 @@ function updateRiderLocation(orderId) {
 
 // Start live tracking for an order
 
-function startLiveTracking(orderId) {
+// (startLiveTracking / markOrderNear / markOrderDelivered removed - they were an entirely fake, unreachable local-only status simulation with no real backend calls at all; real status changes go through updateOrderStatus/updateAdminOrderStatus instead)
 
-  const order = orders.find(o => o.id === orderId);
 
-  if (!order) {
-
-    showToast('Order not found.', 'error');
-
-    return;
-
-  }
-
-  
-
-  if (!order.rider) {
-
-    showToast('No rider assigned to this order.', 'error');
-
-    return;
-
-  }
-
-  
-
-  order.trackingStatus = 'In Transit';
-
-  order.statusUpdateDate = new Date().toISOString();
-
-  
-
-  if (!order.statusHistory) order.statusHistory = [];
-
-  order.statusHistory.push({
-
-    status: 'In Transit',
-
-    date: new Date().toISOString()
-
-  });
-
-  
-
-  saveOrders();
-
-  showToast('📍 Live tracking started!', 'success');
-
-  renderAdminOrdersList();
-
-  renderSellerOrdersList();
-
-  renderOrders();
-
-}
-
-
-
-// Mark order as near customer
-
-function markOrderNear(orderId) {
-
-  const order = orders.find(o => o.id === orderId);
-
-  if (!order) {
-
-    showToast('Order not found.', 'error');
-
-    return;
-
-  }
-
-  
-
-  order.trackingStatus = 'Near You';
-
-  order.statusUpdateDate = new Date().toISOString();
-
-  
-
-  if (!order.statusHistory) order.statusHistory = [];
-
-  order.statusHistory.push({
-
-    status: 'Near You',
-
-    date: new Date().toISOString()
-
-  });
-
-  
-
-  // Send notification (simulated)
-
-  showToast('📱 Customer notified: "Your order is nearby!"', 'success');
-
-  
-
-  saveOrders();
-
-  renderAdminOrdersList();
-
-  renderSellerOrdersList();
-
-  renderOrders();
-
-}
-
-
-
-// Mark order as delivered with proof
-
-function markOrderDelivered(orderId) {
-
-  const order = orders.find(o => o.id === orderId);
-
-  if (!order) {
-
-    showToast('Order not found.', 'error');
-
-    return;
-
-  }
-
-  
-
-  // Ask for delivery proof photo
-
-  const photoUrl = prompt('Enter delivery proof photo URL (or skip):');
-
-  
-
-  order.trackingStatus = 'Delivered';
-
-  order.status = 'Completed';
-
-  order.statusUpdateDate = new Date().toISOString();
-
-  order.deliveryProof = {
-
-    photo: photoUrl || '',
-
-    deliveredAt: new Date().toISOString()
-
-  };
-
-  
-
-  if (!order.statusHistory) order.statusHistory = [];
-
-  order.statusHistory.push({
-
-    status: 'Delivered',
-
-    date: new Date().toISOString()
-
-  });
-
-  
-
-  saveOrders();
-
-  showToast('✅ Order marked as delivered!', 'success');
-
-  renderAdminOrdersList();
-
-  renderSellerOrdersList();
-
-  renderOrders();
-
-}
 
 
 
