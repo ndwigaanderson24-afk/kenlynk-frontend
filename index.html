@@ -22448,7 +22448,7 @@ window._renderVariantComboTable = function() {
       <thead>
         <tr style="text-align:left; color:var(--gray); border-bottom:1px solid var(--border);">
           <th style="padding:6px 4px;">Variation</th>
-          <th style="padding:6px 4px;">Price</th>
+          <th style="padding:6px 4px;">Your Price</th>
           <th style="padding:6px 4px;">Stock</th>
           <th style="padding:6px 4px;">SKU</th>
           <th style="padding:6px 4px;">Image</th>
@@ -22483,8 +22483,8 @@ window._renderVariantComboTable = function() {
           <tr style="border-bottom:1px solid var(--border); background:var(--surface);">
             <td colspan="6" style="padding:10px;">
               <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px;">
-                <div><label style="font-size:10px; color:var(--gray); display:block;">Cost price</label><input type="number" min="0" value="${c.costPrice}" oninput="window._updateVariantCombo(${i},'costPrice',this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;"></div>
-                <div><label style="font-size:10px; color:var(--gray); display:block;">Sale price</label><input type="number" min="0" value="${c.salePrice}" oninput="window._updateVariantCombo(${i},'salePrice',this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;"></div>
+                <div><label style="font-size:10px; color:var(--gray); display:block;">Cost price <span style="color:var(--gray);">(your own tracking, optional)</span></label><input type="number" min="0" value="${c.costPrice}" oninput="window._updateVariantCombo(${i},'costPrice',this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;"></div>
+                <div><label style="font-size:10px; color:var(--gray); display:block;">Discount price <span style="color:var(--gray);">(optional - only if running a promo)</span></label><input type="number" min="0" value="${c.salePrice}" placeholder="Leave blank for no discount" oninput="window._updateVariantCombo(${i},'salePrice',this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;"></div>
                 <div><label style="font-size:10px; color:var(--gray); display:block;">Weight (kg)</label><input type="number" min="0" step="0.1" value="${c.weight}" oninput="window._updateVariantCombo(${i},'weight',this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;"></div>
                 <div><label style="font-size:10px; color:var(--gray); display:block;">Low-stock alert</label><input type="number" min="0" value="${c.lowStock}" oninput="window._updateVariantCombo(${i},'lowStock',this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;"></div>
                 <div style="display:flex; align-items:end;"><label style="font-size:11px; color:var(--white); display:flex; align-items:center; gap:6px;"><input type="checkbox" ${c.available ? 'checked' : ''} onchange="window._updateVariantCombo(${i},'available',this.checked)"> Available for sale</label></div>
@@ -22617,15 +22617,18 @@ window._collectVariantPayload = function() {
     if (!price || price <= 0) { showToast(`"${c.key}": please set a price.`, 'error'); valid = false; }
     const stock = parseInt(c.stock, 10);
     const sku = (c.sku || '').trim() || (baseSku + '-' + Object.values(c.options).join('-').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12));
-    // If an advanced "sale price" was set, that's the actual amount
-    // charged - the main Price field becomes the crossed-out
-    // "original_price" shown alongside it (matches how price/original_price
-    // work everywhere else in the app).
+    // If an advanced "discount price" was set, that's the actual amount
+    // the seller is asking for - the main "Your Price" field becomes the
+    // crossed-out "original_price" shown alongside it (matches how
+    // price/original_price work everywhere else in the app). Either way,
+    // this is still the SELLER's price going into the pricing engine below
+    // (renamed to "sellerAsk" here specifically to avoid confusion with
+    // the pricing-engine-computed final buyer price used elsewhere).
     const salePrice = parseFloat(c.salePrice);
-    const finalPrice = (salePrice && salePrice > 0) ? salePrice : price;
+    const sellerAsk = (salePrice && salePrice > 0) ? salePrice : price;
     const originalPrice = (salePrice && salePrice > 0) ? price : null;
     return {
-      price: finalPrice, stock: isNaN(stock) ? 0 : stock, sku,
+      price: sellerAsk, stock: isNaN(stock) ? 0 : stock, sku,
       original_price: originalPrice,
       images_json: c.image ? JSON.stringify([c.image]) : null,
       is_active: c.available === false ? 0 : 1,
