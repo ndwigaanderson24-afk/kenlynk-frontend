@@ -8025,7 +8025,9 @@ window._trackProductClick = function(productId) {
     const variantId = variant ? variant.id : null;
     const variantName = variant ? (variant.options || []).map(o => o.value).join(', ') : null;
     const lineImage = (variant && variant.images && variant.images.length) ? variant.images[0] : product.image;
-    const linePrice = variant ? Number(variant.price) : product.price;
+    // Variants have no price of their own - every line always uses the
+    // product's own price, regardless of which variant was selected.
+    const linePrice = product.price;
 
     // Optimistic UI update first, so tapping "Add to Cart" feels instant -
     // then sync to the server in the background. A different colour of
@@ -10655,7 +10657,7 @@ window._simpleProductSubmit = async function(mode) {
           id: v.id,
           values: v.options.reduce((acc, o) => { acc[o.attribute_name] = o.value; return acc; }, {}),
           image: (v.images && v.images.length) ? v.images[0] : '',
-          price: v.price, stock: v.stock, sku: v.sku || ''
+          stock: v.stock, sku: v.sku || ''
         }));
         window._photoOptionsOriginalIds.seller = optionVariants.map(v => v.id);
       } catch (e) { /* non-fatal - just shows no options to edit */ }
@@ -10924,7 +10926,7 @@ async function renderAdminProducts() {
             id: v.id,
             values: v.options.reduce((acc, o) => { acc[o.attribute_name] = o.value; return acc; }, {}),
             image: (v.images && v.images.length) ? v.images[0] : '',
-            price: v.price, stock: v.stock, sku: v.sku || ''
+            stock: v.stock, sku: v.sku || ''
           }));
           window._photoOptionsOriginalIds.admin = optionVariants.map(v => v.id);
         } catch (e) { /* non-fatal - just shows no options to edit */ }
@@ -14400,9 +14402,9 @@ function createAdminSellerManagement() {
         <div id="pricingMigrateResult" style="margin-top:10px; font-size:12px;"></div>
       </div>
       <div id="adminVariantPricingMigrateBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px; margin-bottom:20px;">
-        <div style="font-weight:700; font-size:13px; color:var(--white); margin-bottom:4px;">🔄 Migrate Existing Variants</div>
-        <p style="color:var(--gray); font-size:12px; margin-bottom:10px;">Same idea, for product variants (colours, sizes, etc). Every existing variant's current price becomes the seller's asking price, and a real final price gets computed on top of it. <strong style="color:var(--white);">Run the products migration above first</strong> if you haven't already, then run this. Safe to run more than once.</p>
-        <button onclick="window._runVariantPricingMigration()" id="variantPricingMigrateBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Migrate Existing Variants Now</button>
+        <div style="font-weight:700; font-size:13px; color:var(--white); margin-bottom:4px;">🔄 Clear Variant Pricing</div>
+        <p style="color:var(--gray); font-size:12px; margin-bottom:10px;">Variants no longer have a price of their own - every colour/size now always uses its parent product's price. This one-time action clears out any leftover price still sitting on existing variants from before that change. Safe to run more than once.</p>
+        <button onclick="window._runClearVariantPricing()" id="variantPricingMigrateBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Clear Variant Pricing Now</button>
         <div id="variantPricingMigrateResult" style="margin-top:10px; font-size:12px;"></div>
       </div>
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
@@ -14597,31 +14599,30 @@ function createAdminSellerManagement() {
     if (btn) { btn.disabled = false; btn.textContent = 'Migrate Existing Products Now'; }
   };
 
-  window._runVariantPricingMigration = async function() {
+  window._runClearVariantPricing = async function() {
     const confirmed = confirm(
-      'This will recalculate the displayed price for every existing product variant right now, using the current pricing rules and defaults. Buyers browsing the Shop will see new variant prices immediately. This cannot be undone (though you can always edit individual variants afterwards). Continue?'
+      'This clears out any leftover price on existing variants, so every colour/size correctly uses its parent product\'s price. Safe to run more than once. Continue?'
     );
     if (!confirmed) return;
 
     const btn = document.getElementById('variantPricingMigrateBtn');
     const resultEl = document.getElementById('variantPricingMigrateResult');
-    if (btn) { btn.disabled = true; btn.textContent = 'Migrating…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Clearing…'; }
     if (resultEl) resultEl.textContent = '';
 
     try {
-      const res = await adminApiCall('/admin/pricing/migrate-existing-variants', { method: 'POST' });
-      const { totalFound, migrated, errors } = res.data;
-      let msg = `✅ Migrated ${migrated} of ${totalFound} variant${totalFound===1?'':'s'}.`;
-      if (errors && errors.length) msg += ` ${errors.length} failed - check individual variants.`;
-      if (resultEl) resultEl.innerHTML = `<span style="color:${errors&&errors.length?'#e74c3c':'var(--green-light)'};">${msg}</span>`;
-      showToast(migrated > 0 ? '✅ Variants migrated to the new pricing model.' : 'No variants needed migrating.', 'success');
+      const res = await adminApiCall('/admin/pricing/clear-variant-pricing', { method: 'POST' });
+      const { cleared } = res.data;
+      const msg = `✅ Cleared pricing on ${cleared} variant${cleared===1?'':'s'}.`;
+      if (resultEl) resultEl.innerHTML = `<span style="color:var(--green-light);">${msg}</span>`;
+      showToast(cleared > 0 ? '✅ Variant pricing cleared.' : 'No variants needed clearing.', 'success');
       window.renderProducts && window.renderProducts();
       window.renderShopCollections && window.renderShopCollections();
     } catch (err) {
       if (resultEl) resultEl.innerHTML = `<span style="color:#e74c3c;">⚠️ ${escapeHtml(err.message)}</span>`;
       showToast('⚠️ ' + err.message, 'error');
     }
-    if (btn) { btn.disabled = false; btn.textContent = 'Migrate Existing Variants Now'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Clear Variant Pricing Now'; }
   };
 
   // ── Admin Notifications panel ──────────────────────────────────────
@@ -15116,8 +15117,8 @@ function createAdminSellerManagement() {
       html += `
         <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
           <div>
-            <span style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:var(--gold);">KES ${Number(matched.price).toLocaleString()}</span>
-            ${matched.original_price ? `<span style="color:var(--gray); font-size:12px; text-decoration:line-through; margin-left:8px;">KES ${Number(matched.original_price).toLocaleString()}</span>` : ''}
+            <span style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:var(--gold);">KES ${Number(product.price).toLocaleString()}</span>
+            ${product.originalPrice ? `<span style="color:var(--gray); font-size:12px; text-decoration:line-through; margin-left:8px;">KES ${Number(product.originalPrice).toLocaleString()}</span>` : ''}
           </div>
           <div style="font-size:12px; color:var(--green-light);">✅ ${matched.stock} in stock</div>
         </div>
@@ -15247,8 +15248,8 @@ function createAdminSellerManagement() {
       html += `
         <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
           <div>
-            <span style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:var(--gold);">KES ${Number(matched.price).toLocaleString()}</span>
-            ${matched.original_price ? `<span style="color:var(--gray); font-size:12px; text-decoration:line-through; margin-left:8px;">KES ${Number(matched.original_price).toLocaleString()}</span>` : ''}
+            <span style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:var(--gold);">KES ${Number(product.price).toLocaleString()}</span>
+            ${product.originalPrice ? `<span style="color:var(--gray); font-size:12px; text-decoration:line-through; margin-left:8px;">KES ${Number(product.originalPrice).toLocaleString()}</span>` : ''}
           </div>
           <div style="font-size:12px; color:var(--green-light);">✅ ${matched.stock} in stock</div>
         </div>
@@ -15355,7 +15356,7 @@ function createAdminSellerManagement() {
         <div style="min-width:0;">
           <div style="font-weight:700; font-size:14.5px; color:var(--white); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(product.name)}</div>
           <div id="variantModalPriceLine" style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700; margin-top:2px;">
-            ${matched ? `KES ${Number(matched.price).toLocaleString()}` : `KES ${product.price.toLocaleString()}`}
+            KES ${product.price.toLocaleString()}
           </div>
           <div id="variantModalStockLine" style="font-size:11.5px; margin-top:2px;">
             ${!attributes.length ? '' : !allPicked ? '<span style="color:var(--gray);">Select options below</span>'
@@ -20819,10 +20820,6 @@ window._renderPhotoOptionsList = function(which) {
           </div>`;
         }).join('')}
         <div>
-          <label style="font-size:10px; color:var(--gray); display:block;">Your Price (KES)</label>
-          <input type="number" min="1" value="${opt.price ?? ''}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'price', this.value)">
-        </div>
-        <div>
           <label style="font-size:10px; color:var(--gray); display:block;">Stock</label>
           <input type="number" min="0" value="${opt.stock ?? ''}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'stock', this.value)">
         </div>
@@ -20861,7 +20858,7 @@ window._onPhotoOptionAttrSelectChange = function(which, i, attrType, selectedVal
 };
 
 window.addPhotoOption = function(which) {
-  window._photoOptionsState[which].push({ id: null, values: {}, image: '', price: '', stock: '', sku: '' });
+  window._photoOptionsState[which].push({ id: null, values: {}, image: '', stock: '', sku: '' });
   window._renderPhotoOptionsList(which);
 };
 
@@ -20929,13 +20926,12 @@ window._collectPhotoOptions = function(which) {
     if (seenCombos.has(comboKey)) { showToast(`"${comboLabel}" is used more than once - each combination must be unique.`, 'error'); return null; }
     seenCombos.add(comboKey);
     if (!opt.image) { showToast(`"${comboLabel}" needs its own photo.`, 'error'); return null; }
-    if (!opt.price || Number(opt.price) <= 0) { showToast(`"${comboLabel}" needs a valid price.`, 'error'); return null; }
     if (opt.stock === '' || isNaN(Number(opt.stock)) || Number(opt.stock) < 0) { showToast(`"${comboLabel}" needs a stock quantity.`, 'error'); return null; }
   }
   return list.map(opt => ({
     id: opt.id,
     values: attrTypes.reduce((acc, t) => { acc[t] = (opt.values[t] || '').trim(); return acc; }, {}),
-    image: opt.image, price: Number(opt.price), stock: parseInt(opt.stock, 10), sku: (opt.sku || '').trim() || undefined
+    image: opt.image, stock: parseInt(opt.stock, 10), sku: (opt.sku || '').trim() || undefined
   }));
 };
 
@@ -20978,7 +20974,7 @@ async function _savePhotoOptionVariants(productId, options, isAdminMode) {
   for (const opt of options) {
     const comboLabel = Object.entries(opt.values).map(([k, v]) => `${k}: ${v}`).join(', ');
     const body = JSON.stringify({
-      seller_price: opt.price, stock: opt.stock, sku: opt.sku,
+      stock: opt.stock, sku: opt.sku,
       images_json: JSON.stringify([opt.image]),
       options: Object.entries(opt.values)
         .filter(([attrName]) => attrIdByName[attrName])
@@ -21075,7 +21071,7 @@ window._wizardSubmit = async function(mode) {
         const am = {}; (ar?.data?.attributes||[]).forEach(a => { am[a.name] = a.id; });
         for (const vRow of variantPayload.variants) {
           const opts = vRow.options.map(o=>({ attribute_id:am[o.attrName], value:o.value })).filter(o=>o.attribute_id);
-          await (isAdmin() ? adminApiCall : apiCall)(`/products/${savedId}/variants`, { method:'POST', body:JSON.stringify({ seller_price:vRow.price, stock:vRow.stock, sku:vRow.sku||null, original_price:vRow.original_price||null, images_json:vRow.images_json||null, is_active:vRow.is_active, cost_price:vRow.cost_price||null, weight:vRow.weight||null, low_stock_threshold:vRow.low_stock_threshold||null, options:opts }) });
+          await (isAdmin() ? adminApiCall : apiCall)(`/products/${savedId}/variants`, { method:'POST', body:JSON.stringify({ stock:vRow.stock, sku:vRow.sku||null, images_json:vRow.images_json||null, is_active:vRow.is_active, weight:vRow.weight||null, low_stock_threshold:vRow.low_stock_threshold||null, options:opts }) });
         }
       } catch(ve) { showToast('Product saved but variants failed: '+ve.message, 'error'); }
     }
@@ -22290,7 +22286,7 @@ const VARIANT_CATEGORY_RECOMMENDATIONS = [
 ];
 
 window._variantTypes  = [];  // [{ name, values: [...] }]
-window._variantCombos = [];  // [{ key, options:{name:value}, price, stock, sku, image, salePrice, costPrice, weight, lowStock, available, advancedOpen }]
+window._variantCombos = [];  // [{ key, options:{name:value}, stock, sku, image, weight, lowStock, available, advancedOpen }] - no price, every variant uses the parent product's price
 
 window.toggleVariantBuilder = function(enabled) {
   const body = document.getElementById('variantBuilderBody');
@@ -22418,8 +22414,8 @@ window._regenerateVariantCombos = function() {
     const key = Object.values(c.options).join(' / ');
     const prev = prevByKey[key];
     return prev || {
-      key, options: c.options, price: '', stock: '', sku: '', image: '',
-      salePrice: '', costPrice: '', weight: '', lowStock: '', available: true, advancedOpen: false
+      key, options: c.options, stock: '', sku: '', image: '',
+      weight: '', lowStock: '', available: true, advancedOpen: false
     };
   });
 
@@ -22441,14 +22437,11 @@ window._renderVariantComboTable = function() {
     return;
   }
 
-  const samePriceOn = document.getElementById('variantSamePriceToggle')?.checked;
-
   tableWrap.innerHTML = `
     <table style="width:100%; border-collapse:collapse; font-size:12px;">
       <thead>
         <tr style="text-align:left; color:var(--gray); border-bottom:1px solid var(--border);">
           <th style="padding:6px 4px;">Variation</th>
-          <th style="padding:6px 4px;">Your Price</th>
           <th style="padding:6px 4px;">Stock</th>
           <th style="padding:6px 4px;">SKU</th>
           <th style="padding:6px 4px;">Image</th>
@@ -22459,9 +22452,6 @@ window._renderVariantComboTable = function() {
         ${window._variantCombos.map((c, i) => `
           <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:6px 4px; color:var(--white); font-weight:600; white-space:nowrap;">${escapeHtml(c.key)}</td>
-            <td style="padding:6px 4px;">
-              <input type="number" min="0" placeholder="KSh —" value="${c.price}" ${samePriceOn ? 'disabled' : ''} oninput="window._updateVariantCombo(${i},'price',this.value)" style="width:80px; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--gold); border-radius:6px; padding:5px 6px; font-size:12px;">
-            </td>
             <td style="padding:6px 4px;">
               <input type="number" min="0" placeholder="—" value="${c.stock}" oninput="window._updateVariantCombo(${i},'stock',this.value)" style="width:60px; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;">
             </td>
@@ -22481,10 +22471,8 @@ window._renderVariantComboTable = function() {
           </tr>
           ${c.advancedOpen ? `
           <tr style="border-bottom:1px solid var(--border); background:var(--surface);">
-            <td colspan="6" style="padding:10px;">
+            <td colspan="5" style="padding:10px;">
               <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px;">
-                <div><label style="font-size:10px; color:var(--gray); display:block;">Cost price <span style="color:var(--gray);">(your own tracking, optional)</span></label><input type="number" min="0" value="${c.costPrice}" oninput="window._updateVariantCombo(${i},'costPrice',this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;"></div>
-                <div><label style="font-size:10px; color:var(--gray); display:block;">Discount price <span style="color:var(--gray);">(optional - only if running a promo)</span></label><input type="number" min="0" value="${c.salePrice}" placeholder="Leave blank for no discount" oninput="window._updateVariantCombo(${i},'salePrice',this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;"></div>
                 <div><label style="font-size:10px; color:var(--gray); display:block;">Weight (kg)</label><input type="number" min="0" step="0.1" value="${c.weight}" oninput="window._updateVariantCombo(${i},'weight',this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;"></div>
                 <div><label style="font-size:10px; color:var(--gray); display:block;">Low-stock alert</label><input type="number" min="0" value="${c.lowStock}" oninput="window._updateVariantCombo(${i},'lowStock',this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 6px; font-size:12px;"></div>
                 <div style="display:flex; align-items:end;"><label style="font-size:11px; color:var(--white); display:flex; align-items:center; gap:6px;"><input type="checkbox" ${c.available ? 'checked' : ''} onchange="window._updateVariantCombo(${i},'available',this.checked)"> Available for sale</label></div>
@@ -22527,30 +22515,12 @@ window._setVariantImage = async function(i, file) {
   }
 };
 
-window._toggleSamePriceForAll = function(checked) {
-  const wrap = document.getElementById('variantSamePriceWrap');
-  if (wrap) wrap.style.display = checked ? 'block' : 'none';
-  window._renderVariantComboTable();
-};
-
-window._applySamePriceToAll = function(value) {
-  window._variantCombos.forEach(c => { c.price = value; });
-};
-
 window._bulkVariantAction = function(action) {
   if (!window._variantCombos.length) { showToast('No variants to edit yet.', 'error'); return; }
-  if (action === 'price') {
-    const v = prompt('Set price (KES) for every variant:');
-    if (v === null || v === '') return;
-    window._variantCombos.forEach(c => { c.price = v; });
-  } else if (action === 'stock') {
+  if (action === 'stock') {
     const v = prompt('Set stock quantity for every variant:');
     if (v === null || v === '') return;
     window._variantCombos.forEach(c => { c.stock = v; });
-  } else if (action === 'sale_price') {
-    const v = prompt('Set sale price (KES) for every variant:');
-    if (v === null || v === '') return;
-    window._variantCombos.forEach(c => { c.salePrice = v; });
   } else if (action === 'sku') {
     const base = (document.getElementById('sellerName')?.value || 'PROD').trim().slice(0,3).toUpperCase().replace(/[^A-Z0-9]/g,'') || 'PRD';
     window._variantCombos.forEach(c => {
@@ -22613,26 +22583,15 @@ window._collectVariantPayload = function() {
 
   let valid = true;
   const variants = window._variantCombos.map((c, i) => {
-    const price = parseFloat(c.price);
-    if (!price || price <= 0) { showToast(`"${c.key}": please set a price.`, 'error'); valid = false; }
     const stock = parseInt(c.stock, 10);
+    if (isNaN(stock) || stock < 0) { showToast(`"${c.key}": please set a stock quantity.`, 'error'); valid = false; }
     const sku = (c.sku || '').trim() || (baseSku + '-' + Object.values(c.options).join('-').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12));
-    // If an advanced "discount price" was set, that's the actual amount
-    // the seller is asking for - the main "Your Price" field becomes the
-    // crossed-out "original_price" shown alongside it (matches how
-    // price/original_price work everywhere else in the app). Either way,
-    // this is still the SELLER's price going into the pricing engine below
-    // (renamed to "sellerAsk" here specifically to avoid confusion with
-    // the pricing-engine-computed final buyer price used elsewhere).
-    const salePrice = parseFloat(c.salePrice);
-    const sellerAsk = (salePrice && salePrice > 0) ? salePrice : price;
-    const originalPrice = (salePrice && salePrice > 0) ? price : null;
+    // Variants have no price of their own - every variant uses the
+    // parent product's price, so nothing price-related is sent here.
     return {
-      price: sellerAsk, stock: isNaN(stock) ? 0 : stock, sku,
-      original_price: originalPrice,
+      stock: isNaN(stock) ? 0 : stock, sku,
       images_json: c.image ? JSON.stringify([c.image]) : null,
       is_active: c.available === false ? 0 : 1,
-      cost_price: c.costPrice ? parseFloat(c.costPrice) : null,
       weight: c.weight ? parseFloat(c.weight) : null,
       low_stock_threshold: c.lowStock ? parseInt(c.lowStock, 10) : null,
       options: attrNames.map(n => ({ attrName: n, value: c.options[n] || '' })).filter(o => o.value)
@@ -22713,7 +22672,6 @@ function _renderAdminVariantPanel(productId, data, mode) {
   html += `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:13px;">
     <thead><tr style="background:var(--surface-2); color:var(--gray); text-align:left;">
       <th style="padding:8px 10px;">Options</th>
-      <th style="padding:8px 10px;">Price</th>
       <th style="padding:8px 10px; min-width:100px;">Stock</th>
       <th style="padding:8px 10px;">SKU</th>
       <th style="padding:8px 10px;">Active</th>
@@ -22724,7 +22682,6 @@ function _renderAdminVariantPanel(productId, data, mode) {
     const stockColor = v.stock === 0 ? '#e74c3c' : v.stock < 5 ? '#f39c12' : 'var(--green-light)';
     html += `<tr style="border-bottom:1px solid var(--border);" data-variant-id="${v.id}">
       <td style="padding:10px;">${label}</td>
-      <td style="padding:10px; font-family:var(--font-mono); color:var(--gold);">KES ${Number(v.price).toLocaleString()}</td>
       <td style="padding:10px;">
         <input type="number" value="${v.stock}" min="0"
           style="width:70px; background:var(--surface-2); border:1px solid var(--border-strong);
