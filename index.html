@@ -6659,6 +6659,80 @@ let authToken = localStorage.getItem('authToken') || null;
 let adminToken = localStorage.getItem('adminToken') || null;
 let isSuperAdminSession = localStorage.getItem('isSuperAdminSession') === 'true';
 
+// ── Real-time order status updates ──────────────────────────────────
+// A single shared WebSocket connection - connects once per logged-in
+// session (buyer, seller, or admin all use the same mechanism, the
+// backend sorts out who should receive what based on the token). Not
+// used for guests, since an anonymous connection has no account to
+// target updates at anyway - the tracking page still works for guests,
+// just without the live push (they'd need to re-search to see updates).
+let _ordersSocket = null;
+let _ordersSocketRetryDelay = 2000;
+
+function connectOrdersSocket() {
+  const token = adminToken || authToken;
+  if (!token) return; // not logged in - nothing to connect for
+  if (_ordersSocket && (_ordersSocket.readyState === WebSocket.OPEN || _ordersSocket.readyState === WebSocket.CONNECTING)) return;
+
+  const wsUrl = API_BASE.replace(/^http/, 'ws').replace(/\/api$/, '') + '/ws?token=' + encodeURIComponent(token);
+  try {
+    _ordersSocket = new WebSocket(wsUrl);
+  } catch (err) {
+    console.error('Could not open orders WebSocket:', err.message);
+    return;
+  }
+
+  _ordersSocket.onopen = () => { _ordersSocketRetryDelay = 2000; };
+
+  _ordersSocket.onmessage = (event) => {
+    let data;
+    try { data = JSON.parse(event.data); } catch (e) { return; }
+    if (data.type === 'order_status_changed') {
+      handleLiveOrderStatusChange(data);
+    }
+  };
+
+  _ordersSocket.onclose = () => {
+    // Reconnect with backoff, but only while still logged in - a
+    // deliberate logout should not keep trying to reconnect forever.
+    if (!(adminToken || authToken)) return;
+    setTimeout(connectOrdersSocket, _ordersSocketRetryDelay);
+    _ordersSocketRetryDelay = Math.min(_ordersSocketRetryDelay * 1.5, 30000);
+  };
+
+  _ordersSocket.onerror = () => { /* onclose fires right after - reconnect handled there */ };
+}
+
+function disconnectOrdersSocket() {
+  if (_ordersSocket) { _ordersSocket.onclose = null; _ordersSocket.close(); _ordersSocket = null; }
+}
+
+// Refreshes whichever order views are actually on screen right now -
+// each render function already safely no-ops if its container isn't in
+// the current page, so calling all of them unconditionally is simpler
+// and just as safe as trying to track "which page is active".
+function handleLiveOrderStatusChange(data) {
+  showToast(`📦 Order #${data.orderNumber || data.orderId} is now ${data.status}`, 'success');
+
+  if (typeof renderOrders === 'function') renderOrders();
+  if (typeof renderSellerOrdersList === 'function') renderSellerOrdersList();
+  if (typeof renderAdminOrdersList === 'function') renderAdminOrdersList();
+  if (typeof renderSellerOverview === 'function') renderSellerOverview();
+  if (window._checkAdminNewOrdersBadge) window._checkAdminNewOrdersBadge();
+
+  // If the buyer currently has this exact order's tracking result open,
+  // refresh it in place too - re-running the same search naturally
+  // pulls the new status and history.
+  const trackResult = document.getElementById('trackResult');
+  const trackInput = document.getElementById('trackOrderInput');
+  if (trackResult && trackResult.style.display !== 'none' && trackInput && trackInput.value.trim()) {
+    trackOrder();
+  }
+}
+
+window.connectOrdersSocket = connectOrdersSocket;
+window.disconnectOrdersSocket = disconnectOrdersSocket;
+
 // Shared fetch wrapper: attaches the JWT automatically, parses JSON, and
 // throws a real Error with the backend's message on any non-2xx response
 // so every caller can just try/catch instead of checking res.ok everywhere.
@@ -9046,6 +9120,12 @@ async function loadUser() {
   // whether the block below returns early.
   updateUserUI();
 
+  // Covers an admin session restoring on page refresh (adminToken already
+  // in localStorage, no fresh login just happened) - connectOrdersSocket
+  // itself checks adminToken || authToken, so calling it unconditionally
+  // here is correct for both an admin-only session and a regular one.
+  connectOrdersSocket();
+
   if (!authToken) return;
 
   try {
@@ -9272,6 +9352,7 @@ async function loadUser() {
         showToast('Admin login successful.', 'success');
         closeAuth();
         updateUserUI();
+        connectOrdersSocket();
         goToPage('admin');
         submitBtn.disabled = false;
         submitBtn.textContent = originalBtnText;
@@ -9301,6 +9382,7 @@ async function loadUser() {
     renderNotifications();
 
     renderReferralBox();
+      connectOrdersSocket();
       showToast('Welcome back!', 'success');
       closeAuth();
       updateUserUI();
@@ -9324,6 +9406,7 @@ async function loadUser() {
     renderNotifications();
 
     renderReferralBox();
+      connectOrdersSocket();
       showToast('Account created successfully!', 'success');
       closeAuth();
       updateUserUI();
@@ -9429,6 +9512,8 @@ async function loadUser() {
   function logout() {
 
     closeAccountMenu();
+
+    disconnectOrdersSocket();
 
     localStorage.removeItem('authToken');
 
