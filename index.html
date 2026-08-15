@@ -6783,35 +6783,57 @@ window.disconnectOrdersSocket = disconnectOrdersSocket;
 // can take well over the length of one normal request. Without this,
 // that first request after a quiet spell just fails outright (network
 // error), and the page silently shows nothing until the person manually
-// refreshes. This retries a genuine network-level failure a couple of
-// times with a growing delay before giving up, so a cold backend gets
-// a real chance to wake up instead of failing the very first load.
-// Does NOT retry on an actual server response (4xx/5xx with JSON) -
-// only when the request never reached the server at all.
-async function fetchWithRetry(url, options, attempts = 3, delayMs = 4000) {
+// refreshes. This retries a couple of times with a growing delay before
+// giving up, so a cold backend gets a real chance to wake up instead of
+// failing the very first load. Retries on two signals: a genuine
+// network-level failure (fetch throws), AND a response that comes back
+// but isn't valid JSON - Render can hand back an empty/placeholder body
+// with a 200-range status while it's still waking up, which previously
+// slipped through as a "successful" response with no real data in it,
+// crashing whatever tried to read `result.data.products` off of it.
+// Does NOT retry on a genuine server error response (4xx/5xx with real
+// JSON) - only when the response itself can't be trusted.
+async function fetchJsonWithRetry(url, options, attempts = 3, delayMs = 4000) {
+  let lastErr;
   for (let i = 0; i < attempts; i++) {
+    let res;
     try {
-      return await fetch(url, options);
+      res = await fetch(url, options);
     } catch (networkErr) {
-      if (i === attempts - 1) throw networkErr;
-      await new Promise(r => setTimeout(r, delayMs * (i + 1)));
+      lastErr = networkErr;
+      if (i < attempts - 1) { await new Promise(r => setTimeout(r, delayMs * (i + 1))); continue; }
+      throw lastErr;
     }
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      // Body wasn't valid JSON. If the server also reported success,
+      // that's the cold-start "empty response" case - worth retrying.
+      // If it reported an error status, don't bother retrying - a real
+      // error page failing to parse as JSON isn't going to fix itself.
+      if (res.ok && i < attempts - 1) {
+        await new Promise(r => setTimeout(r, delayMs * (i + 1)));
+        continue;
+      }
+      return { res, data: {} };
+    }
+    return { res, data };
   }
 }
 
 async function apiCall(endpoint, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   if (authToken) headers.Authorization = `Bearer ${authToken}`;
-  let res;
+  let res, data;
   try {
-    res = await fetchWithRetry(`${API_BASE}${endpoint}`, { ...options, headers });
+    ({ res, data } = await fetchJsonWithRetry(`${API_BASE}${endpoint}`, { ...options, headers }));
   } catch (networkErr) {
     throw new Error('Could not reach the server. Check your connection and that the backend is running.');
   }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const err = new Error(data.message || `Request failed (${res.status})`);
-    err.data = data.data;
+  if (!res.ok || !data || typeof data !== 'object' || data.success === undefined) {
+    const err = new Error((data && data.message) || 'Could not reach the server. Check your connection and that the backend is running.');
+    err.data = data && data.data;
     throw err;
   }
   return data;
@@ -6823,14 +6845,15 @@ window.apiCall = apiCall;
 async function adminApiCall(endpoint, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   if (adminToken) headers.Authorization = `Bearer ${adminToken}`;
-  let res;
+  let res, data;
   try {
-    res = await fetchWithRetry(`${API_BASE}${endpoint}`, { ...options, headers });
+    ({ res, data } = await fetchJsonWithRetry(`${API_BASE}${endpoint}`, { ...options, headers }));
   } catch (networkErr) {
     throw new Error('Could not reach the server. Check your connection and that the backend is running.');
   }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || `Request failed (${res.status})`);
+  if (!res.ok || !data || typeof data !== 'object' || data.success === undefined) {
+    throw new Error((data && data.message) || 'Could not reach the server. Check your connection and that the backend is running.');
+  }
   return data;
 }
 window.adminApiCall = adminApiCall;
