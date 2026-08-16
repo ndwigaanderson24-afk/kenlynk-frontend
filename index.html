@@ -7170,6 +7170,27 @@ function escapeHtml(str) {
 
 }
 
+// escapeHtml is only safe for HTML text content - it does NOT escape
+// single quotes, so any value with an apostrophe (a variant option
+// like "Men's", a product name with one in it, an admin's name) that
+// gets dropped into an inline onclick="...('${escapeHtml(x)}')" breaks
+// out of the JS string early and corrupts the whole handler, crashing
+// the page with a syntax error the moment that button renders. This is
+// the one to use instead whenever a value is being embedded inside a
+// single-quoted JS string that itself sits inside a double-quoted HTML
+// attribute (the onclick="...('...')" pattern used throughout this
+// file) - it escapes backslashes/quotes/newlines for the JS string
+// layer first, then escapes double-quotes for the HTML attribute layer
+// around it, so nothing can break out of either.
+function attrJsString(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r?\n/g, '\\n')
+    .replace(/"/g, '&quot;');
+}
+
 // Turns whatever format a buyer/seller typed their number in (local
 // "0712345678", already-international "254712345678"/"+254712345678",
 // or just the 9 digits "712345678") into the one format wa.me actually
@@ -8021,7 +8042,7 @@ if(page === "admin") {
     // Render trending chips
     if (tList) {
       tList.innerHTML = _trending.map(t =>
-        `<button class="trend-chip" onclick="window._doSearch('${escapeHtml(t)}')">${t}</button>`
+        `<button class="trend-chip" onclick="window._doSearch('${attrJsString(t)}')">${t}</button>`
       ).join('');
     }
 
@@ -8057,7 +8078,7 @@ if(page === "admin") {
       .filter(p => p.name.toLowerCase().includes(q) || (p.category||'').toLowerCase().includes(q) || (p.brand||'').toLowerCase().includes(q))
       .slice(0, 6);
     list.innerHTML = matches.map(p => `
-      <div onclick="window._doSearch('${escapeHtml(p.name)}')"
+      <div onclick="window._doSearch('${attrJsString(p.name)}')"
            style="padding:10px 14px; cursor:pointer; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); font-size:13px; color:var(--white);"
            onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background=''">
         <img src="${getProductImageUrl(p)}" style="width:32px;height:32px;object-fit:cover;border-radius:6px;" onerror="this.style.display='none'">
@@ -10189,7 +10210,7 @@ function renderSellerProductsUI() {
 
           <button class="seller-variants-btn" data-id="${p.id}" data-name="${escapeHtml(p.name)}" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--green); padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">🎛️ Variants</button>
 
-          <button onclick="window._openFeatureProduct(${p.id}, '${escapeHtml(p.name).replace(/'/g,"\\'")}');" style="background:linear-gradient(135deg,#f39c12,#e67e22); border:none; color:#fff; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; font-weight:600;">${window._isFeatured && window._isFeatured(p.id) ? '⭐ Featured' : '⭐ Feature'}</button>
+          <button onclick="window._openFeatureProduct(${p.id}, '${attrJsString(p.name)}');" style="background:linear-gradient(135deg,#f39c12,#e67e22); border:none; color:#fff; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; font-weight:600;">${window._isFeatured && window._isFeatured(p.id) ? '⭐ Featured' : '⭐ Feature'}</button>
 
           <button class="seller-delete-btn" data-id="${p.id}" style="background:var(--surface-3); border:none; color:#ff6b6b; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">🗑️ Delete</button>
 
@@ -10976,7 +10997,7 @@ async function renderAdminProducts() {
             ? `<button class="admin-unhide-btn" data-id="${p.id}" style="background:var(--green); border:none; color:white; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">👁️ Unhide</button>`
             : `<button class="admin-hide-btn" data-id="${p.id}" style="background:var(--surface-3); border:none; color:#ff6b6b; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">🚫 Hide</button>`
           }
-          <button onclick="window.loadAdminVariants(${p.id}, '${escapeHtml(p.name).replace(/'/g, "\\'")}');"
+          <button onclick="window.loadAdminVariants(${p.id}, '${attrJsString(p.name)}');"
             style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--green); padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">🎛️ Variants</button>
           <button class="admin-edit-btn" data-id="${p.id}" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">✏️ Edit</button>
           <button class="admin-delete-product-btn" data-id="${p.id}" data-name="${escapeHtml(p.name)}" style="background:#f44336; border:none; color:white; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">🗑️ Delete</button>
@@ -13459,6 +13480,7 @@ window._openImageLightbox = function(src) {
 };
 
 window.escapeHtml = escapeHtml;
+window.attrJsString = attrJsString;
 window.toWhatsappNumber = toWhatsappNumber;
 window.showToast = showToast;
 window.isAdmin = isAdmin;
@@ -14191,7 +14213,7 @@ async function renderAdminManagementList() {
         <strong>${escapeHtml(a.name)}</strong> ${a.is_super_admin ? '<span style="color:var(--gold); font-size:11px;">👑 Super Admin</span>' : ''}
         <div style="color:var(--gray); font-size:12px;">${escapeHtml(a.email)}</div>
       </div>
-      <button onclick="removeAdmin(${a.id}, '${escapeHtml(a.name)}')" style="background:#f44336; color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px;">Remove</button>
+      <button onclick="removeAdmin(${a.id}, '${attrJsString(a.name)}')" style="background:#f44336; color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px;">Remove</button>
     </div>
   `).join('');
 }
@@ -15447,7 +15469,7 @@ function createAdminSellerManagement() {
           const hasStock = variants.some(v => v.is_active && v.stock > 0 && v.options.some(o => o.attribute_name === attr.name && o.value === val));
           const isSelected = selectedVal === val;
           html += `<button
-            onclick="${hasStock ? `window._selectVariantOption('${escapeHtml(attr.name)}', '${escapeHtml(val)}')` : ''}"
+            onclick="${hasStock ? `window._selectVariantOption('${attrJsString(attr.name)}', '${attrJsString(val)}')` : ''}"
             title="${escapeHtml(val)}"
             style="position:relative; width:64px; padding:0; border-radius:10px; border:2px solid ${isSelected ? 'var(--gold)' : 'var(--border-strong)'};
                    background:var(--surface-3); cursor:${hasStock ? 'pointer' : 'default'}; opacity:${hasStock ? 1 : 0.4}; overflow:hidden;"
@@ -15471,7 +15493,7 @@ function createAdminSellerManagement() {
           );
           const isSelected = selectedVal === val;
           html += `<button
-            onclick="window._selectVariantOption('${escapeHtml(attr.name)}', '${escapeHtml(val)}')"
+            onclick="window._selectVariantOption('${attrJsString(attr.name)}', '${attrJsString(val)}')"
             style="padding:6px 14px; border-radius:8px; border:2px solid ${isSelected ? 'var(--green)' : 'var(--border-strong)'};
                    background:${isSelected ? 'var(--green)' : 'var(--surface-3)'};
                    color:${isSelected ? '#fff' : (hasStock ? 'var(--white)' : 'var(--gray)')};
@@ -15644,7 +15666,7 @@ function createAdminSellerManagement() {
           const hasStock = variantData.variants.some(v => v.is_active && v.stock > 0 && v.options.some(o => o.attribute_name === attr.name && o.value === val));
           const isSelected = selectedVal === val;
           html += `<button
-            onclick="${hasStock ? `window._selectModalVariantOption('${escapeHtml(attr.name)}', '${escapeHtml(val)}')` : ''}"
+            onclick="${hasStock ? `window._selectModalVariantOption('${attrJsString(attr.name)}', '${attrJsString(val)}')` : ''}"
             style="display:flex; flex-direction:column; align-items:center; gap:5px; width:78px; background:none; border:none; cursor:${hasStock ? 'pointer' : 'default'}; opacity:${hasStock ? 1 : 0.4};"
             ${!hasStock ? 'disabled' : ''}>
             <div style="position:relative; width:72px; height:72px; border-radius:14px; overflow:hidden; border:2.5px solid ${isSelected ? 'var(--gold)' : 'var(--border-strong)'}; background:${isSelected ? 'rgba(255,193,7,0.1)' : 'var(--surface-2)'};">
@@ -15667,7 +15689,7 @@ function createAdminSellerManagement() {
           const hasStock = variantData.variants.some(v => v.is_active && v.stock > 0 && v.options.some(o => o.attribute_name === attr.name && o.value === val));
           const isSelected = selectedVal === val;
           html += `<button
-            onclick="${hasStock ? `window._selectModalVariantOption('${escapeHtml(attr.name)}', '${escapeHtml(val)}')` : ''}"
+            onclick="${hasStock ? `window._selectModalVariantOption('${attrJsString(attr.name)}', '${attrJsString(val)}')` : ''}"
             style="padding:9px 18px; border-radius:10px; border:2px solid ${isSelected ? 'var(--gold)' : 'var(--border-strong)'};
                    background:${isSelected ? 'rgba(255,193,7,0.1)' : 'var(--surface-2)'};
                    color:${isSelected ? 'var(--gold)' : (hasStock ? 'var(--white)' : 'var(--gray)')};
@@ -20669,7 +20691,7 @@ window._renderAttrTypeChips = function(which) {
   wrap.innerHTML = types.map(t => `
     <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,193,7,0.12); border:1px solid var(--gold); color:var(--gold); font-size:11.5px; font-weight:600; border-radius:999px; padding:4px 6px 4px 12px;">
       ${escapeHtml(t)}
-      <button type="button" onclick="window._removePhotoOptionAttrType('${which}', '${escapeHtml(t).replace(/'/g, "\\'")}')" style="background:none; border:none; color:var(--gold); cursor:pointer; font-size:13px; line-height:1; padding:2px 4px;">✕</button>
+      <button type="button" onclick="window._removePhotoOptionAttrType('${which}', '${attrJsString(t)}')" style="background:none; border:none; color:var(--gold); cursor:pointer; font-size:13px; line-height:1; padding:2px 4px;">✕</button>
     </span>
   `).join('');
 };
@@ -21176,7 +21198,7 @@ window._ssRenderSellerPanel = async function() {
         </div>
         <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;">
           ${v.status === 'draft' ? `<button onclick="window._ssPublishDraft(${v.id})" style="background:var(--green);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:600;">🚀 Publish</button>` : ''}
-          <button onclick="window._ssEditVideo(${v.id}, '${escapeHtml(v.title).replace(/'/g,"\\'")}', '${escapeHtml(v.caption||'').replace(/'/g,"\\'")}')" style="background:var(--surface-3);border:1px solid var(--border-strong);color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;">✏️ Edit</button>
+          <button onclick="window._ssEditVideo(${v.id}, '${attrJsString(v.title)}', '${attrJsString(v.caption||'')}')" style="background:var(--surface-3);border:1px solid var(--border-strong);color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;">✏️ Edit</button>
           <button onclick="window._ssDeleteVideo(${v.id})" style="background:#e74c3c;border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;">🗑️ Delete</button>
         </div>
       </div>`).join('') : `<div style="text-align:center;padding:24px;color:var(--gray);">No videos yet. Upload your first product video!</div>`;
