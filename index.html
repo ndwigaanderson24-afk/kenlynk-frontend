@@ -11764,70 +11764,6 @@ function refreshAnalytics() {
 
 }
 
-function clearManualFields() {
-
-  document.getElementById('manualRevenue').value = '';
-
-  document.getElementById('manualOrders').value = '';
-
-  document.getElementById('manualUsers').value = '';
-
-  const msgDiv = document.getElementById('manualUpdateMessage');
-
-  if (msgDiv) msgDiv.style.display = 'none';
-
-}
-
-
-
-function loadManualData() {
-
-  const manualData = JSON.parse(localStorage.getItem('KC_manual_data') || '{}');
-
-  if (manualData.revenue) {
-
-    const revenueEl = document.getElementById('adminTotalRevenue');
-
-    if (revenueEl) revenueEl.textContent = 'KES ' + manualData.revenue.toLocaleString();
-
-    const summaryRevenue = document.getElementById('summaryRevenue');
-
-    if (summaryRevenue) summaryRevenue.textContent = 'KES ' + manualData.revenue.toLocaleString();
-
-  }
-
-  if (manualData.orders) {
-
-    const ordersEl = document.getElementById('adminTotalOrdersCount');
-
-    if (ordersEl) ordersEl.textContent = manualData.orders;
-
-  }
-
-  if (manualData.users) {
-
-    const usersEl = document.getElementById('adminTotalUsersCount');
-
-    if (usersEl) usersEl.textContent = manualData.users;
-
-  }
-
-  if (manualData.lastUpdated) {
-
-    const lastUpdated = document.getElementById('lastUpdatedTime');
-
-    if (lastUpdated) {
-
-      const date = new Date(manualData.lastUpdated);
-
-      lastUpdated.textContent = date.toLocaleDateString('en-KE') + ' ' + date.toLocaleTimeString('en-KE') + ' (Manual)';
-
-    }
-
-  }
-
-}
-
 
 
 window.manualUpdate = manualUpdate;
@@ -15446,7 +15382,7 @@ function createAdminSellerManagement() {
     if (!variantData || !variantData.attributes || !variantData.attributes.length) return '';
     const { attributes, variants, attributeValues } = variantData;
 
-    let html = `<div id="variantPickerWrap" style="margin:14px 0; padding:14px; background:var(--surface-2); border-radius:12px; border:1px solid var(--border);">`;
+    let html = `<div id="variantPickerWrapModal" style="margin:14px 0; padding:14px; background:var(--surface-2); border-radius:12px; border:1px solid var(--border);">`;
 
     const COLOUR_VISIBLE_LIMIT = 6;
 
@@ -15514,7 +15450,7 @@ function createAdminSellerManagement() {
     const matched = _findMatchingVariant(variants, _detailSelectedOptions);
     const allAttrsPicked = attributes.every(a => _detailSelectedOptions[a.name]);
 
-    html += `<div id="variantMatchInfo" style="margin-top:10px; padding:10px; border-radius:8px; background:var(--surface); border:1px solid var(--border);">`;
+    html += `<div id="variantMatchInfoModal" style="margin-top:10px; padding:10px; border-radius:8px; background:var(--surface); border:1px solid var(--border);">`;
     if (!allAttrsPicked) {
       html += `<div style="color:var(--gray); font-size:13px;">👆 Please select a colour to see price and availability.</div>`;
     } else if (!matched) {
@@ -17501,11 +17437,7 @@ function loadManualData() {
 
     if (revenueEl) {
 
-      let currentText = revenueEl.textContent.replace('KES ', '').replace(/,/g, '');
-
-      let currentValue = parseFloat(currentText) || 0;
-
-      revenueEl.textContent = 'KES ' + (currentValue + manualData.revenue).toLocaleString();
+      revenueEl.textContent = 'KES ' + manualData.revenue.toLocaleString();
 
     }
 
@@ -17513,11 +17445,7 @@ function loadManualData() {
 
     if (summaryRevenue) {
 
-      let currentText = summaryRevenue.textContent.replace('KES ', '').replace(/,/g, '');
-
-      let currentValue = parseFloat(currentText) || 0;
-
-      summaryRevenue.textContent = 'KES ' + (currentValue + manualData.revenue).toLocaleString();
+      summaryRevenue.textContent = 'KES ' + manualData.revenue.toLocaleString();
 
     }
 
@@ -17529,9 +17457,7 @@ function loadManualData() {
 
     if (ordersEl) {
 
-      let currentValue = parseInt(ordersEl.textContent) || 0;
-
-      ordersEl.textContent = currentValue + manualData.orders;
+      ordersEl.textContent = manualData.orders;
 
     }
 
@@ -17543,9 +17469,7 @@ function loadManualData() {
 
     if (usersEl) {
 
-      let currentValue = parseInt(usersEl.textContent) || 0;
-
-      usersEl.textContent = currentValue + manualData.users;
+      usersEl.textContent = manualData.users;
 
     }
 
@@ -19551,7 +19475,18 @@ window._refreshLiveNowStrip = async function() {
     `).join('');
   } catch (e) { /* non-fatal - just leave whatever was last shown */ }
 };
-setInterval(() => window._refreshLiveNowStrip(), 15000);
+// Only actually poll while the Shop page is the one on screen and the
+// tab itself is visible - previously this ran unconditionally on every
+// single page (admin, seller dashboard, checkout, everywhere) for as
+// long as the tab stayed open, hitting the backend every 15s regardless
+// of whether anyone could even see the strip this refreshes. That's
+// needless constant background load on every open tab, for a UI
+// element that's only ever shown on the Shop page.
+setInterval(() => {
+  const shopPage = document.getElementById('page-shop');
+  const isShopVisible = shopPage && shopPage.classList.contains('active') && document.visibilityState === 'visible';
+  if (isShopVisible) window._refreshLiveNowStrip();
+}, 15000);
 window._refreshLiveNowStrip();
 
 window._ssWatchLive = async function(streamId) {
