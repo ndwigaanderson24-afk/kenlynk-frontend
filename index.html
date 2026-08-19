@@ -7356,8 +7356,6 @@ function toWhatsappNumber(phone) {
 
       _checkAdminNewOrdersBadge();
 
-      createAdminCommissionPanel();
-
       renderAdminLogoPanel();
 
       renderAdminOrdersList();
@@ -14248,78 +14246,6 @@ function createAdminSellerManagement() {
   }
 
   window.createAdminSubscriptionsPanel = createAdminSubscriptionsPanel;
-
-  // ══ ADMIN: COMMISSION RATE MANAGEMENT ═══════════════════════════════
-  // Lets the admin set a per-category commission rate. Tries the backend
-  // (GET/PUT /admin/commission-rates) first; falls back to a localStorage
-  // cache so the panel is still usable before that endpoint exists, and
-  // calculateFinalPrice() below picks up whichever rates were last saved.
-  const ADMIN_COMMISSION_CACHE_KEY = 'kenlynk_admin_commission_rates';
-
-  function getSavedCommissionRates() {
-    try { return JSON.parse(localStorage.getItem(ADMIN_COMMISSION_CACHE_KEY) || 'null'); } catch (e) { return null; }
-  }
-
-  async function createAdminCommissionPanel() {
-    const adminContent = document.getElementById('page-admin');
-    if (!adminContent) return;
-    let existing = document.querySelector('#adminCommissionPanel');
-    if (existing) existing.remove();
-
-    const panel = document.createElement('div');
-    panel.id = 'adminCommissionPanel';
-    panel.style.cssText = 'margin-top:24px; background:var(--surface); border:1px solid var(--border-strong); border-radius:16px; padding:24px;';
-    panel.innerHTML = `
-      <h3 style="font-family:var(--font-display); margin-bottom:8px;">💵 Commission Rates</h3>
-      <div style="color:var(--gray); font-size:12px; margin-bottom:16px;">Set the platform's commission per category. Gold-plan sellers automatically pay a reduced rate; Free-plan sellers pay the standard rate shown here.</div>
-      <div id="adminCommissionList" style="display:flex; flex-direction:column; gap:8px;"></div>
-      <button onclick="window._saveCommissionRates()" style="margin-top:14px; background:var(--green); border:none; color:#fff; border-radius:10px; padding:9px 22px; cursor:pointer; font-weight:700; font-size:13px;">💾 Save Commission Rates</button>
-    `;
-
-    const subsEl = document.querySelector('#adminSubscriptionsPanel');
-    if (subsEl && subsEl.parentNode) subsEl.parentNode.insertBefore(panel, subsEl.nextSibling);
-    else adminContent.appendChild(panel);
-
-    await loadCategories();
-    const saved = getSavedCommissionRates() || {};
-    // One row per top-level category, defaulting to the suggested rates
-    // from the KenLynk commission plan (falls back to 10% if unlisted).
-    const defaultRates = { phones:5, laptops_electronics:7, electronics:7, tvs:7, appliances:9, fashion:13, shoes:13, beauty:13, home_kitchen:14, furniture:10, grocery:10, agriculture:10, books:8, sports:13, automotive:10 };
-    const cats = (CATEGORY_FLAT.length ? CATEGORY_FLAT.filter(c => c._depth === 0) : Object.keys(defaultRates).map(k => ({ id: k, name: k, slug: k })));
-    const listEl = document.getElementById('adminCommissionList');
-    if (listEl) {
-      listEl.innerHTML = cats.map(c => {
-        const key = c.slug || c.name || c.id;
-        const rate = saved[key] != null ? saved[key] : (defaultRates[key] != null ? defaultRates[key] : 10);
-        return `
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:8px 12px;">
-          <span style="font-size:13px; color:var(--white);">${escapeHtml(c.name || key)}</span>
-          <div style="display:flex; align-items:center; gap:6px;">
-            <input type="number" min="0" max="50" step="0.5" value="${rate}" data-cat="${escapeHtml(key)}" class="admin-commission-input" style="width:70px; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:5px 8px; font-size:12px; text-align:right;">
-            <span style="font-size:12px; color:var(--gray);">%</span>
-          </div>
-        </div>`;
-      }).join('');
-    }
-  }
-  window.createAdminCommissionPanel = createAdminCommissionPanel;
-
-  window._saveCommissionRates = async function() {
-    const rates = {};
-    document.querySelectorAll('.admin-commission-input').forEach(inp => {
-      rates[inp.dataset.cat] = parseFloat(inp.value) || 0;
-    });
-    localStorage.setItem(ADMIN_COMMISSION_CACHE_KEY, JSON.stringify(rates));
-    try {
-      await adminApiCall('/admin/commission-rates', { method: 'PUT', body: JSON.stringify({ rates }) });
-      showToast('✅ Commission rates saved.', 'success');
-    } catch (err) {
-      // Saved locally either way — backend endpoint may not exist yet.
-      showToast('Saved locally. Backend sync failed: ' + err.message, 'error');
-    }
-  };
-
-
 
 
   function renderAdminSubscriptions() {
