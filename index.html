@@ -14585,6 +14585,12 @@ function createAdminSellerManagement() {
         <button onclick="window._runCategoryCommissionBackfill()" id="categoryCommissionBackfillBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Backfill Category Commission Now</button>
         <div id="categoryCommissionBackfillResult" style="margin-top:10px; font-size:12px;"></div>
       </div>
+      <div id="adminMigrateImagesBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px; margin-bottom:20px;">
+        <div style="font-weight:700; font-size:13px; color:var(--white); margin-bottom:4px;">🔄 Migrate Images to Cloudinary</div>
+        <p style="color:var(--gray); font-size:12px; margin-bottom:10px;">Older products still have their photo stored either as raw data in the database or on the server's own disk, both of which count against our hosting bandwidth every time someone views them. This one-time action moves every one of those photos over to Cloudinary and updates the product to point at the new address instead. Nothing changes visually for buyers. Safe to run more than once - only touches photos that still need it.</p>
+        <button onclick="window._runMigrateImagesToCloudinary()" id="migrateImagesBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Migrate Images Now</button>
+        <div id="migrateImagesResult" style="margin-top:10px; font-size:12px;"></div>
+      </div>
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
         <h4 style="font-family:var(--font-display); font-size:14px; margin:0;">Category & Value Rules</h4>
         <button onclick="window._openPricingRuleModal()" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:700;font-size:12px;">+ Add Rule</button>
@@ -14836,6 +14842,32 @@ function createAdminSellerManagement() {
       showToast('⚠️ ' + err.message, 'error');
     }
     if (btn) { btn.disabled = false; btn.textContent = 'Backfill Category Commission Now'; }
+  };
+
+  window._runMigrateImagesToCloudinary = async function() {
+    const confirmed = confirm(
+      'This will move every product photo still on the server or stored as raw data over to Cloudinary. Photos will look exactly the same to buyers - only where they\'re actually stored changes. This may take a little while if there are many products. Continue?'
+    );
+    if (!confirmed) return;
+
+    const btn = document.getElementById('migrateImagesBtn');
+    const resultEl = document.getElementById('migrateImagesResult');
+    if (btn) { btn.disabled = true; btn.textContent = 'Migrating…'; }
+    if (resultEl) resultEl.textContent = '';
+
+    try {
+      const res = await adminApiCall('/admin/products/migrate-images-to-cloudinary', { method: 'POST' });
+      const { totalFound, migrated, errors } = res.data;
+      let msg = `✅ Migrated images for ${migrated} of ${totalFound} product${totalFound===1?'':'s'}.`;
+      if (errors && errors.length) msg += ` ${errors.length} failed - check individual products.`;
+      if (resultEl) resultEl.innerHTML = `<span style="color:${errors&&errors.length?'#e74c3c':'var(--green-light)'};">${msg}</span>`;
+      showToast(migrated > 0 ? '✅ Images migrated to Cloudinary.' : 'No images needed migrating.', 'success');
+      window.renderProducts && window.renderProducts();
+    } catch (err) {
+      if (resultEl) resultEl.innerHTML = `<span style="color:#e74c3c;">⚠️ ${escapeHtml(err.message)}</span>`;
+      showToast('⚠️ ' + err.message, 'error');
+    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Migrate Images Now'; }
   };
 
   // ── Admin Notifications panel ──────────────────────────────────────
