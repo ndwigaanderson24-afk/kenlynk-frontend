@@ -19131,7 +19131,13 @@ function ssGoLive() {
   // actually reaches anyone watching - not just a local preview.
   (async () => {
     try {
-      const res = await apiCall('/shopstream/go-live', { method: 'POST', body: JSON.stringify({}) });
+      // Admin sessions authenticate with a completely separate token
+      // (adminToken, not authToken) - apiCall() only ever sends
+      // authToken, so an admin's request here would always be rejected
+      // with 401 regardless of them being correctly logged in. Route
+      // through adminApiCall() instead when the current session is admin.
+      const goLiveCall = (window.isAdmin && window.isAdmin()) ? adminApiCall : apiCall;
+      const res = await goLiveCall('/shopstream/go-live', { method: 'POST', body: JSON.stringify({}) });
       const { stream_id, channel_name, app_id, token, uid } = res.data;
       ssStreamId = stream_id;
 
@@ -19217,7 +19223,8 @@ function ssEndLive() {
   clearInterval(ssLiveChatTimer); ssLiveChatTimer = null;
   clearInterval(ssLiveTimer); ssLiveTimer = null;
   if (ssStreamId) {
-    apiCall(`/shopstream/${ssStreamId}/end`, { method: 'POST' }).catch(() => {});
+    const endLiveCall = (window.isAdmin && window.isAdmin()) ? adminApiCall : apiCall;
+    endLiveCall(`/shopstream/${ssStreamId}/end`, { method: 'POST' }).catch(() => {});
     ssStreamId = null;
   }
   const m = el('ssLiveModal');
