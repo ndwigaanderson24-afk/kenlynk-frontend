@@ -2028,6 +2028,9 @@
 
       <button class="page-btn" data-page="shopstream"><span class="ic">▶️</span><span class="lbl">ShopStream</span></button>
 
+      <button class="page-btn" data-page="wholesale"><span class="ic">🛍️</span><span class="lbl">Wholesale</span></button>
+      <button class="page-btn" data-page="kanyaga"><span class="ic">🔥</span><span class="lbl">Kanyaga</span></button>
+
       <button class="page-btn" data-page="product-detail" style="display:none;"><span class="ic">📄</span><span class="lbl">Detail</span></button>
 
       <button class="page-btn" data-page="cart"><span class="ic">🧺</span><span class="lbl">Cart</span></button>
@@ -2067,6 +2070,8 @@
   <nav class="pages" id="bottomNav" style="display:none;">
     <button class="page-btn active" data-page="shop"><span class="ic">🛍️</span><span class="lbl">Shop</span></button>
     <button class="page-btn" data-page="shopstream"><span class="ic">▶️</span><span class="lbl">ShopStream</span></button>
+    <button class="page-btn" data-page="wholesale"><span class="ic">🛍️</span><span class="lbl">Wholesale</span></button>
+    <button class="page-btn" data-page="kanyaga"><span class="ic">🔥</span><span class="lbl">Kanyaga</span></button>
     <button class="page-btn" data-page="cart"><span class="ic">🧺</span><span class="lbl">Cart</span></button>
     <button class="page-btn" data-page="wishlist"><span class="ic">❤️</span><span class="lbl">Wishlist</span></button>
     <button class="page-btn" data-page="orders"><span class="ic">📋</span><span class="lbl">Orders</span></button>
@@ -2163,6 +2168,13 @@
       <!-- ── Featured Collections (below tabs, shown on All) ── -->
       <div id="shopCollections">
 
+        <div id="kanyagaHomeBanner" style="display:none; background:linear-gradient(135deg, #111827 0%, #1a2332 100%); border:1px solid #e63946; border-radius:16px; padding:24px 20px; margin-bottom:20px; text-align:center; cursor:pointer;" onclick="window.goToPage&&window.goToPage('kanyaga')">
+          <div style="font-family:var(--font-display); font-size:24px; font-weight:900; color:#e63946; letter-spacing:1.5px;">KANYAGA 🔥</div>
+          <div style="color:var(--gold); font-size:14px; margin-top:4px; font-weight:700;">BEI ZIMESHUKA!</div>
+          <div style="color:var(--gray); font-size:12px; margin-top:4px;">Pata deals kali kabla zirudi juu.</div>
+          <button onclick="event.stopPropagation();window.goToPage&&window.goToPage('kanyaga')" style="margin-top:12px; background:#e63946; color:#fff; border:none; border-radius:10px; padding:10px 24px; font-weight:800; font-size:13px; cursor:pointer;">SHOP KANYAGA →</button>
+        </div>
+
         <div class="collection-section" id="colAllProducts">
           <div class="collection-header">
             <span class="collection-title">🛍️ All Products</span>
@@ -2212,6 +2224,66 @@
         </div>
 
       </div>
+
+    </section>
+
+
+
+    <section class="page" id="page-wholesale">
+
+      <div style="background:linear-gradient(135deg, var(--gold) 0%, #b8860b 100%); border-radius:16px; padding:28px 20px; margin-bottom:24px; text-align:center;">
+        <div style="font-family:var(--font-display); font-size:26px; font-weight:800; color:#111; letter-spacing:1px;">WHOLESALE</div>
+        <div style="color:#222; font-size:14px; margin-top:6px; font-weight:600;">Buy more. Pay less. Grow your business.</div>
+      </div>
+
+      <div id="wholesaleCategoryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:10px; margin-bottom:24px;"></div>
+
+      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:var(--surface); border:1px solid var(--border-strong); border-radius:12px; padding:12px 14px; margin-bottom:18px;">
+        <select id="wsFilterCategory" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:7px 10px; font-size:12px;"><option value="">All Categories</option></select>
+        <input type="number" id="wsFilterMinPrice" placeholder="Min price" style="width:90px; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:7px 10px; font-size:12px;">
+        <input type="number" id="wsFilterMaxPrice" placeholder="Max price" style="width:90px; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:7px 10px; font-size:12px;">
+        <input type="number" id="wsFilterMoq" placeholder="Min MOQ" style="width:80px; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:7px 10px; font-size:12px;">
+        <select id="wsFilterSeller" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:7px 10px; font-size:12px;"><option value="">All Sellers</option></select>
+        <select id="wsFilterLocation" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:7px 10px; font-size:12px;"><option value="">All Locations</option></select>
+        <select id="wsSort" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:7px 10px; font-size:12px;">
+          <option value="newest">Newest</option>
+          <option value="popular">Popular</option>
+          <option value="price">Lowest Price</option>
+          <option value="deal">Best Wholesale Deal</option>
+        </select>
+        <button onclick="window._loadWholesaleProducts()" style="background:var(--gold); color:#111; border:none; border-radius:8px; padding:7px 16px; font-weight:700; font-size:12px; cursor:pointer;">Apply</button>
+        <button onclick="window._clearWholesaleFilters()" style="background:var(--surface-3); color:var(--gray); border:1px solid var(--border-strong); border-radius:8px; padding:7px 14px; font-weight:600; font-size:12px; cursor:pointer;">Clear</button>
+      </div>
+
+      <h2 id="wholesaleSectionTitle" style="font-family:var(--font-display); font-size:18px; margin-bottom:14px;">All Wholesale Products</h2>
+      <div id="wholesaleProductsGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:14px;"></div>
+      <div id="wholesaleEmptyState" style="display:none; text-align:center; color:var(--gray); padding:40px 0;">No wholesale products match these filters yet.</div>
+
+    </section>
+
+
+
+    <section class="page" id="page-kanyaga">
+
+      <div style="background:linear-gradient(135deg, #111827 0%, #1a2332 100%); border:1px solid #e63946; border-radius:16px; padding:32px 20px; margin-bottom:24px; text-align:center;">
+        <div style="font-family:var(--font-display); font-size:30px; font-weight:900; color:#e63946; letter-spacing:2px; text-shadow:0 0 20px rgba(230,57,70,0.4);">KANYAGA 🔥</div>
+        <div style="color:var(--gold); font-size:16px; margin-top:6px; font-weight:800;">BEI ZIMESHUKA!</div>
+        <div style="color:var(--gray); font-size:13px; margin-top:6px;">Bei kali. Quality bora.</div>
+      </div>
+
+      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:var(--surface); border:1px solid var(--border-strong); border-radius:12px; padding:12px 14px; margin-bottom:18px;">
+        <input type="text" id="kanyagaSearch" placeholder="🔍 Search Kanyaga deals..." style="flex:1; min-width:160px; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:8px 12px; font-size:13px;" oninput="window._filterKanyagaProducts()">
+        <select id="kanyagaFilterCategory" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:7px 10px; font-size:12px;" onchange="window._filterKanyagaProducts()"><option value="">All Categories</option></select>
+        <select id="kanyagaSort" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:7px 10px; font-size:12px;" onchange="window._filterKanyagaProducts()">
+          <option value="newest">Newest</option>
+          <option value="ending">Ending Soon</option>
+          <option value="discount">Biggest Discount</option>
+          <option value="price">Lowest Price</option>
+        </select>
+      </div>
+
+      <div id="kanyagaProductsGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:14px;"></div>
+      <div id="kanyagaEmptyState" style="display:none; text-align:center; color:var(--gray); padding:40px 0;">No Kanyaga deals live right now — check back soon! 🔥</div>
 
     </section>
 
@@ -3018,6 +3090,19 @@
               <label>Flash Deal Ends At (optional)</label>
               <input type="datetime-local" id="sellerFlashDealEndsAt">
             </div>
+            <div class="field" style="display:flex; align-items:end;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);"><input type="checkbox" id="sellerKanyaga" style="width:16px; height:16px;" onchange="window._toggleKanyagaField && window._toggleKanyagaField('seller')"> 🔥 Add to Kanyaga</label></div>
+            <div class="field" id="sellerKanyagaWrap" style="display:none;">
+              <label>Kanyaga Price (KES) *</label>
+              <input type="number" id="sellerKanyagaPrice" min="0" placeholder="e.g. 11999">
+            </div>
+            <div class="field" id="sellerKanyagaStartWrap" style="display:none;">
+              <label>Kanyaga Start (optional — leave blank to start now)</label>
+              <input type="datetime-local" id="sellerKanyagaStartAt">
+            </div>
+            <div class="field" id="sellerKanyagaEndWrap" style="display:none;">
+              <label>Kanyaga End (optional — leave blank for no expiry)</label>
+              <input type="datetime-local" id="sellerKanyagaEndAt">
+            </div>
 
             <div class="field" style="grid-column:1/-1;">
               <label>Product Photos * (add at least 1 - 5 to 30 recommended)</label>
@@ -3629,6 +3714,19 @@
           <div class="field" id="adminFlashDealWrap" style="display:none;">
             <label>Flash Deal Ends At (optional)</label>
             <input type="datetime-local" id="adminFlashDealEndsAt">
+          </div>
+          <div class="field"><label>🔥 Add to Kanyaga</label><select id="adminKanyaga" onchange="window._toggleKanyagaField && window._toggleKanyagaField('admin')"><option value="false">No</option><option value="true">Yes 🔥</option></select></div>
+          <div class="field" id="adminKanyagaWrap" style="display:none;">
+            <label>Kanyaga Price (KES) *</label>
+            <input type="number" id="adminKanyagaPrice" min="0" placeholder="e.g. 11999">
+          </div>
+          <div class="field" id="adminKanyagaStartWrap" style="display:none;">
+            <label>Kanyaga Start (optional — leave blank to start now)</label>
+            <input type="datetime-local" id="adminKanyagaStartAt">
+          </div>
+          <div class="field" id="adminKanyagaEndWrap" style="display:none;">
+            <label>Kanyaga End (optional — leave blank for no expiry)</label>
+            <input type="datetime-local" id="adminKanyagaEndAt">
           </div>
           <div class="field"><label>Stock Quantity *</label><input type="number" id="adminStock" min="0" placeholder="0"></div>
           <div class="field"><label>Low Stock Alert (optional)</label><input type="number" id="adminLowStock" min="0" placeholder="5"></div>
@@ -7269,6 +7367,10 @@ function toWhatsappNumber(phone) {
 
     if(page === "seller-shop") { window._renderSellerShopPage && window._renderSellerShopPage(); }
 
+    if(page === "wholesale") { window._initWholesalePage && window._initWholesalePage(); }
+
+    if(page === "kanyaga") { window._loadKanyagaProducts && window._loadKanyagaProducts(); }
+
     if(page === "shopstream") { window._ssUpdateSellerButtons && window._ssUpdateSellerButtons(); }
 
     if(page === "shop") {
@@ -7732,6 +7834,21 @@ if(page === "admin") {
     return new Date(p.flashDealEndsAt).getTime() > Date.now();
   }
 
+  // Kanyaga is its own campaign brand, separate from Flash Deals - a
+  // product is Active right now if it has a kanyagaPrice set AND
+  // (no start time, or start has passed) AND (no end time, or end
+  // hasn't passed yet). Matches the same live-computed status logic
+  // the backend uses for GET /products/kanyaga, so the Shop grid,
+  // homepage rows, and dedicated Kanyaga page can never disagree about
+  // whether a given product is currently on deal.
+  function isKanyagaActive(p) {
+    if (!p.kanyagaPrice) return false;
+    const now = Date.now();
+    if (p.kanyagaStartAt && new Date(p.kanyagaStartAt).getTime() > now) return false;
+    if (p.kanyagaEndAt && new Date(p.kanyagaEndAt).getTime() < now) return false;
+    return true;
+  }
+
   // Human-readable "time left" string for a flash deal countdown badge,
   // e.g. "2d 5h left" / "3h 12m left" / "45m left" / "Ending soon" -
   // returns null once expired, so callers know to drop the badge.
@@ -7775,6 +7892,12 @@ if(page === "admin") {
       ? Math.round((1 - p.price / p.originalPrice) * 100) : 0;
     const inWish = wishlist.includes(p.id);
     const countdownText = (p.hot && p.flashDealEndsAt) ? formatFlashDealCountdown(p.flashDealEndsAt) : null;
+    // Kanyaga overrides the normal price display entirely when active -
+    // it's meant to read as its own distinct campaign, not just another
+    // discount badge, so it takes priority over the generic HOT/%-off
+    // treatment rather than stacking with it.
+    const kanyagaActive = isKanyagaActive(p);
+    const kanyagaSaved = kanyagaActive ? Math.max(0, p.price - p.kanyagaPrice) : 0;
 
     if (compact) {
       // Horizontal scroll card (.pcard)
@@ -7784,8 +7907,8 @@ if(page === "admin") {
         <div class="pcard-img-wrap">
           <img src="${img}" alt="${escapeHtml(p.name)}"
                onerror="this.onerror=null;this.src='${DEFAULT_PRODUCT_IMAGE}';" loading="lazy">
-          ${disc ? `<span class="pcard-discount">-${disc}%</span>` : ''}
-          ${p.hot ? `<span class="pcard-discount" style="background:var(--gold);color:#111;">HOT</span>` : ''}
+          ${kanyagaActive ? `<span class="pcard-discount" style="background:#e63946;color:#fff;">KANYAGA 🔥</span>` : disc ? `<span class="pcard-discount">-${disc}%</span>` : ''}
+          ${(!kanyagaActive && p.hot) ? `<span class="pcard-discount" style="background:var(--gold);color:#111;">HOT</span>` : ''}
           ${p.has_variants ? `<span class="pcard-discount" style="top:auto; bottom:6px; background:rgba(0,0,0,0.65);">🎯</span>` : ''}
           <button class="pcard-wish" data-id="${p.id}" title="Wishlist">${inWish ? '❤️' : '🤍'}</button>
         </div>
@@ -7793,8 +7916,14 @@ if(page === "admin") {
           <div class="pcard-name">${escapeHtml(p.name)}</div>
           ${p.sellerBusinessName ? `<div class="pcard-seller" data-seller="${escapeHtml(p.sellerEmail||'')}">🏪 ${escapeHtml(p.sellerBusinessName)}</div>` : ''}
           ${p.rating ? `<div class="pcard-rating">${'★'.repeat(Math.round(p.rating))}${'☆'.repeat(5-Math.round(p.rating))} <span style="color:var(--gray)">(${p.numReviews||0})</span></div>` : ''}
-          <div class="pcard-price">KES ${p.price.toLocaleString()}</div>
-          ${p.originalPrice ? `<div class="pcard-original">KES ${p.originalPrice.toLocaleString()}</div>` : ''}
+          ${kanyagaActive ? `
+            <div class="pcard-price" style="color:#e63946;">KES ${p.kanyagaPrice.toLocaleString()}</div>
+            <div class="pcard-original">KES ${p.price.toLocaleString()}</div>
+            <div style="font-size:10px; color:var(--green-light); font-weight:700; margin-top:2px;">Save KES ${kanyagaSaved.toLocaleString()}</div>
+          ` : `
+            <div class="pcard-price">KES ${p.price.toLocaleString()}</div>
+            ${p.originalPrice ? `<div class="pcard-original">KES ${p.originalPrice.toLocaleString()}</div>` : ''}
+          `}
           ${countdownText ? `<div class="pcard-countdown" data-flash-deal-ends="${escapeHtml(p.flashDealEndsAt)}" style="font-size:10px; color:#e74c3c; font-weight:700; margin-top:2px;">⏳ ${countdownText}</div>` : ''}
           ${(p.wholesaleTiers && p.wholesaleTiers.length) ? `<div style="font-size:10px; color:var(--green-light); font-weight:600; margin-top:2px;">📦 Buy ${p.wholesaleTiers[0].min}+ from KES ${Math.min(...p.wholesaleTiers.map(t=>Number(t.price))).toLocaleString()}</div>` : ''}
           ${_isProductLowStock(p) ? `<div style="font-size:10px; color:#e74c3c; font-weight:700; margin-top:2px;">⚠️ Only ${p.stock} left</div>` : ''}
@@ -7816,7 +7945,7 @@ if(page === "admin") {
       <div class="card-img-wrap">
         <img src="${img}" alt="${escapeHtml(p.name)}"
              onerror="this.onerror=null;this.src='${DEFAULT_PRODUCT_IMAGE}';" loading="lazy">
-        ${p.isFeatured ? `<span class="card-hot-badge" style="background:var(--gold); color:#111;">⭐ Featured</span>` : disc ? `<span class="card-discount-badge">-${disc}%</span>` : (p.hot ? `<span class="card-hot-badge">🔥 HOT</span>` : '')}
+        ${kanyagaActive ? `<span class="card-hot-badge" style="background:#e63946; color:#fff;">KANYAGA 🔥</span>` : p.isFeatured ? `<span class="card-hot-badge" style="background:var(--gold); color:#111;">⭐ Featured</span>` : disc ? `<span class="card-discount-badge">-${disc}%</span>` : (p.hot ? `<span class="card-hot-badge">🔥 HOT</span>` : '')}
         ${p.has_variants ? `<span class="card-variants-badge">🎯 Options</span>` : ''}
         <button class="card-wish-btn" data-id="${p.id}">${inWish ? '❤️' : '🤍'}</button>
       </div>
@@ -7829,11 +7958,19 @@ if(page === "admin") {
           </div>` : ''}
         <div class="card-name">${escapeHtml(p.name)}</div>
         ${p.rating ? `<div class="card-rating">${'★'.repeat(Math.round(p.rating))}${'☆'.repeat(5-Math.round(p.rating))} <span style="color:var(--gray); font-size:10px;">(${p.numReviews||0})</span></div>` : ''}
-        <div class="card-price-row">
-          <span class="card-price">KES ${p.price.toLocaleString()}</span>
-          ${p.originalPrice ? `<span class="card-original">KES ${p.originalPrice.toLocaleString()}</span>` : ''}
-          ${disc ? `<span class="card-discount-pct">${disc}% off</span>` : ''}
-        </div>
+        ${kanyagaActive ? `
+          <div class="card-price-row">
+            <span class="card-price" style="color:#e63946;">KES ${p.kanyagaPrice.toLocaleString()}</span>
+            <span class="card-original">KES ${p.price.toLocaleString()}</span>
+          </div>
+          <div style="font-size:11px; color:var(--green-light); font-weight:700; margin-top:2px;">Save KES ${kanyagaSaved.toLocaleString()}</div>
+        ` : `
+          <div class="card-price-row">
+            <span class="card-price">KES ${p.price.toLocaleString()}</span>
+            ${p.originalPrice ? `<span class="card-original">KES ${p.originalPrice.toLocaleString()}</span>` : ''}
+            ${disc ? `<span class="card-discount-pct">${disc}% off</span>` : ''}
+          </div>
+        `}
         ${countdownText ? `<div class="card-countdown" data-flash-deal-ends="${escapeHtml(p.flashDealEndsAt)}" style="font-size:11px; color:#e74c3c; font-weight:700; margin-top:2px;">⏳ ${countdownText}</div>` : ''}
         ${(p.wholesaleTiers && p.wholesaleTiers.length) ? `<div style="font-size:11px; color:var(--green-light); font-weight:600; margin-top:2px;">📦 Buy ${p.wholesaleTiers[0].min}+ from KES ${Math.min(...p.wholesaleTiers.map(t=>Number(t.price))).toLocaleString()} each</div>` : ''}
         ${_isProductLowStock(p) ? `<div style="font-size:11px; color:#e74c3c; font-weight:700; margin-top:2px;">⚠️ Only ${p.stock} left in stock</div>` : ''}
@@ -8004,6 +8141,12 @@ if(page === "admin") {
     _renderCollectionRow('budgetRow',      PRODUCTS.filter(p=>p.price<500), 12);
     _renderCollectionRow('bestRatedRow',   PRODUCTS.filter(p => p.isBestRated), 12);
     _renderCollectionRow('madeInKenyaRow', PRODUCTS.filter(p => p.madeInKenya), 12);
+
+    // The Kanyaga banner only shows up when there's actually a live deal
+    // to promote - same "hide when empty" principle as the collection
+    // rows above, so it never advertises a campaign with nothing in it.
+    const kanyagaBanner = document.getElementById('kanyagaHomeBanner');
+    if (kanyagaBanner) kanyagaBanner.style.display = PRODUCTS.some(p => isKanyagaActive(p)) ? '' : 'none';
   }
 
   // Show/hide collections vs product grid
@@ -10198,6 +10341,15 @@ function renderSellerProductsUI() {
 
           ${(p.wholesaleTiers && p.wholesaleTiers.length) ? `<span style="color:var(--green-light); font-size:12px;">📦 Wholesale (${p.wholesaleTiers.length} tier${p.wholesaleTiers.length > 1 ? 's' : ''})</span>` : ''}
 
+          ${p.kanyagaPrice ? (() => {
+            const now = Date.now();
+            const start = p.kanyagaStartAt ? new Date(p.kanyagaStartAt).getTime() : null;
+            const end = p.kanyagaEndAt ? new Date(p.kanyagaEndAt).getTime() : null;
+            if (start && start > now) return `<span style="color:var(--gray); font-size:12px; font-weight:700;">🔥 Kanyaga: Scheduled</span>`;
+            if (end && end < now) return `<span style="color:#888; font-size:12px; font-weight:700;">🔥 Kanyaga: Expired</span>`;
+            return `<span style="color:#e63946; font-size:12px; font-weight:700;">🔥 Kanyaga: Active</span>`;
+          })() : ''}
+
           ${(p.stock||0) <= 0 ? '<span style="color:#e74c3c; font-size:12px; font-weight:700;">⛔ Out of stock</span>' : _isProductLowStock(p) ? `<span style="color:#e74c3c; font-size:12px; font-weight:700;">⚠️ Low stock (${p.stock} left)</span>` : ''}
 
         </div>
@@ -10631,6 +10783,19 @@ window._toggleFlashDealField = function(which) {
   }
 };
 
+// Same show/hide pattern as _toggleFlashDealField above, for the
+// Kanyaga price/start/end fields - kept as its own separate function
+// since Kanyaga is its own campaign, not a Flash Deal variant.
+window._toggleKanyagaField = function(which) {
+  const on = which === 'seller'
+    ? document.getElementById('sellerKanyaga')?.checked
+    : document.getElementById('adminKanyaga')?.value === 'true';
+  ['Wrap', 'StartWrap', 'EndWrap'].forEach(suffix => {
+    const wrap = document.getElementById(`${which}Kanyaga${suffix}`);
+    if (wrap) wrap.style.display = on ? '' : 'none';
+  });
+};
+
 // Live "buyer will pay" preview - debounced so it doesn't call the
 // server on every keystroke, and computed entirely server-side (the
 // same real pricing engine product creation uses) so there's never a
@@ -10714,6 +10879,18 @@ window._simpleProductSubmit = async function(mode) {
   const flashDealEndsAtRaw = document.getElementById('sellerFlashDealEndsAt')?.value;
   const flashDealEndsAt = (hot && flashDealEndsAtRaw) ? new Date(flashDealEndsAtRaw).toISOString().slice(0, 19).replace('T', ' ') : null;
 
+  // Same local-time-to-UTC conversion as Flash Deal above, applied to
+  // Kanyaga's own start/end fields.
+  const kanyagaOn = document.getElementById('sellerKanyaga')?.checked;
+  const kanyagaPriceRaw = document.getElementById('sellerKanyagaPrice')?.value;
+  const kanyagaPrice = (kanyagaOn && kanyagaPriceRaw) ? Number(kanyagaPriceRaw) : null;
+  const kanyagaStartRaw = document.getElementById('sellerKanyagaStartAt')?.value;
+  const kanyagaStartAt = (kanyagaOn && kanyagaStartRaw) ? new Date(kanyagaStartRaw).toISOString().slice(0, 19).replace('T', ' ') : null;
+  const kanyagaEndRaw = document.getElementById('sellerKanyagaEndAt')?.value;
+  const kanyagaEndAt = (kanyagaOn && kanyagaEndRaw) ? new Date(kanyagaEndRaw).toISOString().slice(0, 19).replace('T', ' ') : null;
+
+  if (kanyagaOn && !kanyagaPrice) { showToast('Please enter a Kanyaga price, or turn off Add to Kanyaga.', 'error'); return; }
+
   if (mode === 'publish') {
     if (!name) { showToast('Please enter a product name.', 'error'); return; }
     if (!desc) { showToast('Please enter a description.', 'error'); return; }
@@ -10743,6 +10920,8 @@ window._simpleProductSubmit = async function(mode) {
     stock: isNaN(stock) ? 0 : stock, weight, brand: brand || undefined, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt,
     images: window._getUploadedImages(),
     wholesale_tiers: wholesaleTiers,
+    kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt,
+    kanyaga_campaign: kanyagaOn ? 'kanyaga' : null,
     status: mode === 'draft' ? 'draft' : 'active',
     low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined,
     ...(photoOptions.length > 0 ? { has_variants: 1 } : {})
@@ -10831,6 +11010,20 @@ window._simpleProductSubmit = async function(mode) {
     if (sellerFlashWrap) sellerFlashWrap.style.display = product.hot ? '' : 'none';
     const sellerFlashInput = document.getElementById("sellerFlashDealEndsAt");
     if (sellerFlashInput) sellerFlashInput.value = product.flashDealEndsAt ? toLocalDatetimeInputValue(product.flashDealEndsAt) : '';
+
+    // Same pre-fill treatment as Flash Deal above, for Kanyaga - so
+    // editing an existing Kanyaga product doesn't silently wipe it out
+    // just because the checkbox wasn't manually re-checked first.
+    const sellerKanyagaEl = document.getElementById("sellerKanyaga");
+    if (sellerKanyagaEl) sellerKanyagaEl.checked = !!product.kanyagaPrice;
+    const sellerKanyagaPriceEl = document.getElementById("sellerKanyagaPrice");
+    if (sellerKanyagaPriceEl) sellerKanyagaPriceEl.value = product.kanyagaPrice || '';
+    const sellerKanyagaStartEl = document.getElementById("sellerKanyagaStartAt");
+    if (sellerKanyagaStartEl) sellerKanyagaStartEl.value = product.kanyagaStartAt ? toLocalDatetimeInputValue(product.kanyagaStartAt) : '';
+    const sellerKanyagaEndEl = document.getElementById("sellerKanyagaEndAt");
+    if (sellerKanyagaEndEl) sellerKanyagaEndEl.value = product.kanyagaEndAt ? toLocalDatetimeInputValue(product.kanyagaEndAt) : '';
+    window._toggleKanyagaField && window._toggleKanyagaField('seller');
+
     document.getElementById("sellerWeight").value = product.weight || 1;
     if (document.getElementById("sellerStock")) document.getElementById("sellerStock").value = (typeof product.stock === 'number') ? product.stock : '';
     if (document.getElementById("sellerLowStock")) document.getElementById("sellerLowStock").value = (typeof product.lowStockThreshold === 'number') ? product.lowStockThreshold : '';
@@ -10968,6 +11161,15 @@ async function renderAdminProducts() {
             : ''}
 
           ${p.status === 'inactive' ? '<span style="color:#f44336; font-size:12px;">🚫 Hidden</span>' : ''}
+
+          ${p.kanyagaPrice ? (() => {
+            const now = Date.now();
+            const start = p.kanyagaStartAt ? new Date(p.kanyagaStartAt).getTime() : null;
+            const end = p.kanyagaEndAt ? new Date(p.kanyagaEndAt).getTime() : null;
+            if (start && start > now) return `<span style="color:var(--gray); font-size:12px; font-weight:700;">🔥 Kanyaga: Scheduled</span>`;
+            if (end && end < now) return `<span style="color:#888; font-size:12px; font-weight:700;">🔥 Kanyaga: Expired</span>`;
+            return `<span style="color:#e63946; font-size:12px; font-weight:700;">🔥 Kanyaga: Active</span>`;
+          })() : ''}
 
         </div>
 
@@ -11164,6 +11366,19 @@ async function renderAdminProducts() {
       if (adminFlashWrap) adminFlashWrap.style.display = product.hot ? '' : 'none';
       const adminFlashInput = document.getElementById("adminFlashDealEndsAt");
       if (adminFlashInput) adminFlashInput.value = product.flashDealEndsAt ? toLocalDatetimeInputValue(product.flashDealEndsAt) : '';
+
+      // Same pre-fill treatment for Kanyaga, so editing an existing
+      // Kanyaga product doesn't silently wipe it out just because the
+      // checkbox wasn't manually re-checked before saving.
+      const adminKanyagaEl = document.getElementById("adminKanyaga");
+      if (adminKanyagaEl) adminKanyagaEl.value = product.kanyagaPrice ? 'true' : 'false';
+      const adminKanyagaPriceEl = document.getElementById("adminKanyagaPrice");
+      if (adminKanyagaPriceEl) adminKanyagaPriceEl.value = product.kanyagaPrice || '';
+      const adminKanyagaStartEl = document.getElementById("adminKanyagaStartAt");
+      if (adminKanyagaStartEl) adminKanyagaStartEl.value = product.kanyagaStartAt ? toLocalDatetimeInputValue(product.kanyagaStartAt) : '';
+      const adminKanyagaEndEl = document.getElementById("adminKanyagaEndAt");
+      if (adminKanyagaEndEl) adminKanyagaEndEl.value = product.kanyagaEndAt ? toLocalDatetimeInputValue(product.kanyagaEndAt) : '';
+      window._toggleKanyagaField && window._toggleKanyagaField('admin');
 
       document.getElementById("adminSubmitBtn").textContent = "✏️ Update Product";
 
@@ -11800,6 +12015,16 @@ window.loadManualData = loadManualData;
 
     const flashDealEndsAt = (hot && flashDealEndsAtRaw) ? new Date(flashDealEndsAtRaw).toISOString().slice(0, 19).replace('T', ' ') : null;
 
+    const kanyagaOn = document.getElementById("adminKanyaga")?.value === 'true';
+    const kanyagaPriceRaw = document.getElementById("adminKanyagaPrice")?.value;
+    const kanyagaPrice = (kanyagaOn && kanyagaPriceRaw) ? Number(kanyagaPriceRaw) : null;
+    const kanyagaStartRaw = document.getElementById("adminKanyagaStartAt")?.value;
+    const kanyagaStartAt = (kanyagaOn && kanyagaStartRaw) ? new Date(kanyagaStartRaw).toISOString().slice(0, 19).replace('T', ' ') : null;
+    const kanyagaEndRaw = document.getElementById("adminKanyagaEndAt")?.value;
+    const kanyagaEndAt = (kanyagaOn && kanyagaEndRaw) ? new Date(kanyagaEndRaw).toISOString().slice(0, 19).replace('T', ' ') : null;
+
+    if (kanyagaOn && !kanyagaPrice) { showToast('Please enter a Kanyaga price, or turn off Add to Kanyaga.', 'error'); return; }
+
     const stock = parseInt(document.getElementById('adminStock')?.value, 10);
 
     const lowStock = parseInt(document.getElementById('adminLowStock')?.value, 10);
@@ -11835,7 +12060,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall(`/products/admin/${editingProductId}`, {
           method: 'PUT',
-          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
+          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt, kanyaga_campaign: kanyagaOn ? 'kanyaga' : null, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
         savedId = editingProductId;
         showToast("Product updated successfully!", "success");
@@ -11852,7 +12077,7 @@ window.loadManualData = loadManualData;
 
         const createRes = await adminApiCall('/products/admin', {
           method: 'POST',
-          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
+          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt, kanyaga_campaign: kanyagaOn ? 'kanyaga' : null, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
         savedId = createRes.data.product.id;
         showToast("Product added successfully!", "success");
@@ -15773,6 +15998,17 @@ function createAdminSellerManagement() {
           <div class="price" id="detailUnitPrice">KES ${product.price.toLocaleString()}</div>
           ${product.originalPrice ? `<div style="color:var(--gray);"><s>KES ${product.originalPrice.toLocaleString()}</s> <span style="color:var(--green-light);">${Math.round((1 - product.price/product.originalPrice) * 100)}% OFF</span></div>` : ''}
           <div id="detailStockWarning">${_isProductLowStock(product) ? `<div style="color:#e74c3c; font-weight:700; font-size:13px; margin-top:4px;">⚠️ Only ${product.stock} left in stock — order soon</div>` : ''}</div>
+          ${isKanyagaActive(product) ? (() => {
+            const saved = Math.max(0, product.price - product.kanyagaPrice);
+            const pct = product.price > 0 ? Math.round((saved / product.price) * 100) : 0;
+            return `
+            <div style="margin:10px 0; padding:12px; background:linear-gradient(135deg, #111827 0%, #1a2332 100%); border:1px solid #e63946; border-radius:12px;">
+              <div style="color:#e63946; font-weight:800; font-size:13px; letter-spacing:1px;">KANYAGA PRICE 🔥</div>
+              <div style="margin-top:4px; color:var(--gray); font-size:13px;"><s>KES ${product.price.toLocaleString()}</s></div>
+              <div style="font-size:24px; font-weight:900; color:#fff;">KES ${product.kanyagaPrice.toLocaleString()}</div>
+              <div style="margin-top:4px; color:var(--green-light); font-weight:700; font-size:13px;">You save KES ${saved.toLocaleString()} (${pct}% off)</div>
+            </div>`;
+          })() : ''}
           ` : `<div id="detailPriceLine" style="font-family:var(--font-mono); font-size:16px; color:var(--gray); margin:8px 0;">Select options to see price</div>`}
           <div class="desc">${product.desc || 'No description available.'}</div>
           ${product.hot ? '<div style="color:var(--gold); font-weight:600;">🔥 Hot Deal</div>' : ''}
@@ -16685,6 +16921,12 @@ window.renderSMSLog = renderSMSLog;
       // downstream (countdown badges, the Flash Deals tab filter, the
       // admin row) parses it correctly without needing to remember this.
       flashDealEndsAt: p.flash_deal_ends_at ? p.flash_deal_ends_at.replace(' ', 'T') + 'Z' : null,
+      // Same "MySQL space-separated datetime parses wrong in some
+      // browsers" fix applied to flashDealEndsAt above, applied here too.
+      kanyagaPrice: p.kanyaga_price != null ? Number(p.kanyaga_price) : null,
+      kanyagaStartAt: p.kanyaga_start_at ? p.kanyaga_start_at.replace(' ', 'T') + 'Z' : null,
+      kanyagaEndAt: p.kanyaga_end_at ? p.kanyaga_end_at.replace(' ', 'T') + 'Z' : null,
+      kanyagaCampaign: p.kanyaga_campaign || null,
       rating: Number(p.rating) || 0,
       numReviews: p.num_reviews || 0,
       sellerEmail: p.seller_email || null,
@@ -22652,7 +22894,298 @@ window._variantDelete = async function(mode, variantId, productId) {
     await window._loadVariantsPanel(productId, document.getElementById('adminVariantModalTitle')?.textContent.replace('🎛️ Variants — ', '') || '', mode);
   } catch (e) { showToast('Failed: ' + e.message, 'error'); }
 };
+
+// ══ WHOLESALE MARKETPLACE ═══════════════════════════════════════════
+// Dedicated Wholesale page - pulls wholesale-enabled products from
+// every existing category (no hardcoded category list) via the
+// backend's /products/wholesale endpoint, which itself just filters
+// the same products/category tables everything else already uses.
+let _wsLastResults = [];
+
+window._initWholesalePage = async function() {
+  await window._loadWholesaleCategoryGrid();
+  await window._loadWholesaleProducts();
+};
+
+window._loadWholesaleCategoryGrid = async function() {
+  await loadCategories(); // populates CATEGORY_FLAT if not already loaded
+  const topLevel = (CATEGORY_FLAT || []).filter(c => c._depth === 0);
+  const gridEl = document.getElementById('wholesaleCategoryGrid');
+  const selectEl = document.getElementById('wsFilterCategory');
+  if (gridEl) {
+    gridEl.innerHTML = topLevel.map(c => `
+      <div onclick="window._wsFilterByCategory(${c.id})" style="cursor:pointer; background:var(--surface); border:1px solid var(--border-strong); border-radius:12px; padding:14px 8px; text-align:center; transition:border-color .15s;">
+        <div style="font-size:24px;">${c.icon || '📦'}</div>
+        <div style="font-size:11px; color:var(--white); margin-top:4px; font-weight:600;">${escapeHtml(c.name)}</div>
+      </div>
+    `).join('');
+  }
+  if (selectEl) {
+    selectEl.innerHTML = '<option value="">All Categories</option>' +
+      topLevel.map(c => `<option value="${c.id}">${c.icon || ''} ${escapeHtml(c.name)}</option>`).join('');
+  }
+};
+
+window._wsFilterByCategory = function(categoryId) {
+  const sel = document.getElementById('wsFilterCategory');
+  if (sel) sel.value = categoryId;
+  window._loadWholesaleProducts();
+};
+
+window._clearWholesaleFilters = function() {
+  ['wsFilterCategory','wsFilterMinPrice','wsFilterMaxPrice','wsFilterMoq','wsFilterSeller','wsFilterLocation'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const sortEl = document.getElementById('wsSort');
+  if (sortEl) sortEl.value = 'newest';
+  window._loadWholesaleProducts();
+};
+
+window._loadWholesaleProducts = async function() {
+  const gridEl = document.getElementById('wholesaleProductsGrid');
+  const emptyEl = document.getElementById('wholesaleEmptyState');
+  if (gridEl) gridEl.innerHTML = '<div style="color:var(--gray); padding:20px;">Loading...</div>';
+
+  const categoryId = document.getElementById('wsFilterCategory')?.value || '';
+  const minPrice = document.getElementById('wsFilterMinPrice')?.value || '';
+  const maxPrice = document.getElementById('wsFilterMaxPrice')?.value || '';
+  const minMoq = document.getElementById('wsFilterMoq')?.value || '';
+  const sellerId = document.getElementById('wsFilterSeller')?.value || '';
+  const location = document.getElementById('wsFilterLocation')?.value || '';
+  const sort = document.getElementById('wsSort')?.value || 'newest';
+
+  const params = new URLSearchParams();
+  if (categoryId) params.set('category_id', categoryId);
+  if (minPrice) params.set('min_price', minPrice);
+  if (maxPrice) params.set('max_price', maxPrice);
+  if (minMoq) params.set('min_moq', minMoq);
+  if (sellerId) params.set('seller_id', sellerId);
+  if (location) params.set('county', location);
+  if (sort) params.set('sort', sort);
+  params.set('limit', '100');
+
+  try {
+    const res = await apiCall(`/products/wholesale?${params.toString()}`);
+    const rawProducts = res.data.products || [];
+    // addToCart() and showProductDetail() both look products up from
+    // the global PRODUCTS array (populated by the regular Shop page) -
+    // merge these in the same normalized shape (mapApiProduct) rather
+    // than replacing PRODUCTS outright, or those buttons would silently
+    // fail to find a wholesale-only product that isn't in the Shop's
+    // own loaded list yet.
+    const normalized = rawProducts.map(mapApiProduct);
+    normalized.forEach(np => {
+      const idx = PRODUCTS.findIndex(p => p.id === np.id);
+      if (idx >= 0) PRODUCTS[idx] = np; else PRODUCTS.push(np);
+    });
+    // Carry the server-computed wholesale fields (moq, lowestWholesalePrice,
+    // bestDealPercent) onto the normalized objects too, since mapApiProduct
+    // doesn't know about them - the card renderer below reads these.
+    const products = normalized.map((np, i) => ({ ...np, moq: rawProducts[i].moq, lowestWholesalePrice: rawProducts[i].lowestWholesalePrice, bestDealPercent: rawProducts[i].bestDealPercent, county: rawProducts[i].county, seller_business_name: rawProducts[i].seller_business_name, seller_email: rawProducts[i].seller_email, seller_id: rawProducts[i].seller_id }));
+    _wsLastResults = products;
+
+    // Populate seller/location filter options from what's actually in
+    // the current result set, rather than a separate lookup - keeps
+    // the dropdowns always showing real, currently-relevant choices.
+    window._wsPopulateDynamicFilters(products);
+
+    const titleEl = document.getElementById('wholesaleSectionTitle');
+    if (titleEl) titleEl.textContent = categoryId ? 'Wholesale Products' : 'All Wholesale Products';
+
+    if (!products.length) {
+      if (gridEl) gridEl.innerHTML = '';
+      if (emptyEl) emptyEl.style.display = '';
+      return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (gridEl) gridEl.innerHTML = products.map(window._renderWholesaleCard).join('');
+  } catch (err) {
+    if (gridEl) gridEl.innerHTML = `<div style="color:#ff6b6b; padding:20px;">Could not load wholesale products: ${escapeHtml(err.message)}</div>`;
+  }
+};
+
+window._wsPopulateDynamicFilters = function(products) {
+  const sellerSel = document.getElementById('wsFilterSeller');
+  const locSel = document.getElementById('wsFilterLocation');
+  if (sellerSel) {
+    const currentVal = sellerSel.value;
+    const sellers = {};
+    products.forEach(p => { if (p.seller_id) sellers[p.seller_id] = p.seller_business_name || p.seller_email || `Seller #${p.seller_id}`; });
+    sellerSel.innerHTML = '<option value="">All Sellers</option>' +
+      Object.entries(sellers).map(([id, name]) => `<option value="${id}">${escapeHtml(name)}</option>`).join('');
+    sellerSel.value = currentVal;
+  }
+  if (locSel) {
+    const currentVal = locSel.value;
+    const locations = [...new Set(products.map(p => p.county).filter(Boolean))];
+    locSel.innerHTML = '<option value="">All Locations</option>' +
+      locations.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    locSel.value = currentVal;
+  }
+};
+
+window._renderWholesaleCard = function(p) {
+  const img = (p.image || (p.images_json && JSON.parse(p.images_json)[0]) || '');
+  const sellerName = p.seller_business_name || p.seller_email || 'KenLynk';
+  const dealBadge = p.bestDealPercent > 0 ? `<div style="position:absolute; top:8px; left:8px; background:var(--green); color:#fff; font-size:10px; font-weight:700; padding:3px 8px; border-radius:6px;">${p.bestDealPercent}% OFF</div>` : '';
+  return `
+    <div style="background:var(--surface); border:1px solid var(--border-strong); border-radius:14px; overflow:hidden; display:flex; flex-direction:column;">
+      <div style="position:relative; aspect-ratio:1; background:var(--surface-2);">
+        ${dealBadge}
+        ${img ? `<img src="${img}" alt="${escapeHtml(p.name)}" style="width:100%; height:100%; object-fit:cover; cursor:pointer;" onclick="window.showProductDetail&&window.showProductDetail(${p.id});window.goToPage&&window.goToPage('product-detail');">` : ''}
+      </div>
+      <div style="padding:12px; display:flex; flex-direction:column; gap:4px; flex:1;">
+        <div style="font-size:13px; font-weight:600; color:var(--white); cursor:pointer;" onclick="window.showProductDetail&&window.showProductDetail(${p.id});window.goToPage&&window.goToPage('product-detail');">${escapeHtml(p.name)}</div>
+        <div style="font-size:11px; color:var(--gray);">🏪 ${escapeHtml(sellerName)}${p.county ? ` · 📍 ${escapeHtml(p.county)}` : ''}</div>
+        <div style="font-size:11px; color:var(--gray); text-decoration:line-through;">Retail KES ${Number(p.price).toLocaleString()}</div>
+        <div style="font-size:14px; font-weight:700; color:var(--green-light);">From KES ${Number(p.lowestWholesalePrice).toLocaleString()} each</div>
+        <div style="font-size:11px; color:var(--gold);">📦 MOQ: ${p.moq} pieces</div>
+        <button onclick="window.addToCart && window.addToCart(${p.id}, ${p.moq})" style="margin-top:6px; background:var(--gold); color:#111; border:none; border-radius:8px; padding:8px; font-weight:700; font-size:12px; cursor:pointer;">🛒 BUY WHOLESALE</button>
+        <button onclick="window._openBulkQuoteModal(${p.id}, '${escapeHtml(p.name).replace(/'/g, "\\'")}', ${p.moq})" style="background:var(--surface-3); color:var(--white); border:1px solid var(--border-strong); border-radius:8px; padding:7px; font-weight:600; font-size:11px; cursor:pointer;">📩 REQUEST BULK QUOTE</button>
+      </div>
+    </div>
+  `;
+};
+
+// ── Request Bulk Quote modal ─────────────────────────────────────────
+window._openBulkQuoteModal = function(productId, productName, moq) {
+  const existing = document.getElementById('bulkQuoteModalOverlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'bulkQuoteModalOverlay';
+  overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:var(--surface); border:1px solid var(--border-strong); border-radius:16px; padding:24px; max-width:420px; width:100%;">
+      <h3 style="font-family:var(--font-display); margin-bottom:4px;">📩 Request Bulk Quote</h3>
+      <div style="color:var(--gray); font-size:12px; margin-bottom:16px;">${escapeHtml(productName)} (MOQ: ${moq})</div>
+      <div class="field"><label>Your Name *</label><input type="text" id="bqName" placeholder="Full name"></div>
+      <div class="field"><label>Phone Number *</label><input type="tel" id="bqPhone" placeholder="0712345678"></div>
+      <div class="field"><label>Email (optional)</label><input type="email" id="bqEmail" placeholder="you@email.com"></div>
+      <div class="field"><label>Quantity Needed *</label><input type="number" id="bqQuantity" min="1" value="${moq}"></div>
+      <div class="field"><label>Message (optional)</label><textarea id="bqMessage" placeholder="Any details for the seller" style="min-height:70px;"></textarea></div>
+      <div style="display:flex; gap:10px; margin-top:10px;">
+        <button onclick="window._submitBulkQuote(${productId})" class="pay-btn" style="flex:1;">Send Request</button>
+        <button onclick="document.getElementById('bulkQuoteModalOverlay').remove()" style="background:var(--surface-3); color:var(--gray); border:1px solid var(--border-strong); border-radius:10px; padding:10px 16px; cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+};
+
+window._submitBulkQuote = async function(productId) {
+  const buyer_name = document.getElementById('bqName')?.value.trim();
+  const buyer_phone = document.getElementById('bqPhone')?.value.trim();
+  const buyer_email = document.getElementById('bqEmail')?.value.trim();
+  const quantity_requested = document.getElementById('bqQuantity')?.value;
+  const message = document.getElementById('bqMessage')?.value.trim();
+
+  if (!buyer_name || !buyer_phone) {
+    showToast('Name and phone are required.', 'error');
+    return;
+  }
+  if (!quantity_requested || Number(quantity_requested) <= 0) {
+    showToast('Enter a valid quantity.', 'error');
+    return;
+  }
+
+  try {
+    await apiCall('/wholesale-quotes', {
+      method: 'POST',
+      body: JSON.stringify({ product_id: productId, buyer_name, buyer_phone, buyer_email, quantity_requested, message })
+    });
+    showToast('✅ Quote request sent! The seller will contact you.', 'success');
+    document.getElementById('bulkQuoteModalOverlay')?.remove();
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
+  }
+};
+
+// ══ KANYAGA ══════════════════════════════════════════════════════════
+// Dedicated /kanyaga-equivalent page - reuses buildProductCard() as-is
+// (the badge/price-override logic already lives there), same PRODUCTS-
+// merge pattern as the Wholesale page so Add to Cart and product-detail
+// clicks work correctly on a product that might not already be in the
+// regularly-loaded Shop list.
+let _kanyagaRawResults = [];
+
+window._loadKanyagaProducts = async function() {
+  const gridEl = document.getElementById('kanyagaProductsGrid');
+  const emptyEl = document.getElementById('kanyagaEmptyState');
+  if (gridEl) gridEl.innerHTML = '<div style="color:var(--gray); padding:20px;">Loading...</div>';
+
+  // Category filter is built the same dynamic way as Wholesale's - no
+  // hardcoded category list, pulled straight from the real category tree.
+  await loadCategories();
+  const catSel = document.getElementById('kanyagaFilterCategory');
+  if (catSel && !catSel.dataset.populated) {
+    const topLevel = (CATEGORY_FLAT || []).filter(c => c._depth === 0);
+    catSel.innerHTML = '<option value="">All Categories</option>' +
+      topLevel.map(c => `<option value="${c.id}">${c.icon || ''} ${escapeHtml(c.name)}</option>`).join('');
+    catSel.dataset.populated = '1';
+  }
+
+  try {
+    const res = await apiCall('/products/kanyaga');
+    const rawProducts = res.data.products || [];
+    const normalized = rawProducts.map(mapApiProduct);
+    normalized.forEach(np => {
+      const idx = PRODUCTS.findIndex(p => p.id === np.id);
+      if (idx >= 0) PRODUCTS[idx] = np; else PRODUCTS.push(np);
+    });
+    // Carry the server-computed savedAmount/savedPercent onto the
+    // normalized objects, same merge approach as the Wholesale page.
+    _kanyagaRawResults = normalized.map((np, i) => ({
+      ...np,
+      savedAmount: rawProducts[i].savedAmount,
+      savedPercent: rawProducts[i].savedPercent,
+      created_at: rawProducts[i].created_at
+    }));
+    window._filterKanyagaProducts();
+  } catch (err) {
+    if (gridEl) gridEl.innerHTML = `<div style="color:#ff6b6b; padding:20px;">Could not load Kanyaga deals: ${escapeHtml(err.message)}</div>`;
+  }
+};
+
+// Applies search text + category filter + sort on top of whatever was
+// last fetched from the server, without needing another network
+// request - matches how the Shop page's own search/filter already works.
+window._filterKanyagaProducts = function() {
+  const gridEl = document.getElementById('kanyagaProductsGrid');
+  const emptyEl = document.getElementById('kanyagaEmptyState');
+  const searchText = (document.getElementById('kanyagaSearch')?.value || '').toLowerCase().trim();
+  const categoryId = document.getElementById('kanyagaFilterCategory')?.value || '';
+  const sort = document.getElementById('kanyagaSort')?.value || 'newest';
+
+  let items = [..._kanyagaRawResults];
+  if (searchText) items = items.filter(p => p.name.toLowerCase().includes(searchText));
+  if (categoryId) items = items.filter(p => String(p.category_id) === String(categoryId));
+
+  if (sort === 'ending') {
+    items.sort((a, b) => {
+      if (!a.kanyagaEndAt) return 1;
+      if (!b.kanyagaEndAt) return -1;
+      return new Date(a.kanyagaEndAt) - new Date(b.kanyagaEndAt);
+    });
+  } else if (sort === 'discount') {
+    items.sort((a, b) => (b.savedPercent || 0) - (a.savedPercent || 0));
+  } else if (sort === 'price') {
+    items.sort((a, b) => a.kanyagaPrice - b.kanyagaPrice);
+  } else {
+    items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }
+
+  if (gridEl) gridEl.innerHTML = '';
+  if (!items.length) {
+    if (emptyEl) emptyEl.style.display = '';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+  items.forEach(p => gridEl.appendChild(buildProductCard(p, { compact: false })));
+};
 </script>
+
 
 <div id="forgotModal" style="display:none; position:fixed; inset:0; z-index:1001; background:rgba(0,0,0,0.8); align-items:center; justify-content:center;">
 
