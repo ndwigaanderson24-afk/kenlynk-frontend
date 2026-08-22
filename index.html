@@ -3081,7 +3081,7 @@
             </div>
             <div class="field"><label>Stock Quantity *</label><input type="number" id="sellerStock" min="0" placeholder="0"></div>
             <div class="field"><label>Low Stock Alert (optional)</label><input type="number" id="sellerLowStock" min="0" placeholder="5"></div>
-            <div class="field"><label>Weight (kg)</label><input type="number" id="sellerWeight" min="0" step="0.1" value="1"></div>
+            <div class="field"><label>Weight (kg)</label><input type="number" id="sellerWeight" min="0" step="0.1" value="1" oninput="window._updateSellerPricePreview()"></div>
             <div class="field" style="display:flex; align-items:end;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);"><input type="checkbox" id="sellerHot" style="width:16px; height:16px;" onchange="window._toggleFlashDealField && window._toggleFlashDealField('seller')"> 🔥 Mark as Hot Deal</label></div>
             <div class="field" style="display:flex; align-items:end;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);"><input type="checkbox" id="sellerNewArrival" style="width:16px; height:16px;"> 🆕 Show in New Arrivals</label></div>
             <div class="field" style="display:flex; align-items:end;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white);"><input type="checkbox" id="sellerBestRated" style="width:16px; height:16px;"> ⭐ Show in Best Rated</label></div>
@@ -3728,6 +3728,7 @@
             <label>Kanyaga End (optional — leave blank for no expiry)</label>
             <input type="datetime-local" id="adminKanyagaEndAt">
           </div>
+          <div class="field"><label>Weight (kg)</label><input type="number" id="adminWeight" min="0" step="0.1" value="1" oninput="window._updateAdminPricePreview()"></div>
           <div class="field"><label>Stock Quantity *</label><input type="number" id="adminStock" min="0" placeholder="0"></div>
           <div class="field"><label>Low Stock Alert (optional)</label><input type="number" id="adminLowStock" min="0" placeholder="5"></div>
           <div class="field"><label>New Arrival</label><select id="adminNewArrival"><option value="false">No</option><option value="true">Yes 🆕</option></select></div>
@@ -10809,13 +10810,10 @@ window._updateSellerPricePreview = function() {
   if (previewEl) previewEl.textContent = 'Calculating…';
   _sellerPricePreviewTimer = setTimeout(async () => {
     try {
-      const catId = document.getElementById('sellerCategory')?.value;
-      const catNode = catId ? CATEGORY_FLAT.find(c => c.id === Number(catId)) : null;
-      const cat = catNode ? (catNode.slug || catNode.name.toLowerCase()) : '';
-      const fragile = document.getElementById('sellerFragile')?.checked || false;
+      const weight = parseFloat(document.getElementById('sellerWeight')?.value) || 1;
       const res = await apiCall('/products/preview-price', {
         method: 'POST',
-        body: JSON.stringify({ seller_price: priceVal, category: cat, fragile })
+        body: JSON.stringify({ seller_price: priceVal, weight })
       });
       if (previewEl) previewEl.innerHTML = `Buyer will pay: <strong style="color:var(--gold);">KES ${res.data.price.toLocaleString()}</strong> <span style="color:var(--green-light);">(free delivery included)</span>`;
     } catch (err) {
@@ -10833,15 +10831,18 @@ window._updateAdminPricePreview = function() {
   if (previewEl) previewEl.textContent = 'Calculating…';
   _adminPricePreviewTimer = setTimeout(async () => {
     try {
-      const catId = document.getElementById('adminCategory')?.value;
-      const catNode = catId ? CATEGORY_FLAT.find(c => c.id === Number(catId)) : null;
-      const cat = catNode ? (catNode.slug || catNode.name.toLowerCase()) : '';
-      const fragile = document.getElementById('adminFragile')?.checked || false;
+      const weight = parseFloat(document.getElementById('adminWeight')?.value) || 1;
       const res = await adminApiCall('/products/admin/preview-price', {
         method: 'POST',
-        body: JSON.stringify({ seller_price: priceVal, category: cat, fragile })
+        body: JSON.stringify({ seller_price: priceVal, weight })
       });
-      if (previewEl) previewEl.innerHTML = `Buyer will pay: <strong style="color:var(--gold);">KES ${res.data.price.toLocaleString()}</strong> <span style="color:var(--green-light);">(free delivery included)</span>`;
+      if (previewEl) previewEl.innerHTML = `
+        Buyer will pay: <strong style="color:var(--gold);">KES ${res.data.price.toLocaleString()}</strong> <span style="color:var(--green-light);">(free delivery included)</span>
+        ${res.data.commission !== undefined ? `
+        <div style="margin-top:6px; font-size:11px; color:var(--gray); border-top:1px solid var(--border); padding-top:6px;">
+          Product Price: KES ${priceVal.toLocaleString()} · Commission: KES ${res.data.commission.toLocaleString()} · Delivery: KES ${res.data.delivery_fee.toLocaleString()}
+        </div>` : ''}
+      `;
     } catch (err) {
       if (previewEl) previewEl.textContent = '';
     }
@@ -11312,6 +11313,8 @@ async function renderAdminProducts() {
       document.getElementById("adminCategory").value = product.category_id || '';
 
       if (document.getElementById("adminStock")) document.getElementById("adminStock").value = (typeof product.stock === 'number') ? product.stock : '';
+
+      if (document.getElementById("adminWeight")) document.getElementById("adminWeight").value = product.weight || 1;
 
       if (document.getElementById("adminLowStock")) document.getElementById("adminLowStock").value = (typeof product.lowStockThreshold === 'number') ? product.lowStockThreshold : '';
 
@@ -12027,6 +12030,8 @@ window.loadManualData = loadManualData;
 
     const stock = parseInt(document.getElementById('adminStock')?.value, 10);
 
+    const weight = parseFloat(document.getElementById('adminWeight')?.value) || 1;
+
     const lowStock = parseInt(document.getElementById('adminLowStock')?.value, 10);
 
     const desc = document.getElementById("adminDesc")?.value.trim();
@@ -12060,7 +12065,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall(`/products/admin/${editingProductId}`, {
           method: 'PUT',
-          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt, kanyaga_campaign: kanyagaOn ? 'kanyaga' : null, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
+          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, weight, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt, kanyaga_campaign: kanyagaOn ? 'kanyaga' : null, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
         savedId = editingProductId;
         showToast("Product updated successfully!", "success");
@@ -12077,7 +12082,7 @@ window.loadManualData = loadManualData;
 
         const createRes = await adminApiCall('/products/admin', {
           method: 'POST',
-          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt, kanyaga_campaign: kanyagaOn ? 'kanyaga' : null, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
+          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, weight, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt, kanyaga_campaign: kanyagaOn ? 'kanyaga' : null, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
         savedId = createRes.data.product.id;
         showToast("Product added successfully!", "success");
@@ -14703,7 +14708,14 @@ function createAdminSellerManagement() {
     _refreshAdminShopstreamCache();
   };
 
-  // ── Pricing Engine admin panel ─────────────────────────────────────
+  // ── Pricing model admin panel ────────────────────────────────────────
+  // Replaces the old rules-based Pricing Engine (per-category/value
+  // editable margin, delivery %, fragile risk, commission rate) - there
+  // is nothing left to configure under the new model, since commission
+  // and delivery fee are both fixed brackets defined in code, not
+  // admin-editable data. This panel is now a read-only reference of
+  // those brackets, plus the one action that still matters: recalculating
+  // every existing product's price under the new formula.
   function createAdminPricingPanel() {
     const adminContent = document.getElementById('page-admin');
     if (!adminContent) return;
@@ -14714,15 +14726,48 @@ function createAdminSellerManagement() {
     panel.id = 'adminPricingPanel';
     panel.style.cssText = 'margin-top:24px; background:var(--surface); border:1px solid var(--border-strong); border-radius:16px; padding:24px;';
 
+    const commissionRows = [
+      ['Below KES 500', 'Equal to the product price'],
+      ['KES 500 – 999', 'KES 400'],
+      ['KES 1,000 – 2,499', 'KES 800'],
+      ['KES 2,500 – 4,999', 'KES 1,500'],
+      ['KES 5,000 – 9,999', 'KES 2,500'],
+      ['KES 10,000 – 19,999', 'KES 3,500'],
+      ['KES 20,000 – 29,999', 'KES 4,500'],
+      ['KES 30,000 – 49,999', 'KES 5,000'],
+      ['KES 50,000 – 64,999', 'KES 6,000'],
+      ['KES 65,000 and above', 'KES 7,000'],
+    ];
+    const deliveryRows = [
+      ['0 – 20 kg', 'KES 250'],
+      ['Above 20 kg – 40 kg', 'KES 400'],
+      ['Above 40 kg – 70 kg', 'KES 450'],
+      ['Above 70 kg', 'KES 450 + KES 50 per additional 2 kg'],
+    ];
+    const rowsHtml = (rows) => rows.map(([a, b]) => `
+      <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);">
+        <span style="color:var(--gray); font-size:12px;">${a}</span>
+        <span style="color:var(--white); font-size:12px; font-weight:700;">${b}</span>
+      </div>`).join('');
+
     panel.innerHTML = `
-      <h3 style="font-family:var(--font-display); margin-bottom:8px;">💰 Pricing Engine</h3>
-      <p style="color:var(--gray); font-size:13px; margin-bottom:16px;">Buyers only ever see the final price - this is where you control what's baked into it. Category/value-specific rules below override these defaults when they match.</p>
-      <div id="adminPricingSettings" style="margin-bottom:20px;"></div>
-      <div id="adminPricingMigrateBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px; margin-bottom:12px;">
-        <div style="font-weight:700; font-size:13px; color:var(--white); margin-bottom:4px;">🔄 Migrate Existing Products</div>
-        <p style="color:var(--gray); font-size:12px; margin-bottom:10px;">Products created before today have a plain price with no pricing breakdown. This one-time action treats each one's current price as the seller's asking price, then computes a new final price on top of it using the rules above - <strong style="color:var(--white);">every existing product's displayed price on the live Shop will change immediately.</strong> Safe to run more than once - it never touches a product twice.</p>
-        <button onclick="window._runPricingMigration()" id="pricingMigrateBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Migrate Existing Products Now</button>
-        <div id="pricingMigrateResult" style="margin-top:10px; font-size:12px;"></div>
+      <h3 style="font-family:var(--font-display); margin-bottom:8px;">💰 Pricing Model</h3>
+      <p style="color:var(--gray); font-size:13px; margin-bottom:16px;">Final Customer Price = Product Price + Commission + Delivery Fee. Buyers only ever see the final price. These brackets are fixed and not editable from here - changing them requires a code change.</p>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:20px;">
+        <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+          <div style="font-weight:700; font-size:13px; margin-bottom:8px; color:var(--white);">Commission (by product price)</div>
+          ${rowsHtml(commissionRows)}
+        </div>
+        <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+          <div style="font-weight:700; font-size:13px; margin-bottom:8px; color:var(--white);">Delivery Fee (by weight)</div>
+          ${rowsHtml(deliveryRows)}
+        </div>
+      </div>
+      <div id="adminPricingRecalcBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px; margin-bottom:12px;">
+        <div style="font-weight:700; font-size:13px; color:var(--white); margin-bottom:4px;">🔄 Recalculate All Prices</div>
+        <p style="color:var(--gray); font-size:12px; margin-bottom:10px;">Recalculates every existing product's price under the brackets above, using its current seller price and weight. Use this once after the new pricing model goes live, or any time the bracket amounts change in code - <strong style="color:var(--white);">every product's displayed price on the live Shop will change immediately.</strong> Safe to run more than once.</p>
+        <button onclick="window._runRecalculateAllPrices()" id="pricingRecalcBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Recalculate All Prices Now</button>
+        <div id="pricingRecalcResult" style="margin-top:10px; font-size:12px;"></div>
       </div>
       <div id="adminVariantPricingMigrateBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px; margin-bottom:12px;">
         <div style="font-weight:700; font-size:13px; color:var(--white); margin-bottom:4px;">🔄 Clear Variant Pricing</div>
@@ -14730,216 +14775,43 @@ function createAdminSellerManagement() {
         <button onclick="window._runClearVariantPricing()" id="variantPricingMigrateBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Clear Variant Pricing Now</button>
         <div id="variantPricingMigrateResult" style="margin-top:10px; font-size:12px;"></div>
       </div>
-      <div id="adminCategoryCommissionBackfillBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px; margin-bottom:20px;">
-        <div style="font-weight:700; font-size:13px; color:var(--white); margin-bottom:4px;">🔄 Backfill Category Commission</div>
-        <p style="color:var(--gray); font-size:12px; margin-bottom:10px;">Products that already have a seller's asking price were priced before the per-category commission existed. This one-time action recalculates their final price using the current category commission rates below, on top of the existing margin/delivery/fragile-risk - <strong style="color:var(--white);">every affected product's displayed price on the live Shop will change immediately.</strong> Safe to run more than once.</p>
-        <button onclick="window._runCategoryCommissionBackfill()" id="categoryCommissionBackfillBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Backfill Category Commission Now</button>
-        <div id="categoryCommissionBackfillResult" style="margin-top:10px; font-size:12px;"></div>
-      </div>
-      <div id="adminMigrateImagesBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px; margin-bottom:20px;">
+      <div id="adminMigrateImagesBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px;">
         <div style="font-weight:700; font-size:13px; color:var(--white); margin-bottom:4px;">🔄 Migrate Images to Cloudinary</div>
         <p style="color:var(--gray); font-size:12px; margin-bottom:10px;">Older products still have their photo stored either as raw data in the database or on the server's own disk, both of which count against our hosting bandwidth every time someone views them. This one-time action moves every one of those photos over to Cloudinary and updates the product to point at the new address instead. Nothing changes visually for buyers. Safe to run more than once - only touches photos that still need it.</p>
         <button onclick="window._runMigrateImagesToCloudinary()" id="migrateImagesBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Migrate Images Now</button>
         <div id="migrateImagesResult" style="margin-top:10px; font-size:12px;"></div>
       </div>
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-        <h4 style="font-family:var(--font-display); font-size:14px; margin:0;">Category & Value Rules</h4>
-        <button onclick="window._openPricingRuleModal()" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:700;font-size:12px;">+ Add Rule</button>
-      </div>
-      <div id="adminPricingRulesList"></div>
     `;
 
     adminContent.appendChild(panel);
-    _refreshAdminPricingPanel();
   }
   window.createAdminPricingPanel = createAdminPricingPanel;
 
-  async function _refreshAdminPricingPanel() {
-    const settingsEl = document.getElementById('adminPricingSettings');
-    const rulesEl = document.getElementById('adminPricingRulesList');
-
-    try {
-      const settingsRes = await adminApiCall('/admin/pricing/settings');
-      const s = settingsRes.data.settings;
-      if (settingsEl) {
-        settingsEl.innerHTML = `
-          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px;">
-            <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:var(--white);">Defaults (used when no rule below matches a product)</div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">
-              <div><label style="font-size:11px;color:var(--gray);">Margin type</label>
-                <select id="pDefMarginType" style="width:100%;"><option value="percent" ${s.default_margin_type==='percent'?'selected':''}>%</option><option value="fixed" ${s.default_margin_type==='fixed'?'selected':''}>Fixed KES</option></select></div>
-              <div><label style="font-size:11px;color:var(--gray);">Margin value</label>
-                <input type="number" id="pDefMarginValue" value="${s.default_margin_value}" style="width:100%;"></div>
-              <div><label style="font-size:11px;color:var(--gray);">Delivery type</label>
-                <select id="pDefDeliveryType" style="width:100%;"><option value="percent" ${s.default_delivery_type==='percent'?'selected':''}>%</option><option value="fixed" ${s.default_delivery_type==='fixed'?'selected':''}>Fixed KES</option></select></div>
-              <div><label style="font-size:11px;color:var(--gray);">Delivery value</label>
-                <input type="number" id="pDefDeliveryValue" value="${s.default_delivery_value}" style="width:100%;"></div>
-              <div><label style="font-size:11px;color:var(--gray);">Fragile risk type</label>
-                <select id="pFragileType" style="width:100%;"><option value="percent" ${s.fragile_risk_type==='percent'?'selected':''}>%</option><option value="fixed" ${s.fragile_risk_type==='fixed'?'selected':''}>Fixed KES</option></select></div>
-              <div><label style="font-size:11px;color:var(--gray);">Fragile risk value</label>
-                <input type="number" id="pFragileValue" value="${s.fragile_risk_value}" style="width:100%;"></div>
-              <div><label style="font-size:11px;color:var(--gray);">Category commission rate (%)</label>
-                <input type="number" id="pDefCategoryCommission" value="${s.default_category_commission_rate}" style="width:100%;"></div>
-            </div>
-            <p style="color:var(--gray);font-size:11px;margin-top:8px;">Category commission is a genuinely separate cut, always a % of the seller's own price - added on top of margin/delivery/fragile risk, not instead of them. This is the fallback used when a category rule below doesn't set its own rate.</p>
-            <button onclick="window._saveAdminPricingSettings()" style="margin-top:12px;background:var(--green);border:none;color:#fff;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Save Defaults</button>
-          </div>`;
-      }
-    } catch (err) {
-      if (settingsEl) settingsEl.innerHTML = `<div style="color:var(--gray);">Could not load settings: ${escapeHtml(err.message)}</div>`;
-    }
-
-    try {
-      const rulesRes = await adminApiCall('/admin/pricing/rules');
-      const rules = rulesRes.data.rules || [];
-      window._pricingRulesCache = rules;
-      if (rulesEl) {
-        rulesEl.innerHTML = rules.length ? rules.map(r => `
-          <div style="display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--surface-2);border-radius:10px;margin-bottom:6px;border:1px solid var(--border);${r.active?'':'opacity:0.5;'}">
-            <div style="flex:1;min-width:0;">
-              <div style="font-weight:700;color:var(--white);font-size:13px;">${escapeHtml(r.name)} ${r.active?'':'<span style="color:var(--gray);font-size:10px;">(inactive)</span>'}</div>
-              <div style="font-size:11px;color:var(--gray);margin-top:2px;">
-                ${r.category ? escapeHtml(r.category) : 'All categories'} · KES ${Number(r.min_value).toLocaleString()}${r.max_value!=null?' - '+Number(r.max_value).toLocaleString():'+'}
-                · Margin: ${r.margin_type==='percent'?r.margin_value+'%':'KES '+r.margin_value}
-                · Delivery: ${r.delivery_type==='percent'?r.delivery_value+'%':'KES '+r.delivery_value}
-                · Commission: ${r.category_commission_rate!=null?r.category_commission_rate+'%':'default'}
-                · Priority ${r.priority}
-              </div>
-            </div>
-            <button onclick="window._openPricingRuleModal(${r.id})" style="background:var(--surface-3);border:1px solid var(--border-strong);color:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;flex-shrink:0;">✏️ Edit</button>
-            <button onclick="window._deletePricingRule(${r.id})" style="background:#e74c3c;border:none;color:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;flex-shrink:0;">🗑️</button>
-          </div>`).join('') : `<div style="text-align:center;padding:20px;color:var(--gray);">No custom rules yet - every product uses the defaults above.</div>`;
-      }
-    } catch (err) {
-      if (rulesEl) rulesEl.innerHTML = `<div style="color:var(--gray); text-align:center; padding:20px;">Could not load rules: ${escapeHtml(err.message)}</div>`;
-    }
-  }
-  window._refreshAdminPricingPanel = _refreshAdminPricingPanel;
-
-  window._saveAdminPricingSettings = async function() {
-    try {
-      await adminApiCall('/admin/pricing/settings', {
-        method: 'PUT',
-        body: JSON.stringify({
-          default_margin_type: document.getElementById('pDefMarginType').value,
-          default_margin_value: Number(document.getElementById('pDefMarginValue').value),
-          default_delivery_type: document.getElementById('pDefDeliveryType').value,
-          default_delivery_value: Number(document.getElementById('pDefDeliveryValue').value),
-          fragile_risk_type: document.getElementById('pFragileType').value,
-          fragile_risk_value: Number(document.getElementById('pFragileValue').value),
-          default_category_commission_rate: Number(document.getElementById('pDefCategoryCommission').value)
-        })
-      });
-      showToast('✅ Pricing defaults saved.', 'success');
-    } catch (err) {
-      showToast('⚠️ ' + err.message, 'error');
-    }
-  };
-
-  window._openPricingRuleModal = function(ruleId) {
-    const rule = ruleId ? (window._pricingRulesCache || []).find(r => r.id === ruleId) : null;
-    let m = document.getElementById('pricingRuleModal');
-    if (!m) { m = document.createElement('div'); m.id = 'pricingRuleModal'; m.style.cssText = 'display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;padding:20px;'; document.body.appendChild(m); }
-    m.innerHTML = `
-      <div style="background:var(--surface);border:1px solid var(--border-strong);border-radius:16px;padding:24px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto;position:relative;">
-        <button onclick="document.getElementById('pricingRuleModal').style.display='none'" style="position:absolute;top:14px;right:14px;background:var(--surface-2);border:1px solid var(--border-strong);color:var(--white);border-radius:8px;padding:5px 12px;cursor:pointer;">✕</button>
-        <h3 style="font-family:var(--font-display);margin-bottom:14px;">${rule ? 'Edit' : 'Add'} Pricing Rule</h3>
-        <input type="hidden" id="prId" value="${rule ? rule.id : ''}">
-        <div class="field"><label>Rule name *</label><input type="text" id="prName" value="${rule ? escapeHtml(rule.name) : ''}" placeholder="e.g. Electronics over 10k"></div>
-        <div class="field"><label>Category (blank = all categories)</label><input type="text" id="prCategory" value="${rule ? escapeHtml(rule.category||'') : ''}" placeholder="e.g. electronics"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div class="field"><label>Min value (KES)</label><input type="number" id="prMinValue" value="${rule ? rule.min_value : 0}"></div>
-          <div class="field"><label>Max value (blank = no limit)</label><input type="number" id="prMaxValue" value="${rule && rule.max_value!=null ? rule.max_value : ''}"></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div class="field"><label>Margin type</label><select id="prMarginType"><option value="percent" ${!rule||rule.margin_type==='percent'?'selected':''}>%</option><option value="fixed" ${rule&&rule.margin_type==='fixed'?'selected':''}>Fixed KES</option></select></div>
-          <div class="field"><label>Margin value *</label><input type="number" id="prMarginValue" value="${rule ? rule.margin_value : ''}"></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div class="field"><label>Delivery type</label><select id="prDeliveryType"><option value="fixed" ${!rule||rule.delivery_type==='fixed'?'selected':''}>Fixed KES</option><option value="percent" ${rule&&rule.delivery_type==='percent'?'selected':''}>%</option></select></div>
-          <div class="field"><label>Delivery value *</label><input type="number" id="prDeliveryValue" value="${rule ? rule.delivery_value : ''}"></div>
-        </div>
-        <div class="field"><label>Category commission rate (%, blank = use global default)</label><input type="number" id="prCategoryCommission" value="${rule && rule.category_commission_rate!=null ? rule.category_commission_rate : ''}" placeholder="e.g. 7"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;">
-          <div class="field"><label>Priority (higher wins ties)</label><input type="number" id="prPriority" value="${rule ? rule.priority : 0}"></div>
-          <div class="field" style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="prActive" style="width:auto;" ${!rule||rule.active?'checked':''}><label style="margin:0;">Active</label></div>
-        </div>
-        <button onclick="window._savePricingRule()" style="width:100%;background:var(--green);border:none;color:#fff;border-radius:10px;padding:12px;cursor:pointer;font-weight:700;font-size:14px;margin-top:8px;">${rule ? 'Save Changes' : 'Create Rule'}</button>
-      </div>`;
-    m.style.display = 'flex';
-  };
-
-  window._savePricingRule = async function() {
-    const id = document.getElementById('prId').value;
-    const name = document.getElementById('prName').value.trim();
-    const marginValue = document.getElementById('prMarginValue').value;
-    const deliveryValue = document.getElementById('prDeliveryValue').value;
-    if (!name || marginValue === '' || deliveryValue === '') {
-      showToast('Name, margin value, and delivery value are required.', 'error');
-      return;
-    }
-    const maxValueRaw = document.getElementById('prMaxValue').value;
-    const categoryCommissionRaw = document.getElementById('prCategoryCommission').value;
-    const body = {
-      name,
-      category: document.getElementById('prCategory').value.trim() || null,
-      min_value: Number(document.getElementById('prMinValue').value) || 0,
-      max_value: maxValueRaw === '' ? null : Number(maxValueRaw),
-      margin_type: document.getElementById('prMarginType').value,
-      margin_value: Number(marginValue),
-      delivery_type: document.getElementById('prDeliveryType').value,
-      delivery_value: Number(deliveryValue),
-      category_commission_rate: categoryCommissionRaw === '' ? null : Number(categoryCommissionRaw),
-      priority: Number(document.getElementById('prPriority').value) || 0,
-      active: document.getElementById('prActive').checked
-    };
-    try {
-      if (id) await adminApiCall(`/admin/pricing/rules/${id}`, { method: 'PUT', body: JSON.stringify(body) });
-      else await adminApiCall('/admin/pricing/rules', { method: 'POST', body: JSON.stringify(body) });
-      showToast(id ? '✅ Rule updated.' : '✅ Rule created.', 'success');
-      document.getElementById('pricingRuleModal').style.display = 'none';
-      _refreshAdminPricingPanel();
-    } catch (err) {
-      showToast('⚠️ ' + err.message, 'error');
-    }
-  };
-
-  window._deletePricingRule = async function(id) {
-    if (!confirm('Delete this pricing rule? Products already priced under it keep their current price - this only affects future calculations.')) return;
-    try {
-      await adminApiCall(`/admin/pricing/rules/${id}`, { method: 'DELETE' });
-      showToast('🗑️ Rule deleted.', 'success');
-    } catch (err) {
-      showToast('⚠️ ' + err.message, 'error');
-    }
-    _refreshAdminPricingPanel();
-  };
-
-  window._runPricingMigration = async function() {
+  window._runRecalculateAllPrices = async function() {
     const confirmed = confirm(
-      'This will recalculate the displayed price for every existing product right now, using the current pricing rules and defaults. Buyers browsing the Shop will see new prices immediately. This cannot be undone (though you can always edit individual products afterwards). Continue?'
+      'This will recalculate the displayed price for every existing product right now, using the new pricing model. Buyers browsing the Shop will see new prices immediately. This cannot be undone (though you can always edit individual products afterwards). Continue?'
     );
     if (!confirmed) return;
 
-    const btn = document.getElementById('pricingMigrateBtn');
-    const resultEl = document.getElementById('pricingMigrateResult');
-    if (btn) { btn.disabled = true; btn.textContent = 'Migrating…'; }
+    const btn = document.getElementById('pricingRecalcBtn');
+    const resultEl = document.getElementById('pricingRecalcResult');
+    if (btn) { btn.disabled = true; btn.textContent = 'Recalculating…'; }
     if (resultEl) resultEl.textContent = '';
 
     try {
-      const res = await adminApiCall('/admin/pricing/migrate-existing-products', { method: 'POST' });
+      const res = await adminApiCall('/admin/pricing/recalculate-all', { method: 'POST' });
       const { totalFound, migrated, errors } = res.data;
-      let msg = `✅ Migrated ${migrated} of ${totalFound} product${totalFound===1?'':'s'}.`;
+      let msg = `✅ Recalculated ${migrated} of ${totalFound} product${totalFound===1?'':'s'}.`;
       if (errors && errors.length) msg += ` ${errors.length} failed - check individual products.`;
       if (resultEl) resultEl.innerHTML = `<span style="color:${errors&&errors.length?'#e74c3c':'var(--green-light)'};">${msg}</span>`;
-      showToast(migrated > 0 ? '✅ Products migrated to the new pricing model.' : 'No products needed migrating.', 'success');
+      showToast(migrated > 0 ? '✅ Products recalculated under the new pricing model.' : 'No products needed recalculating.', 'success');
       window.renderProducts && window.renderProducts();
       window.renderShopCollections && window.renderShopCollections();
     } catch (err) {
       if (resultEl) resultEl.innerHTML = `<span style="color:#e74c3c;">⚠️ ${escapeHtml(err.message)}</span>`;
       showToast('⚠️ ' + err.message, 'error');
     }
-    if (btn) { btn.disabled = false; btn.textContent = 'Migrate Existing Products Now'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Recalculate All Prices Now'; }
   };
 
   window._runClearVariantPricing = async function() {
@@ -14966,33 +14838,6 @@ function createAdminSellerManagement() {
       showToast('⚠️ ' + err.message, 'error');
     }
     if (btn) { btn.disabled = false; btn.textContent = 'Clear Variant Pricing Now'; }
-  };
-
-  window._runCategoryCommissionBackfill = async function() {
-    const confirmed = confirm(
-      'This will recalculate the displayed price for every product that already has a seller price, folding in the current category commission rates. Buyers browsing the Shop will see new prices immediately. This cannot be undone (though you can always edit individual products afterwards). Continue?'
-    );
-    if (!confirmed) return;
-
-    const btn = document.getElementById('categoryCommissionBackfillBtn');
-    const resultEl = document.getElementById('categoryCommissionBackfillResult');
-    if (btn) { btn.disabled = true; btn.textContent = 'Backfilling…'; }
-    if (resultEl) resultEl.textContent = '';
-
-    try {
-      const res = await adminApiCall('/admin/pricing/backfill-category-commission', { method: 'POST' });
-      const { totalFound, migrated, errors } = res.data;
-      let msg = `✅ Recalculated pricing for ${migrated} of ${totalFound} product${totalFound===1?'':'s'}.`;
-      if (errors && errors.length) msg += ` ${errors.length} failed - check individual products.`;
-      if (resultEl) resultEl.innerHTML = `<span style="color:${errors&&errors.length?'#e74c3c':'var(--green-light)'};">${msg}</span>`;
-      showToast(migrated > 0 ? '✅ Category commission backfilled.' : 'No products needed backfilling.', 'success');
-      window.renderProducts && window.renderProducts();
-      window.renderShopCollections && window.renderShopCollections();
-    } catch (err) {
-      if (resultEl) resultEl.innerHTML = `<span style="color:#e74c3c;">⚠️ ${escapeHtml(err.message)}</span>`;
-      showToast('⚠️ ' + err.message, 'error');
-    }
-    if (btn) { btn.disabled = false; btn.textContent = 'Backfill Category Commission Now'; }
   };
 
   window._runMigrateImagesToCloudinary = async function() {
