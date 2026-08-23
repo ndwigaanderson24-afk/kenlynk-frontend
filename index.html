@@ -16040,9 +16040,18 @@ function createAdminSellerManagement() {
 
   // ============ OVERRIDE NAVIGATION FOR SELLER PAGE ============
 
-
-
-  const originalGoToPage = window.goToPage || goToPage
+  // Was `window.goToPage || goToPage` - but window.goToPage starts out
+  // as a throwaway placeholder (just warns "not ready yet") assigned
+  // very early so nothing crashes if it's called before this real
+  // function exists. That placeholder is a valid, truthy function, so
+  // `||` never actually fell through to the real local goToPage below -
+  // every wrapper added after this one was unknowingly chaining back to
+  // that placeholder instead of the real page-switching logic. Nav tabs
+  // never hit this since they call the local goToPage directly, not
+  // through window.goToPage - only code with no other way to reach it
+  // (an inline onclick attribute, or a later separate <script> block)
+  // was ever affected.
+  const originalGoToPage = goToPage;
 
 window.goToPage = function(page) {
 
