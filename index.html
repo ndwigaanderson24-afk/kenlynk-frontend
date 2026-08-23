@@ -7990,6 +7990,7 @@ if(page === "admin") {
     div.addEventListener('click', () => showProductDetail(p.id));
     return div;
   }
+  window.buildProductCard = buildProductCard;
 
   // ════════════════════════════════════════════════════════════
   // FILTER STATE
@@ -23027,7 +23028,7 @@ window._filterKanyagaProducts = function() {
     return;
   }
   if (emptyEl) emptyEl.style.display = 'none';
-  items.forEach(p => gridEl.appendChild(buildProductCard(p, { compact: false })));
+  items.forEach(p => gridEl.appendChild(window.buildProductCard(p, { compact: false })));
 };
 </script>
 
