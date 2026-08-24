@@ -7849,6 +7849,7 @@ if(page === "admin") {
     if (p.kanyagaEndAt && new Date(p.kanyagaEndAt).getTime() < now) return false;
     return true;
   }
+  window.isKanyagaActive = isKanyagaActive;
 
   // Human-readable "time left" string for a flash deal countdown badge,
   // e.g. "2d 5h left" / "3h 12m left" / "45m left" / "Ending soon" -
@@ -21010,11 +21011,20 @@ window._savePhotoOptionVariants = _savePhotoOptionVariants;
 window.getUnitPriceForQty = function(product, qty) {
   const base = product ? Number(product.price) || 0 : 0;
   const tiers = product && Array.isArray(product.wholesaleTiers) ? product.wholesaleTiers : [];
-  if (!tiers.length) return base;
   let unit = base;
   for (const t of tiers) {
     const max = (t.max !== null && t.max !== undefined && t.max > 0) ? t.max : Infinity;
     if (qty >= t.min && qty <= max) { unit = Number(t.price); break; }
+  }
+  // Was previously wholesale-tiers-only, with no idea Kanyaga even
+  // existed - so the cart, the Order Now modal, and the cart total all
+  // kept showing the regular price for a product that was genuinely on
+  // an active Kanyaga deal. Mirrors the exact same "whichever is lower
+  // wins" rule already used server-side in order.js's getFinalUnitPrice,
+  // so what the cart displays and what checkout actually charges can
+  // never disagree.
+  if (product && window.isKanyagaActive && window.isKanyagaActive(product)) {
+    unit = Math.min(unit, Number(product.kanyagaPrice));
   }
   return unit;
 };
