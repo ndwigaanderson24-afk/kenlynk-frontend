@@ -15327,6 +15327,55 @@ function createAdminSellerManagement() {
     ) || null;
   }
 
+  // ══ THE ONE PLACE "what price should show" gets decided ═══════════
+  // Previously computed three separate times, slightly differently, in
+  // the product detail page, the Order Now modal, and the photo-option
+  // picker - every one of them had to be found and patched separately
+  // whenever a real bug turned up (the single-value-attribute bug, the
+  // Kanyaga-vs-variant-price interaction). From now on all three call
+  // this instead, so there's exactly one implementation to ever get
+  // right or wrong.
+  //
+  // matched   - the specific variant currently selected (or null if the
+  //             buyer hasn't finished choosing, or this product has no
+  //             variants at all)
+  // basePrice - matched's own price if it has one, else the parent
+  //             product's price - this is what would show with no
+  //             Kanyaga deal running
+  // showPrice - what should actually be rendered as the big, prominent
+  //             price: basePrice, or the flat Kanyaga price when one is
+  //             currently active (Kanyaga is a whole-product campaign
+  //             price, not something that varies per variant)
+  // isKanyaga - whether showPrice came from an active Kanyaga deal, so
+  //             callers know whether to also render the crossed-out
+  //             basePrice and "🔥 Kanyaga" label
+  function resolveVariantPrice(product, variantData, selectedOptions) {
+    const attributes = (variantData && variantData.attributes) || [];
+    const allPicked = attributes.length ? attributes.every(a => selectedOptions[a.name]) : false;
+    const matched = (allPicked && variantData) ? _findMatchingVariant(variantData.variants, selectedOptions) : null;
+
+    const basePrice = (matched && matched.price != null) ? Number(matched.price) : Number(product.price);
+    const kanyaga = !!(window.isKanyagaActive && window.isKanyagaActive(product));
+    const showPrice = kanyaga ? Number(product.kanyagaPrice) : basePrice;
+
+    return { matched, allPicked, basePrice, showPrice, isKanyaga: kanyaga };
+  }
+
+  // Same idea as resolveVariantPrice, for the photo-options picker -
+  // each purchasable choice is a photo with no named attributes at all,
+  // matched by variant id rather than a set of attribute values.
+  function resolvePhotoVariantPrice(product, variantData, selectedVariantId) {
+    const matched = (variantData && selectedVariantId)
+      ? variantData.variants.find(v => v.id === selectedVariantId) || null
+      : null;
+
+    const basePrice = (matched && matched.price != null) ? Number(matched.price) : Number(product.price);
+    const kanyaga = !!(window.isKanyagaActive && window.isKanyagaActive(product));
+    const showPrice = kanyaga ? Number(product.kanyagaPrice) : basePrice;
+
+    return { matched, basePrice, showPrice, isKanyaga: kanyaga };
+  }
+
   let _detailSelectedVariantId = null; // for photo-option variants (no attributes)
 
   // A lightweight alternative to the attribute-based picker above - for
@@ -15394,12 +15443,13 @@ function createAdminSellerManagement() {
 
   function _syncPhotoVariantDetailUI() {
     if (!_detailVariantData) return;
-    const matched = _detailVariantData.variants.find(v => v.id === _detailSelectedVariantId) || null;
+    const { matched, basePrice, showPrice, isKanyaga } = resolvePhotoVariantPrice(_detailProduct, _detailVariantData, _detailSelectedVariantId);
 
     const priceEl = document.getElementById('detailUnitPrice');
     if (priceEl) {
-      const shownPrice = (matched && matched.price != null) ? Number(matched.price) : Number(_detailProduct.price);
-      priceEl.textContent = `KES ${shownPrice.toLocaleString()}`;
+      priceEl.innerHTML = isKanyaga
+        ? `<span style="text-decoration:line-through; color:var(--gray); font-size:0.6em; margin-right:6px;">KES ${basePrice.toLocaleString()}</span><span style="color:#e63946;">KES ${showPrice.toLocaleString()} 🔥</span>`
+        : `KES ${showPrice.toLocaleString()}`;
     }
 
     const cartBtn = document.getElementById('detailAddToCartBtn');
@@ -15603,7 +15653,7 @@ function createAdminSellerManagement() {
 
   function _modalMatchedVariant() {
     if (!_modalVariantData) return null;
-    return _findMatchingVariant(_modalVariantData.variants, _modalSelectedOptions);
+    return resolveVariantPrice(_modalProduct, _modalVariantData, _modalSelectedOptions).matched;
   }
 
   function _renderVariantModal() {
@@ -15612,8 +15662,7 @@ function createAdminSellerManagement() {
     const product = _modalProduct;
     const variantData = _modalVariantData;
     const attributes = variantData ? variantData.attributes : [];
-    const allPicked = attributes.length ? attributes.every(a => _modalSelectedOptions[a.name]) : false;
-    const matched = allPicked ? _modalMatchedVariant() : null;
+    const { matched, allPicked, basePrice, showPrice, isKanyaga } = resolveVariantPrice(product, variantData, _modalSelectedOptions);
     const displayImage = (matched && matched.images && matched.images.length) ? matched.images[0] : getProductImageUrl(product);
     const maxQty = matched ? matched.stock : 0;
     if (_modalQty > maxQty && maxQty > 0) _modalQty = maxQty;
@@ -15627,21 +15676,10 @@ function createAdminSellerManagement() {
         <div style="min-width:0;">
           <div style="font-weight:700; font-size:14.5px; color:var(--white); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(product.name)}</div>
           <div id="variantModalPriceLine" style="margin-top:2px;">
-            ${(() => {
-              // A selected variant's own price overrides the parent
-              // product's price here too, not just at checkout - and
-              // an active Kanyaga deal overrides that again, same
-              // priority order used everywhere else prices are shown.
-              const regularPrice = (matched && matched.price != null) ? Number(matched.price) : Number(product.price);
-              if (window.isKanyagaActive && window.isKanyagaActive(product)) {
-                const saved = Math.max(0, regularPrice - product.kanyagaPrice);
-                return `
-                  <div style="font-family:var(--font-mono); font-size:13px; color:var(--gray); text-decoration:line-through;">KES ${regularPrice.toLocaleString()}</div>
-                  <div style="font-family:var(--font-mono); font-size:16px; color:#e63946; font-weight:800;">KES ${Number(product.kanyagaPrice).toLocaleString()} <span style="font-size:11px; font-weight:700;">🔥 Kanyaga</span></div>
-                `;
-              }
-              return `<div style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700;">KES ${regularPrice.toLocaleString()}</div>`;
-            })()}
+            ${isKanyaga ? `
+              <div style="font-family:var(--font-mono); font-size:13px; color:var(--gray); text-decoration:line-through;">KES ${basePrice.toLocaleString()}</div>
+              <div style="font-family:var(--font-mono); font-size:16px; color:#e63946; font-weight:800;">KES ${showPrice.toLocaleString()} <span style="font-size:11px; font-weight:700;">🔥 Kanyaga</span></div>
+            ` : `<div style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700;">KES ${showPrice.toLocaleString()}</div>`}
           </div>
           <div id="variantModalStockLine" style="font-size:11.5px; margin-top:2px;">
             ${!attributes.length ? '' : !allPicked ? '<span style="color:var(--gray);">Select options below</span>'
@@ -15785,17 +15823,14 @@ function createAdminSellerManagement() {
 
   function _syncVariantDetailUI() {
     if (!_detailVariantData) return;
-    const matched = _findMatchingVariant(_detailVariantData.variants, _detailSelectedOptions);
-    const allAttrsPicked = _detailVariantData.attributes.every(a => _detailSelectedOptions[a.name]);
+    const { matched, allPicked, basePrice, showPrice, isKanyaga } = resolveVariantPrice(_detailProduct, _detailVariantData, _detailSelectedOptions);
     const cartBtn = document.getElementById('detailAddToCartBtn');
 
-    // A variant with its own price overrides the parent product's price
-    // in the display too, not just at checkout - falls back to the
-    // product's own price when this variant doesn't have one of its own.
     const priceEl = document.getElementById('detailUnitPrice');
     if (priceEl) {
-      const shownPrice = (matched && matched.price != null) ? Number(matched.price) : Number(_detailProduct.price);
-      priceEl.textContent = `KES ${shownPrice.toLocaleString()}`;
+      priceEl.innerHTML = isKanyaga
+        ? `<span style="text-decoration:line-through; color:var(--gray); font-size:0.6em; margin-right:6px;">KES ${basePrice.toLocaleString()}</span><span style="color:#e63946;">KES ${showPrice.toLocaleString()} 🔥</span>`
+        : `KES ${showPrice.toLocaleString()}`;
     }
 
     if (!cartBtn) return;
@@ -15810,8 +15845,8 @@ function createAdminSellerManagement() {
         if (img) img.src = matched.images[0];
       }
     } else {
-      cartBtn.disabled = !allAttrsPicked || !matched;
-      cartBtn.style.opacity = allAttrsPicked && matched ? '0.4' : '0.6';
+      cartBtn.disabled = !allPicked || !matched;
+      cartBtn.style.opacity = allPicked && matched ? '0.4' : '0.6';
       cartBtn.onclick = null;
     }
   }
