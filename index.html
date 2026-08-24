@@ -15609,8 +15609,22 @@ function createAdminSellerManagement() {
         <img id="variantModalThumb" src="${displayImage}" style="width:64px; height:64px; border-radius:12px; object-fit:cover; flex-shrink:0;">
         <div style="min-width:0;">
           <div style="font-weight:700; font-size:14.5px; color:var(--white); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(product.name)}</div>
-          <div id="variantModalPriceLine" style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700; margin-top:2px;">
-            KES ${product.price.toLocaleString()}
+          <div id="variantModalPriceLine" style="margin-top:2px;">
+            ${(() => {
+              // A selected variant's own price overrides the parent
+              // product's price here too, not just at checkout - and
+              // an active Kanyaga deal overrides that again, same
+              // priority order used everywhere else prices are shown.
+              const regularPrice = (matched && matched.price != null) ? Number(matched.price) : Number(product.price);
+              if (window.isKanyagaActive && window.isKanyagaActive(product)) {
+                const saved = Math.max(0, regularPrice - product.kanyagaPrice);
+                return `
+                  <div style="font-family:var(--font-mono); font-size:13px; color:var(--gray); text-decoration:line-through;">KES ${regularPrice.toLocaleString()}</div>
+                  <div style="font-family:var(--font-mono); font-size:16px; color:#e63946; font-weight:800;">KES ${Number(product.kanyagaPrice).toLocaleString()} <span style="font-size:11px; font-weight:700;">🔥 Kanyaga</span></div>
+                `;
+              }
+              return `<div style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700;">KES ${regularPrice.toLocaleString()}</div>`;
+            })()}
           </div>
           <div id="variantModalStockLine" style="font-size:11.5px; margin-top:2px;">
             ${!attributes.length ? '' : !allPicked ? '<span style="color:var(--gray);">Select options below</span>'
