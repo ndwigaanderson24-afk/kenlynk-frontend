@@ -15572,6 +15572,23 @@ function createAdminSellerManagement() {
     try {
       const vRes = await apiCall(`/products/${productId}/variants`);
       _modalVariantData = vRes.data;
+
+      // An attribute with only one possible value (e.g. a single
+      // Colour on an otherwise multi-storage product) was rendered as
+      // visually "selected" from the very first frame, since there was
+      // nothing else to pick - but nothing ever wrote that into
+      // _modalSelectedOptions unless the buyer happened to tap it
+      // anyway. allPicked() then stayed false forever if they only
+      // tapped the attribute that genuinely needed choosing (Storage),
+      // so the matched variant - and its price - never resolved. Now
+      // any single-value attribute is selected the moment the modal's
+      // data loads, exactly like a real tap would have done.
+      if (_modalVariantData && _modalVariantData.attributes) {
+        for (const attr of _modalVariantData.attributes) {
+          const values = (_modalVariantData.attributeValues && _modalVariantData.attributeValues[attr.name]) || [];
+          if (values.length === 1) _modalSelectedOptions[attr.name] = values[0];
+        }
+      }
     } catch (e) {
       console.error('Failed to load variant options:', e.message);
     }
@@ -15831,6 +15848,17 @@ function createAdminSellerManagement() {
         const vRes = await apiCall(`/products/${productId}/variants`);
         if (vRes && vRes.data && vRes.data.variants && vRes.data.variants.length) {
           _detailVariantData = vRes.data;
+          // Same fix as the Order Now modal: a single-value attribute
+          // looked selected from the first frame but was never actually
+          // recorded until tapped, so allAttrsPicked below could stay
+          // false forever if the buyer only touched the attribute that
+          // genuinely needed choosing.
+          if (_detailVariantData.attributes) {
+            for (const attr of _detailVariantData.attributes) {
+              const values = (_detailVariantData.attributeValues && _detailVariantData.attributeValues[attr.name]) || [];
+              if (values.length === 1) _detailSelectedOptions[attr.name] = values[0];
+            }
+          }
           variantHtml = (vRes.data.attributes && vRes.data.attributes.length)
             ? _renderVariantPicker(_detailVariantData, product)
             : _renderPhotoOptionsPicker(_detailVariantData, product);
@@ -15947,6 +15975,14 @@ function createAdminSellerManagement() {
     window._trackProductView && window._trackProductView(product.id, product.sellerEmail);
 
     if (product.wholesaleTiers && product.wholesaleTiers.length) window._updateDetailWholesalePrice(product.id);
+
+    // Reflects any attribute that got auto-selected because it only had
+    // one possible value (see the auto-select added where variant data
+    // loads, above) - without this, the price shown on first load would
+    // still be the parent product's price until the buyer clicked
+    // something, even though a real selection already exists.
+    if (hasAttributeVariants) _syncVariantDetailUI();
+    else if (hasPhotoVariants) _syncPhotoVariantDetailUI();
 
     loadRealProductReviews(productId);
 
