@@ -11066,7 +11066,9 @@ window._simpleProductSubmit = async function(mode) {
           id: v.id,
           values: v.options.reduce((acc, o) => { acc[o.attribute_name] = o.value; return acc; }, {}),
           image: (v.images && v.images.length) ? v.images[0] : '',
-          stock: v.stock, sku: v.sku || ''
+          stock: v.stock, sku: v.sku || '',
+          seller_price: v.seller_price != null ? v.seller_price : '',
+          original_price: v.original_price != null ? v.original_price : ''
         }));
         window._photoOptionsOriginalIds.seller = optionVariants.map(v => v.id);
       } catch (e) { /* non-fatal - just shows no options to edit */ }
@@ -11346,7 +11348,9 @@ async function renderAdminProducts() {
             id: v.id,
             values: v.options.reduce((acc, o) => { acc[o.attribute_name] = o.value; return acc; }, {}),
             image: (v.images && v.images.length) ? v.images[0] : '',
-            stock: v.stock, sku: v.sku || ''
+            stock: v.stock, sku: v.sku || '',
+            seller_price: v.seller_price != null ? v.seller_price : '',
+            original_price: v.original_price != null ? v.original_price : ''
           }));
           window._photoOptionsOriginalIds.admin = optionVariants.map(v => v.id);
         } catch (e) { /* non-fatal - just shows no options to edit */ }
@@ -15391,6 +15395,13 @@ function createAdminSellerManagement() {
   function _syncPhotoVariantDetailUI() {
     if (!_detailVariantData) return;
     const matched = _detailVariantData.variants.find(v => v.id === _detailSelectedVariantId) || null;
+
+    const priceEl = document.getElementById('detailUnitPrice');
+    if (priceEl) {
+      const shownPrice = (matched && matched.price != null) ? Number(matched.price) : Number(_detailProduct.price);
+      priceEl.textContent = `KES ${shownPrice.toLocaleString()}`;
+    }
+
     const cartBtn = document.getElementById('detailAddToCartBtn');
     if (!cartBtn) return;
     if (matched && matched.is_active && matched.stock > 0) {
@@ -15746,6 +15757,16 @@ function createAdminSellerManagement() {
     const matched = _findMatchingVariant(_detailVariantData.variants, _detailSelectedOptions);
     const allAttrsPicked = _detailVariantData.attributes.every(a => _detailSelectedOptions[a.name]);
     const cartBtn = document.getElementById('detailAddToCartBtn');
+
+    // A variant with its own price overrides the parent product's price
+    // in the display too, not just at checkout - falls back to the
+    // product's own price when this variant doesn't have one of its own.
+    const priceEl = document.getElementById('detailUnitPrice');
+    if (priceEl) {
+      const shownPrice = (matched && matched.price != null) ? Number(matched.price) : Number(_detailProduct.price);
+      priceEl.textContent = `KES ${shownPrice.toLocaleString()}`;
+    }
+
     if (!cartBtn) return;
 
     if (matched && matched.is_active && matched.stock > 0) {
@@ -20830,6 +20851,14 @@ window._renderPhotoOptionsList = function(which) {
           </div>`;
         }).join('')}
         <div>
+          <label style="font-size:10px; color:var(--gray); display:block;">Selling Price (KES) *</label>
+          <input type="number" min="0" placeholder="e.g. 3000" value="${opt.seller_price ?? ''}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'seller_price', this.value)">
+        </div>
+        <div>
+          <label style="font-size:10px; color:var(--gray); display:block;">Original Price (optional)</label>
+          <input type="number" min="0" placeholder="for a crossed-out price" value="${opt.original_price ?? ''}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'original_price', this.value)">
+        </div>
+        <div>
           <label style="font-size:10px; color:var(--gray); display:block;">Stock</label>
           <input type="number" min="0" value="${opt.stock ?? ''}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'stock', this.value)">
         </div>
@@ -20868,7 +20897,7 @@ window._onPhotoOptionAttrSelectChange = function(which, i, attrType, selectedVal
 };
 
 window.addPhotoOption = function(which) {
-  window._photoOptionsState[which].push({ id: null, values: {}, image: '', stock: '', sku: '' });
+  window._photoOptionsState[which].push({ id: null, values: {}, image: '', stock: '', sku: '', seller_price: '', original_price: '' });
   window._renderPhotoOptionsList(which);
 };
 
@@ -20937,11 +20966,14 @@ window._collectPhotoOptions = function(which) {
     seenCombos.add(comboKey);
     if (!opt.image) { showToast(`"${comboLabel}" needs its own photo.`, 'error'); return null; }
     if (opt.stock === '' || isNaN(Number(opt.stock)) || Number(opt.stock) < 0) { showToast(`"${comboLabel}" needs a stock quantity.`, 'error'); return null; }
+    if (opt.seller_price === '' || isNaN(Number(opt.seller_price)) || Number(opt.seller_price) <= 0) { showToast(`"${comboLabel}" needs a selling price.`, 'error'); return null; }
   }
   return list.map(opt => ({
     id: opt.id,
     values: attrTypes.reduce((acc, t) => { acc[t] = (opt.values[t] || '').trim(); return acc; }, {}),
-    image: opt.image, stock: parseInt(opt.stock, 10), sku: (opt.sku || '').trim() || undefined
+    image: opt.image, stock: parseInt(opt.stock, 10), sku: (opt.sku || '').trim() || undefined,
+    seller_price: Number(opt.seller_price),
+    original_price: (opt.original_price !== '' && opt.original_price !== undefined && opt.original_price !== null) ? Number(opt.original_price) : undefined
   }));
 };
 
@@ -20985,6 +21017,7 @@ async function _savePhotoOptionVariants(productId, options, isAdminMode) {
     const comboLabel = Object.entries(opt.values).map(([k, v]) => `${k}: ${v}`).join(', ');
     const body = JSON.stringify({
       stock: opt.stock, sku: opt.sku,
+      seller_price: opt.seller_price, original_price: opt.original_price,
       images_json: JSON.stringify([opt.image]),
       options: Object.entries(opt.values)
         .filter(([attrName]) => attrIdByName[attrName])
@@ -22691,6 +22724,8 @@ function _renderAdminVariantPanel(productId, data, mode) {
   html += `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:13px;">
     <thead><tr style="background:var(--surface-2); color:var(--gray); text-align:left;">
       <th style="padding:8px 10px;">Options</th>
+      <th style="padding:8px 10px; min-width:100px;">Selling Price (KES)</th>
+      <th style="padding:8px 10px; min-width:100px;">Original Price</th>
       <th style="padding:8px 10px; min-width:100px;">Stock</th>
       <th style="padding:8px 10px;">SKU</th>
       <th style="padding:8px 10px;">Active</th>
@@ -22701,6 +22736,18 @@ function _renderAdminVariantPanel(productId, data, mode) {
     const stockColor = v.stock === 0 ? '#e74c3c' : v.stock < 5 ? '#f39c12' : 'var(--green-light)';
     html += `<tr style="border-bottom:1px solid var(--border);" data-variant-id="${v.id}">
       <td style="padding:10px;">${label}</td>
+      <td style="padding:10px;">
+        <input type="number" min="0" placeholder="uses product price" value="${v.seller_price ?? ''}"
+          style="width:90px; background:var(--surface-2); border:1px solid var(--border-strong);
+                 color:var(--white); border-radius:6px; padding:4px 8px; font-size:12px;"
+          onchange="window._variantUpdatePrice('${mode}', ${v.id}, this.value, ${productId})">
+      </td>
+      <td style="padding:10px;">
+        <input type="number" min="0" placeholder="optional" value="${v.original_price ?? ''}"
+          style="width:90px; background:var(--surface-2); border:1px solid var(--border-strong);
+                 color:var(--white); border-radius:6px; padding:4px 8px; font-size:12px;"
+          onchange="window._variantUpdateOriginalPrice('${mode}', ${v.id}, this.value, ${productId})">
+      </td>
       <td style="padding:10px;">
         <input type="number" value="${v.stock}" min="0"
           style="width:70px; background:var(--surface-2); border:1px solid var(--border-strong);
@@ -22717,7 +22764,8 @@ function _renderAdminVariantPanel(productId, data, mode) {
       </td>
     </tr>`;
   }
-  html += `</tbody></table></div>`;
+  html += `</tbody></table></div>
+  <p style="color:var(--gray); font-size:11px; margin-top:8px;">Leave Price blank to have this variant use the product's own price instead of its own.</p>`;
   const lowStock = variants.filter(v => v.stock <= 3 && v.is_active);
   if (lowStock.length) {
     html += `<div style="margin-top:14px; padding:10px; background:rgba(243,156,18,0.12); border:1px solid #f39c12; border-radius:8px; font-size:12px; color:#f39c12;">
@@ -22744,6 +22792,38 @@ window._variantUpdateStock = async function(mode, variantId, stockVal, productId
     }
     showToast('Stock updated.', 'success');
     await window._loadVariantsPanel(productId, document.getElementById('adminVariantModalTitle')?.textContent.replace('🎛️ Variants — ', '') || '', mode);
+  } catch (e) { showToast('Failed: ' + e.message, 'error'); }
+};
+
+// Price-only update - deliberately hits the dedicated /price endpoint
+// rather than the general variant PUT, which would otherwise wipe out
+// this variant's Colour/Size options since they're not part of this
+// particular request body. Leaving the price field blank clears it,
+// which is the intended way to make a variant fall back to using the
+// parent product's own price again.
+window._variantUpdatePrice = async function(mode, variantId, priceVal, productId) {
+  const seller_price = priceVal === '' ? '' : Number(priceVal);
+  if (priceVal !== '' && (isNaN(seller_price) || seller_price <= 0)) { showToast('Enter a valid price.', 'error'); return; }
+  try {
+    if (mode === 'admin') {
+      await adminApiCall(`/admin/variants/${variantId}/price`, { method: 'PATCH', body: JSON.stringify({ seller_price }) });
+    } else {
+      await apiCall(`/products/${productId}/variants/${variantId}/price`, { method: 'PATCH', body: JSON.stringify({ seller_price }) });
+    }
+    showToast('Price updated.', 'success');
+  } catch (e) { showToast('Failed: ' + e.message, 'error'); }
+};
+
+window._variantUpdateOriginalPrice = async function(mode, variantId, priceVal, productId) {
+  const original_price = priceVal === '' ? '' : Number(priceVal);
+  if (priceVal !== '' && (isNaN(original_price) || original_price <= 0)) { showToast('Enter a valid price.', 'error'); return; }
+  try {
+    if (mode === 'admin') {
+      await adminApiCall(`/admin/variants/${variantId}/price`, { method: 'PATCH', body: JSON.stringify({ original_price }) });
+    } else {
+      await apiCall(`/products/${productId}/variants/${variantId}/price`, { method: 'PATCH', body: JSON.stringify({ original_price }) });
+    }
+    showToast('Original price updated.', 'success');
   } catch (e) { showToast('Failed: ' + e.message, 'error'); }
 };
 
