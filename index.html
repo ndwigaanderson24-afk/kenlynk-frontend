@@ -8373,9 +8373,11 @@ window._trackProductClick = function(productId) {
     const variantId = variant ? variant.id : null;
     const variantName = variant ? (variant.options || []).map(o => o.value).join(', ') : null;
     const lineImage = (variant && variant.images && variant.images.length) ? variant.images[0] : product.image;
-    // Variants have no price of their own - every line always uses the
-    // product's own price, regardless of which variant was selected.
-    const linePrice = product.price;
+    // A variant with its own price uses that, same as everywhere else
+    // prices are shown - was previously hardcoded to always use the
+    // parent product's price regardless of which variant was picked,
+    // left over from before per-variant pricing came back.
+    const linePrice = (variant && variant.price != null) ? Number(variant.price) : Number(product.price);
 
     // Optimistic UI update first, so tapping "Add to Cart" feels instant -
     // then sync to the server in the background. A different colour of
@@ -11057,8 +11059,15 @@ window._simpleProductSubmit = async function(mode) {
         const vRes = await apiCall(`/products/${id}/variants`);
         const optionVariants = (vRes.data.variants || []).filter(v => v.options && v.options.length);
         if (optionVariants.length) {
-          const attrNames = [...new Set(optionVariants.flatMap(v => v.options.map(o => o.attribute_name)))];
+          // vRes.data.attributes carries selection_type - use it
+          // directly rather than reconstructing names from variant
+          // options, which would lose that information entirely.
+          const attrNames = (vRes.data.attributes || []).map(a => a.name);
           window._photoOptionAttrTypes.seller = attrNames;
+          window._photoOptionAttrSelectionType.seller = {};
+          (vRes.data.attributes || []).forEach(a => {
+            window._photoOptionAttrSelectionType.seller[a.name] = a.selection_type === 'multiple' ? 'multiple' : 'single';
+          });
           window._renderAttrTypeChips('seller');
           window._renderBulkAddPanel('seller');
         }
@@ -11339,8 +11348,12 @@ async function renderAdminProducts() {
           const vRes = await adminApiCall(`/admin/products/${id}/variants`);
           const optionVariants = (vRes.data.variants || []).filter(v => v.options && v.options.length);
           if (optionVariants.length) {
-            const attrNames = [...new Set(optionVariants.flatMap(v => v.options.map(o => o.attribute_name)))];
+            const attrNames = (vRes.data.attributes || []).map(a => a.name);
             window._photoOptionAttrTypes.admin = attrNames;
+            window._photoOptionAttrSelectionType.admin = {};
+            (vRes.data.attributes || []).forEach(a => {
+              window._photoOptionAttrSelectionType.admin[a.name] = a.selection_type === 'multiple' ? 'multiple' : 'single';
+            });
             window._renderAttrTypeChips('admin');
             window._renderBulkAddPanel('admin');
           }
@@ -15361,6 +15374,45 @@ function createAdminSellerManagement() {
     return { matched, allPicked, basePrice, showPrice, isKanyaga: kanyaga };
   }
 
+  // Multi-select sibling of resolveVariantPrice - a single-select
+  // attribute still contributes exactly one value, but a multi-select
+  // attribute can contribute several, and every combination across all
+  // of them becomes its own line (the cartesian product) - "Beige" +
+  // ["4x6","5x8"] becomes two lines, Beige/4x6 and Beige/5x8. An empty
+  // array from a multi-select attribute with nothing ticked yet counts
+  // as "not chosen", same as an unset single-select value - JS treats
+  // [] as truthy, so this has to be checked by length, not by truthiness.
+  function resolveMultiVariantPrices(product, variantData, selectedOptions) {
+    const attributes = (variantData && variantData.attributes) || [];
+    if (!attributes.length) return { lines: [], allPicked: false };
+
+    const choiceLists = attributes.map(a => {
+      const v = selectedOptions[a.name];
+      if (a.selection_type === 'multiple') return Array.isArray(v) ? v : [];
+      return v ? [v] : [];
+    });
+    const allPicked = choiceLists.every(list => list.length > 0);
+    if (!allPicked) return { lines: [], allPicked: false };
+
+    // Cartesian product across every attribute's chosen values.
+    let combos = [{}];
+    attributes.forEach((a, i) => {
+      const next = [];
+      choiceLists[i].forEach(val => combos.forEach(combo => next.push({ ...combo, [a.name]: val })));
+      combos = next;
+    });
+
+    const kanyaga = !!(window.isKanyagaActive && window.isKanyagaActive(product));
+    const lines = combos.map(combo => {
+      const matched = _findMatchingVariant(variantData.variants, combo);
+      const basePrice = (matched && matched.price != null) ? Number(matched.price) : Number(product.price);
+      const showPrice = kanyaga ? Number(product.kanyagaPrice) : basePrice;
+      return { combo, matched, basePrice, showPrice, isKanyaga: kanyaga };
+    });
+
+    return { lines, allPicked: true };
+  }
+
   // Same idea as resolveVariantPrice, for the photo-options picker -
   // each purchasable choice is a photo with no named attributes at all,
   // matched by variant id rather than a set of attribute values.
@@ -15636,7 +15688,9 @@ function createAdminSellerManagement() {
       if (_modalVariantData && _modalVariantData.attributes) {
         for (const attr of _modalVariantData.attributes) {
           const values = (_modalVariantData.attributeValues && _modalVariantData.attributeValues[attr.name]) || [];
-          if (values.length === 1) _modalSelectedOptions[attr.name] = values[0];
+          if (values.length === 1) {
+            _modalSelectedOptions[attr.name] = attr.selection_type === 'multiple' ? [values[0]] : values[0];
+          }
         }
       }
     } catch (e) {
@@ -15662,8 +15716,25 @@ function createAdminSellerManagement() {
     const product = _modalProduct;
     const variantData = _modalVariantData;
     const attributes = variantData ? variantData.attributes : [];
-    const { matched, allPicked, basePrice, showPrice, isKanyaga } = resolveVariantPrice(product, variantData, _modalSelectedOptions);
-    const displayImage = (matched && matched.images && matched.images.length) ? matched.images[0] : getProductImageUrl(product);
+    const hasMultiAttr = attributes.some(a => a.selection_type === 'multiple');
+
+    // Two modes share this one render function: plain single-select
+    // (exactly as before - one matched variant, one price) or multi-
+    // select (one or more lines, each its own variant/price, summed
+    // into a running total). Which mode applies is entirely decided by
+    // whether ANY attribute on this product was configured as multi-
+    // select - single-select-only products render and behave exactly
+    // as they always have.
+    const single = resolveVariantPrice(product, variantData, _modalSelectedOptions);
+    const multi = hasMultiAttr ? resolveMultiVariantPrices(product, variantData, _modalSelectedOptions) : null;
+    const matched = single.matched;
+    const allPicked = hasMultiAttr ? multi.allPicked : single.allPicked;
+    const lines = hasMultiAttr ? multi.lines.filter(l => l.matched) : (matched ? [{ matched, basePrice: single.basePrice, showPrice: single.showPrice, isKanyaga: single.isKanyaga }] : []);
+    const total = lines.reduce((sum, l) => sum + l.showPrice, 0);
+
+    const displayImage = (matched && matched.images && matched.images.length) ? matched.images[0]
+      : (lines[0] && lines[0].matched && lines[0].matched.images && lines[0].matched.images.length) ? lines[0].matched.images[0]
+      : getProductImageUrl(product);
     const maxQty = matched ? matched.stock : 0;
     if (_modalQty > maxQty && maxQty > 0) _modalQty = maxQty;
     if (_modalQty < 1) _modalQty = 1;
@@ -15676,15 +15747,17 @@ function createAdminSellerManagement() {
         <div style="min-width:0;">
           <div style="font-weight:700; font-size:14.5px; color:var(--white); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(product.name)}</div>
           <div id="variantModalPriceLine" style="margin-top:2px;">
-            ${isKanyaga ? `
-              <div style="font-family:var(--font-mono); font-size:13px; color:var(--gray); text-decoration:line-through;">KES ${basePrice.toLocaleString()}</div>
-              <div style="font-family:var(--font-mono); font-size:16px; color:#e63946; font-weight:800;">KES ${showPrice.toLocaleString()} <span style="font-size:11px; font-weight:700;">🔥 Kanyaga</span></div>
-            ` : `<div style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700;">KES ${showPrice.toLocaleString()}</div>`}
+            ${hasMultiAttr && lines.length > 1 ? `
+              <div style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700;">KES ${total.toLocaleString()} <span style="font-size:11px; color:var(--gray); font-weight:500;">(${lines.length} items)</span></div>
+            ` : lines[0] && lines[0].isKanyaga ? `
+              <div style="font-family:var(--font-mono); font-size:13px; color:var(--gray); text-decoration:line-through;">KES ${lines[0].basePrice.toLocaleString()}</div>
+              <div style="font-family:var(--font-mono); font-size:16px; color:#e63946; font-weight:800;">KES ${lines[0].showPrice.toLocaleString()} <span style="font-size:11px; font-weight:700;">🔥 Kanyaga</span></div>
+            ` : `<div style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700;">KES ${(lines[0] ? lines[0].showPrice : Number(product.price)).toLocaleString()}</div>`}
           </div>
           <div id="variantModalStockLine" style="font-size:11.5px; margin-top:2px;">
             ${!attributes.length ? '' : !allPicked ? '<span style="color:var(--gray);">Select options below</span>'
-              : matched && matched.is_active && matched.stock > 0 ? `<span style="color:var(--green-light);">✅ ${matched.stock} in stock${matched.sku ? ' · SKU: ' + escapeHtml(matched.sku) : ''}</span>`
-              : '<span style="color:#e74c3c; font-weight:600;">❌ Out of stock</span>'}
+              : lines.length ? `<span style="color:var(--green-light);">✅ ${lines.length > 1 ? lines.length + ' options selected' : (lines[0].matched.stock + ' in stock' + (lines[0].matched.sku ? ' · SKU: ' + escapeHtml(lines[0].matched.sku) : ''))}</span>`
+              : '<span style="color:#e74c3c; font-weight:600;">❌ Not available</span>'}
           </div>
         </div>
       </div>
@@ -15697,12 +15770,19 @@ function createAdminSellerManagement() {
     for (const attr of attributes) {
       const values = (variantData.attributeValues && variantData.attributeValues[attr.name]) || [];
       const isColour = attr.name.toLowerCase() === 'colour' || attr.name.toLowerCase() === 'color';
+      const isMulti = attr.selection_type === 'multiple';
       const selectedVal = _modalSelectedOptions[attr.name];
+      const selectedList = isMulti ? (Array.isArray(selectedVal) ? selectedVal : []) : [];
 
       html += `<div style="margin-bottom:16px;">`;
-      html += `<div style="font-size:13px; font-weight:700; color:var(--white); margin-bottom:8px;">${escapeHtml(attr.name)}: <span style="color:var(--gold);">${selectedVal ? escapeHtml(selectedVal) : 'please select'}</span></div>`;
+      html += `<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <div style="font-size:13px; font-weight:700; color:var(--white);">${escapeHtml(attr.name)}${isMulti ? ' <span style="color:var(--gray); font-weight:500; font-size:11px;">(choose one or more)</span>' : ''}:
+          <span style="color:var(--gold);">${isMulti ? (selectedList.length ? `${selectedList.length} selected` : 'please select') : (selectedVal ? escapeHtml(selectedVal) : 'please select')}</span>
+        </div>
+        ${isMulti ? `<button type="button" onclick="window._toggleModalSelectAll('${attrJsString(attr.name)}')" style="background:none; border:1px solid var(--gold); color:var(--gold); font-size:11px; font-weight:700; border-radius:999px; padding:4px 12px; cursor:pointer;">Select All</button>` : ''}
+      </div>`;
 
-      if (isColour) {
+      if (isColour && !isMulti) {
         const expanded = !!_modalShowAllColours[attr.id];
         const visibleValues = expanded ? values : values.slice(0, COLOUR_VISIBLE_LIMIT);
         html += `<div style="display:flex; flex-wrap:wrap; gap:10px;">`;
@@ -15729,6 +15809,25 @@ function createAdminSellerManagement() {
             ${expanded ? 'Show fewer colours' : `View all ${values.length} colours`}
           </button>`;
         }
+      } else if (isMulti) {
+        // Checkbox row - each value shows its own price when it has
+        // one, so the buyer can see exactly what each tick costs before
+        // confirming, not just the running total at the top.
+        html += `<div style="display:flex; flex-direction:column; gap:8px;">`;
+        for (const val of values) {
+          const variantForVal = variantData.variants.find(v => v.options.some(o => o.attribute_name === attr.name && o.value === val));
+          const hasStock = !!(variantForVal && variantForVal.is_active && variantForVal.stock > 0);
+          const valPrice = (variantForVal && variantForVal.price != null) ? Number(variantForVal.price) : Number(product.price);
+          const isChecked = selectedList.includes(val);
+          html += `<label style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; border:2px solid ${isChecked ? 'var(--gold)' : 'var(--border-strong)'}; background:${isChecked ? 'rgba(255,193,7,0.08)' : 'var(--surface-2)'}; cursor:${hasStock ? 'pointer' : 'default'}; opacity:${hasStock ? 1 : 0.5};">
+            <input type="checkbox" ${isChecked ? 'checked' : ''} ${!hasStock ? 'disabled' : ''}
+              onchange="window._toggleModalMultiOption('${attrJsString(attr.name)}', '${attrJsString(val)}')"
+              style="width:18px; height:18px; accent-color:var(--gold); flex-shrink:0;">
+            <span style="flex:1; font-size:13px; font-weight:${isChecked ? 700 : 500}; color:${isChecked ? 'var(--gold)' : 'var(--white)'};">${escapeHtml(val)}${!hasStock ? ' (out of stock)' : ''}</span>
+            ${hasStock ? `<span style="font-family:var(--font-mono); font-size:12.5px; color:var(--gray);">KES ${valPrice.toLocaleString()}</span>` : ''}
+          </label>`;
+        }
+        html += `</div>`;
       } else {
         html += `<div style="display:flex; flex-wrap:wrap; gap:8px;">`;
         for (const val of values) {
@@ -15750,7 +15849,30 @@ function createAdminSellerManagement() {
       html += `</div>`;
     }
 
-    if (attributes.length) {
+    // Selected-items summary - only shown once the buyer has more than
+    // one line selected (a single selection already shows its price at
+    // the top, this would just repeat it).
+    if (hasMultiAttr && lines.length > 1) {
+      html += `<div style="background:var(--surface-2); border-radius:12px; padding:12px 14px; margin-bottom:14px;">
+        <div style="font-size:12px; font-weight:700; color:var(--white); margin-bottom:8px;">Selected (${lines.length})</div>
+        ${lines.map(l => `
+          <div style="display:flex; justify-content:space-between; font-size:12.5px; padding:4px 0; color:var(--gray);">
+            <span>${escapeHtml(Object.values(l.matched.options.reduce((a,o)=>{a[o.attribute_name]=o.value;return a;},{})).join(' · '))}</span>
+            <span style="color:var(--white); font-weight:600;">KES ${l.showPrice.toLocaleString()}</span>
+          </div>
+        `).join('')}
+        <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:800; color:var(--gold); border-top:1px solid var(--border); margin-top:8px; padding-top:8px;">
+          <span>Total</span><span>KES ${total.toLocaleString()}</span>
+        </div>
+      </div>`;
+    }
+
+    // Quantity stepper only applies to the single-select case - a
+    // multi-select purchase is one of each ticked option for now
+    // (qty 1 per line); adjusting quantity per selected line is a
+    // reasonable later enhancement, deliberately not bundled into this
+    // already-large change.
+    if (attributes.length && !hasMultiAttr) {
       html += `
         <div style="display:flex; align-items:center; justify-content:space-between; margin:18px 0; padding:12px 14px; background:var(--surface-2); border-radius:12px;">
           <span style="font-size:13px; font-weight:600; color:var(--white);">Quantity</span>
@@ -15762,6 +15884,8 @@ function createAdminSellerManagement() {
         </div>
         <div style="font-size:11.5px; color:var(--gray); margin:-10px 0 14px;">🚚 Shipping calculated at checkout, based on your delivery location.</div>
       `;
+    } else if (hasMultiAttr) {
+      html += `<div style="font-size:11.5px; color:var(--gray); margin:-4px 0 14px;">🚚 Shipping calculated at checkout, based on your delivery location. Each option above adds 1 to your cart.</div>`;
     }
 
     html += `
@@ -15784,6 +15908,34 @@ function createAdminSellerManagement() {
     _renderVariantModal();
   };
 
+  // Multi-select equivalent of the handler above - value is added to or
+  // removed from an array instead of replacing a single choice, so more
+  // than one can be picked at once (e.g. several sizes), each becoming
+  // its own cart line when the buyer confirms.
+  window._toggleModalMultiOption = function(attrName, value) {
+    const current = Array.isArray(_modalSelectedOptions[attrName]) ? _modalSelectedOptions[attrName] : [];
+    _modalSelectedOptions[attrName] = current.includes(value)
+      ? current.filter(v => v !== value)
+      : [...current, value];
+    _renderVariantModal();
+  };
+
+  // "Select All" for a multi-select attribute - only ticks values that
+  // actually have real, in-stock variants behind them, so it can never
+  // select something the buyer couldn't actually check out with. Tapping
+  // it again clears the whole selection back to none, rather than
+  // needing to untick each one individually.
+  window._toggleModalSelectAll = function(attrName) {
+    const values = (_modalVariantData.attributeValues && _modalVariantData.attributeValues[attrName]) || [];
+    const purchasable = values.filter(val =>
+      _modalVariantData.variants.some(v => v.is_active && v.stock > 0 && v.options.some(o => o.attribute_name === attrName && o.value === val))
+    );
+    const current = Array.isArray(_modalSelectedOptions[attrName]) ? _modalSelectedOptions[attrName] : [];
+    const allSelected = purchasable.length > 0 && purchasable.every(v => current.includes(v));
+    _modalSelectedOptions[attrName] = allSelected ? [] : [...purchasable];
+    _renderVariantModal();
+  };
+
   window._modalChangeQty = function(delta) {
     const matched = _modalMatchedVariant();
     const max = matched ? matched.stock : 99;
@@ -15794,9 +15946,29 @@ function createAdminSellerManagement() {
   window._modalConfirmAdd = async function(intent) {
     if (!_modalVariantData || !_modalProduct) return;
     const attributes = _modalVariantData.attributes;
-    const allPicked = attributes.every(a => _modalSelectedOptions[a.name]);
+    const hasMultiAttr = attributes.some(a => a.selection_type === 'multiple');
+
+    if (hasMultiAttr) {
+      const { lines, allPicked } = resolveMultiVariantPrices(_modalProduct, _modalVariantData, _modalSelectedOptions);
+      if (!allPicked) { showToast('Please select at least one option in every group before continuing.', 'error'); return; }
+      const unavailable = lines.filter(l => !l.matched || !l.matched.is_active || l.matched.stock === 0);
+      if (unavailable.length) { showToast('One of your selected combinations is not available - please check your choices.', 'error'); return; }
+
+      // Each selected combination becomes its own cart line, added one
+      // at a time through the exact same addToCart() every single-item
+      // purchase already goes through - no separate "batch add" path to
+      // keep in sync, no new backend endpoint, just the same proven
+      // call made once per selection.
+      for (const line of lines) {
+        await addToCart(_modalProduct.id, 1, line.matched);
+      }
+      window.closeVariantModal();
+      if (intent === 'order') goToPage('cart');
+      return;
+    }
+
+    const { matched, allPicked } = resolveVariantPrice(_modalProduct, _modalVariantData, _modalSelectedOptions);
     if (!allPicked) { showToast('Please select all options before continuing.', 'error'); return; }
-    const matched = _modalMatchedVariant();
     if (!matched) { showToast('That combination is not available.', 'error'); return; }
     if (!matched.is_active || matched.stock === 0) { showToast('That option is out of stock.', 'error'); return; }
     if (_modalQty > matched.stock) { showToast(`Only ${matched.stock} left in stock.`, 'error'); return; }
@@ -20700,6 +20872,12 @@ window._photoOptionsState = { seller: [], admin: [] };
 // of attribute dimensions (Colour, Size, Storage, RAM, whatever the
 // seller types) rather than being limited to a single "Colour" one.
 window._photoOptionAttrTypes = { seller: ['Colour'], admin: ['Colour'] };
+// Single-select (radio-style, one value at a time - the original
+// behaviour) vs multi-select (checkboxes, several values can be picked
+// at once and each becomes its own cart line) per attribute name.
+// Defaults to single for every attribute, matching how the feature
+// behaved before multi-select existed at all.
+window._photoOptionAttrSelectionType = { seller: { Colour: 'single' }, admin: { Colour: 'single' } };
 // Tracks which values are currently ticked in the "bulk add" checklist,
 // per attribute type - lets a seller/admin tick several colours (or
 // sizes, etc) at once and generate one option row per combination,
@@ -20770,6 +20948,7 @@ window._addPhotoOptionAttrType = function(which) {
   const current = window._photoOptionAttrTypes[which];
   if (current.some(t => t.toLowerCase() === typeName.toLowerCase())) { showToast(`"${typeName}" is already added.`, 'error'); return; }
   current.push(typeName);
+  window._photoOptionAttrSelectionType[which][typeName] = 'single';
   select.value = '';
   if (customInput) { customInput.value = ''; customInput.style.display = 'none'; }
   window._renderAttrTypeChips(which);
@@ -20783,21 +20962,40 @@ window._removePhotoOptionAttrType = function(which, typeName) {
   // doesn't linger once the type is no longer configured.
   window._photoOptionsState[which].forEach(opt => { if (opt.values) delete opt.values[typeName]; });
   delete window._photoOptionBulkSelections[which][typeName];
+  delete window._photoOptionAttrSelectionType[which][typeName];
   window._renderAttrTypeChips(which);
   window._renderBulkAddPanel(which);
   window._renderPhotoOptionsList(which);
+};
+
+// Toggles one attribute between single-select (one value at a time) and
+// multi-select (buyer can tick several at once, each becomes its own
+// cart line) - purely a per-product configuration choice, doesn't
+// affect any other product.
+window._toggleAttrSelectionType = function(which, typeName) {
+  const current = window._photoOptionAttrSelectionType[which][typeName] || 'single';
+  window._photoOptionAttrSelectionType[which][typeName] = current === 'single' ? 'multiple' : 'single';
+  window._renderAttrTypeChips(which);
 };
 
 window._renderAttrTypeChips = function(which) {
   const wrap = document.getElementById(which + 'PhotoOptionAttrChips');
   if (!wrap) return;
   const types = window._photoOptionAttrTypes[which];
-  wrap.innerHTML = types.map(t => `
+  wrap.innerHTML = types.map(t => {
+    const selType = window._photoOptionAttrSelectionType[which][t] || 'single';
+    return `
     <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,193,7,0.12); border:1px solid var(--gold); color:var(--gold); font-size:11.5px; font-weight:600; border-radius:999px; padding:4px 6px 4px 12px;">
       ${escapeHtml(t)}
+      <button type="button" onclick="window._toggleAttrSelectionType('${which}', '${attrJsString(t)}')"
+        title="Click to switch between single-select and multi-select"
+        style="background:rgba(0,0,0,0.25); border:none; color:var(--gold); cursor:pointer; font-size:10px; font-weight:700; border-radius:999px; padding:2px 8px;">
+        ${selType === 'multiple' ? '☑ Multi-select' : '◉ Single-select'}
+      </button>
       <button type="button" onclick="window._removePhotoOptionAttrType('${which}', '${attrJsString(t)}')" style="background:none; border:none; color:var(--gold); cursor:pointer; font-size:13px; line-height:1; padding:2px 4px;">✕</button>
     </span>
-  `).join('');
+  `;
+  }).join('');
 };
 
 // Bulk-add: for each configured option type that has a preset value
@@ -21015,6 +21213,7 @@ window._resetPhotoOptions = function(which) {
   window._photoOptionsState[which] = [];
   window._photoOptionsOriginalIds[which] = [];
   window._photoOptionAttrTypes[which] = ['Colour'];
+  window._photoOptionAttrSelectionType[which] = { Colour: 'single' };
   window._photoOptionBulkSelections[which] = {};
   window._renderAttrTypeChips(which);
   window._renderBulkAddPanel(which);
@@ -21087,7 +21286,11 @@ async function _savePhotoOptionVariants(productId, options, isAdminMode) {
   let attrIdByName = {};
   if (attrTypes.length) {
     try {
-      const attrBody = JSON.stringify({ attributes: attrTypes });
+      const which = isAdminMode ? 'admin' : 'seller';
+      const selTypeMap = window._photoOptionAttrSelectionType[which] || {};
+      const attrBody = JSON.stringify({
+        attributes: attrTypes.map(name => ({ name, selection_type: selTypeMap[name] === 'multiple' ? 'multiple' : 'single' }))
+      });
       const attrRes = isAdminMode
         ? await adminApiCall(`/admin/products/${productId}/attributes`, { method: 'PUT', body: attrBody })
         : await apiCall(`/products/${productId}/attributes`, { method: 'PUT', body: attrBody });
