@@ -21235,6 +21235,13 @@ window._collectPhotoOptions = function(which) {
   const list = window._photoOptionsState[which];
   const attrTypes = window._photoOptionAttrTypes[which] || ['Colour'];
   if (!enabled || !list.length) return [];
+  // Every option row needs at least one attribute type (Colour, Size,
+  // whatever) actually configured - without this check, a row could
+  // save successfully with a real price/stock/photo but zero attribute
+  // values attached to it at all, which then shows buyers "This product
+  // has no selectable options yet" despite a perfectly good variant
+  // existing behind the scenes.
+  if (!attrTypes.length) { showToast('Please add at least one option type (like Size or Colour) before adding options.', 'error'); return null; }
   const seenCombos = new Set();
   for (const opt of list) {
     const values = opt.values || {};
@@ -21299,6 +21306,13 @@ async function _savePhotoOptionVariants(productId, options, isAdminMode) {
       console.error('Failed to set up option attributes:', e.message);
       showToast('⚠️ Could not save option types - please try editing this product again.', 'error');
     }
+  } else if (options.length) {
+    // Should be unreachable now that _collectPhotoOptions blocks this
+    // upstream, but surfacing it loudly here too means a future bug
+    // elsewhere in this chain can never again silently create a
+    // priced, stocked variant with zero buyer-selectable options.
+    console.error('Photo option variants have no attribute types - buyers will not be able to select them.');
+    showToast('⚠️ These options were saved without a Size/Colour type attached - buyers won\'t see them as selectable. Please edit this product and add an option type.', 'error');
   }
 
   for (const opt of options) {
