@@ -3143,54 +3143,7 @@
                 <input type="checkbox" id="sellerHasPhotoOptions" onchange="window._togglePhotoOptionsWrap && window._togglePhotoOptionsWrap('seller')"> 🎯 This product has multiple options (colour, size, storage, etc.)
               </label>
               <div id="sellerPhotoOptionsWrap" style="display:none;">
-                <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">First, add the option types this product uses (e.g. Colour, Size). Then add each combination below with its own photo, price, stock and SKU.</div>
-                <div style="margin-bottom:8px;">
-                  <label style="font-size:11px; color:var(--gray); display:block; margin-bottom:4px;">Add an option type</label>
-                  <div style="display:flex; gap:8px;">
-                    <select id="sellerPhotoOptionTypeSelect" style="flex:1; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:8px 10px; font-size:12.5px;" onchange="window._onAttrTypeSelectChange('seller')">
-                      <option value="">Choose a type…</option>
-                      <option value="Colour">Colour</option>
-                      <option value="Size">Size</option>
-                      <option value="Storage">Storage</option>
-                      <option value="RAM">RAM</option>
-                      <option value="Model">Model</option>
-                      <option value="Brand">Brand</option>
-                      <option value="Network">Network</option>
-                      <option value="SIM">SIM</option>
-                      <option value="Material">Material</option>
-                      <option value="Capacity">Capacity</option>
-                      <option value="Weight">Weight</option>
-                      <option value="Power">Power/Wattage</option>
-                      <option value="Voltage">Voltage</option>
-                      <option value="Configuration">Configuration</option>
-                      <option value="Connectivity">Connectivity</option>
-                      <option value="Condition">Condition</option>
-                      <option value="Pattern">Pattern/Design</option>
-                      <option value="Style">Style</option>
-                      <option value="Pack">Pack/Quantity</option>
-                      <option value="Fragrance">Fragrance/Flavour</option>
-                      <option value="Finish">Finish</option>
-                      <option value="Shape">Shape</option>
-                      <option value="Length">Length</option>
-                      <option value="Screen Size">Screen Size</option>
-                      <option value="Resolution">Resolution</option>
-                      <option value="Smart TV">Smart / Non-Smart</option>
-                      <option value="Fuel Type">Fuel Type</option>
-                      <option value="Oven Type">Oven Type</option>
-                      <option value="Number of Burners">Number of Burners</option>
-                      <option value="Generation">Generation</option>
-                      <option value="Model Year">Model Year</option>
-                      <option value="Type">Type</option>
-                      <option value="__custom__">+ Custom type…</option>
-                    </select>
-                    <button type="button" onclick="window._addPhotoOptionAttrType('seller')" style="background:var(--gold); color:#111; border:none; border-radius:6px; padding:0 16px; font-size:12.5px; font-weight:700; cursor:pointer;">Add</button>
-                  </div>
-                  <input type="text" id="sellerPhotoOptionCustomType" placeholder="Type the custom option name" style="display:none; width:100%; margin-top:6px; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:8px 10px; font-size:12.5px;">
-                  <div id="sellerPhotoOptionAttrChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
-                </div>
-                <div id="sellerBulkAddPanel"></div>
-                <div id="sellerPhotoOptionsListWrap" style="display:flex; flex-direction:column; gap:10px; margin-bottom:8px;"></div>
-                <button type="button" onclick="window.addPhotoOption('seller')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Option</button>
+                <div id="sellerVarEditorRoot"></div>
               </div>
             </div>
           </div>
@@ -3755,54 +3708,7 @@
             <input type="checkbox" id="adminHasPhotoOptions" onchange="window._togglePhotoOptionsWrap && window._togglePhotoOptionsWrap('admin')"> 🎯 This product has multiple options (colour, size, storage, etc.)
           </label>
           <div id="adminPhotoOptionsWrap" style="display:none;">
-            <div style="font-size:11px; color:var(--gray); margin-bottom:8px;">First, add the option types this product uses (e.g. Colour, Size). Then add each combination below with its own photo, price, stock and SKU.</div>
-            <div style="margin-bottom:8px;">
-              <label style="font-size:11px; color:var(--gray); display:block; margin-bottom:4px;">Add an option type</label>
-              <div style="display:flex; gap:8px;">
-                <select id="adminPhotoOptionTypeSelect" style="flex:1; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:8px 10px; font-size:12.5px;" onchange="window._onAttrTypeSelectChange('admin')">
-                  <option value="">Choose a type…</option>
-                  <option value="Colour">Colour</option>
-                  <option value="Size">Size</option>
-                  <option value="Storage">Storage</option>
-                  <option value="RAM">RAM</option>
-                  <option value="Model">Model</option>
-                  <option value="Brand">Brand</option>
-                  <option value="Network">Network</option>
-                  <option value="SIM">SIM</option>
-                  <option value="Material">Material</option>
-                  <option value="Capacity">Capacity</option>
-                  <option value="Weight">Weight</option>
-                  <option value="Power">Power/Wattage</option>
-                  <option value="Voltage">Voltage</option>
-                  <option value="Configuration">Configuration</option>
-                  <option value="Connectivity">Connectivity</option>
-                  <option value="Condition">Condition</option>
-                  <option value="Pattern">Pattern/Design</option>
-                  <option value="Style">Style</option>
-                  <option value="Pack">Pack/Quantity</option>
-                  <option value="Fragrance">Fragrance/Flavour</option>
-                  <option value="Finish">Finish</option>
-                  <option value="Shape">Shape</option>
-                  <option value="Length">Length</option>
-                  <option value="Screen Size">Screen Size</option>
-                  <option value="Resolution">Resolution</option>
-                  <option value="Smart TV">Smart / Non-Smart</option>
-                  <option value="Fuel Type">Fuel Type</option>
-                  <option value="Oven Type">Oven Type</option>
-                  <option value="Number of Burners">Number of Burners</option>
-                  <option value="Generation">Generation</option>
-                  <option value="Model Year">Model Year</option>
-                  <option value="Type">Type</option>
-                  <option value="__custom__">+ Custom type…</option>
-                </select>
-                <button type="button" onclick="window._addPhotoOptionAttrType('admin')" style="background:var(--gold); color:#111; border:none; border-radius:6px; padding:0 16px; font-size:12.5px; font-weight:700; cursor:pointer;">Add</button>
-              </div>
-              <input type="text" id="adminPhotoOptionCustomType" placeholder="Type the custom option name" style="display:none; width:100%; margin-top:6px; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:8px 10px; font-size:12.5px;">
-              <div id="adminPhotoOptionAttrChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
-            </div>
-            <div id="adminBulkAddPanel"></div>
-            <div id="adminPhotoOptionsListWrap" style="display:flex; flex-direction:column; gap:10px; margin-bottom:8px;"></div>
-            <button type="button" onclick="window.addPhotoOption('admin')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">+ Add Option</button>
+            <div id="adminVarEditorRoot"></div>
           </div>
         </div>
 
@@ -10912,7 +10818,7 @@ window._simpleProductSubmit = async function(mode) {
     return;
   }
 
-  const photoOptions = window._collectPhotoOptions('seller');
+  const photoOptions = window._varCollect('seller');
   if (photoOptions === null) return;
 
   const btn = document.getElementById('sellerSubmitBtn');
@@ -10944,7 +10850,7 @@ window._simpleProductSubmit = async function(mode) {
     }
 
     if (photoOptions.length > 0) {
-      await window._savePhotoOptionVariants(savedId, photoOptions, isAdmin());
+      await window._varSave(savedId, photoOptions, isAdmin(), 'seller');
     }
 
 
@@ -11046,47 +10952,14 @@ window._simpleProductSubmit = async function(mode) {
     if (sellerWholesaleWrapEl) sellerWholesaleWrapEl.style.display = window._wholesaleTiersState.seller.length ? '' : 'none';
     window._renderWholesaleTiers('seller');
 
-    // Photo options are stored as variant rows with no attribute options -
-    // fetch the product's actual variants (not part of the product object
-    // itself) and treat any that have attribute options as an option
-    // combination to edit - reconstructs values{} from ALL of a
-    // variant's options, not just a "Colour" one, so multi-attribute
-    // products (Colour + Size, etc) edit correctly too.
-    window._photoOptionsState.seller = [];
-    window._photoOptionsOriginalIds.seller = [];
+    // Loads this product's option types + rows into the editor, or
+    // leaves it empty if this product has none - all the fetch/
+    // reconstruction logic lives in one place now (_varLoadExisting)
+    // instead of being duplicated here and in the admin edit path.
+    window._varReset('seller');
     if (product.has_variants) {
-      try {
-        const vRes = await apiCall(`/products/${id}/variants`);
-        const optionVariants = (vRes.data.variants || []).filter(v => v.options && v.options.length);
-        if (optionVariants.length) {
-          // vRes.data.attributes carries selection_type - use it
-          // directly rather than reconstructing names from variant
-          // options, which would lose that information entirely.
-          const attrNames = (vRes.data.attributes || []).map(a => a.name);
-          window._photoOptionAttrTypes.seller = attrNames;
-          window._photoOptionAttrSelectionType.seller = {};
-          (vRes.data.attributes || []).forEach(a => {
-            window._photoOptionAttrSelectionType.seller[a.name] = a.selection_type === 'multiple' ? 'multiple' : 'single';
-          });
-          window._renderAttrTypeChips('seller');
-          window._renderBulkAddPanel('seller');
-        }
-        window._photoOptionsState.seller = optionVariants.map(v => ({
-          id: v.id,
-          values: v.options.reduce((acc, o) => { acc[o.attribute_name] = o.value; return acc; }, {}),
-          image: (v.images && v.images.length) ? v.images[0] : '',
-          stock: v.stock, sku: v.sku || '',
-          seller_price: v.seller_price != null ? v.seller_price : '',
-          original_price: v.original_price != null ? v.original_price : ''
-        }));
-        window._photoOptionsOriginalIds.seller = optionVariants.map(v => v.id);
-      } catch (e) { /* non-fatal - just shows no options to edit */ }
+      await window._varLoadExisting('seller', id, isAdmin());
     }
-    const sellerHasPhotoOptionsEl = document.getElementById('sellerHasPhotoOptions');
-    if (sellerHasPhotoOptionsEl) sellerHasPhotoOptionsEl.checked = window._photoOptionsState.seller.length > 0;
-    const sellerPhotoOptionsWrapEl = document.getElementById('sellerPhotoOptionsWrap');
-    if (sellerPhotoOptionsWrapEl) sellerPhotoOptionsWrapEl.style.display = window._photoOptionsState.seller.length ? '' : 'none';
-    window._renderPhotoOptionsList('seller');
 
     if (product.categoryId && window._setCat_sellerCategory) window._setCat_sellerCategory(product.categoryId);
     else if (document.getElementById("sellerCategory")) document.getElementById("sellerCategory").value = product.category || '';
@@ -11341,38 +11214,10 @@ async function renderAdminProducts() {
       if (adminWholesaleWrapEl) adminWholesaleWrapEl.style.display = window._wholesaleTiersState.admin.length ? '' : 'none';
       window._renderWholesaleTiers('admin');
 
-      window._photoOptionsState.admin = [];
-      window._photoOptionsOriginalIds.admin = [];
+      window._varReset('admin');
       if (product.has_variants) {
-        try {
-          const vRes = await adminApiCall(`/admin/products/${id}/variants`);
-          const optionVariants = (vRes.data.variants || []).filter(v => v.options && v.options.length);
-          if (optionVariants.length) {
-            const attrNames = (vRes.data.attributes || []).map(a => a.name);
-            window._photoOptionAttrTypes.admin = attrNames;
-            window._photoOptionAttrSelectionType.admin = {};
-            (vRes.data.attributes || []).forEach(a => {
-              window._photoOptionAttrSelectionType.admin[a.name] = a.selection_type === 'multiple' ? 'multiple' : 'single';
-            });
-            window._renderAttrTypeChips('admin');
-            window._renderBulkAddPanel('admin');
-          }
-          window._photoOptionsState.admin = optionVariants.map(v => ({
-            id: v.id,
-            values: v.options.reduce((acc, o) => { acc[o.attribute_name] = o.value; return acc; }, {}),
-            image: (v.images && v.images.length) ? v.images[0] : '',
-            stock: v.stock, sku: v.sku || '',
-            seller_price: v.seller_price != null ? v.seller_price : '',
-            original_price: v.original_price != null ? v.original_price : ''
-          }));
-          window._photoOptionsOriginalIds.admin = optionVariants.map(v => v.id);
-        } catch (e) { /* non-fatal - just shows no options to edit */ }
+        await window._varLoadExisting('admin', id, true);
       }
-      const adminHasPhotoOptionsEl = document.getElementById('adminHasPhotoOptions');
-      if (adminHasPhotoOptionsEl) adminHasPhotoOptionsEl.checked = window._photoOptionsState.admin.length > 0;
-      const adminPhotoOptionsWrapEl = document.getElementById('adminPhotoOptionsWrap');
-      if (adminPhotoOptionsWrapEl) adminPhotoOptionsWrapEl.style.display = window._photoOptionsState.admin.length ? '' : 'none';
-      window._renderPhotoOptionsList('admin');
 
       document.getElementById("adminDesc").value = product.desc || '';
 
@@ -12072,7 +11917,7 @@ window.loadManualData = loadManualData;
       return;
     }
 
-    const photoOptions = window._collectPhotoOptions('admin');
+    const photoOptions = window._varCollect('admin');
     if (photoOptions === null) return;
 
     const submitBtn = this;
@@ -12109,7 +11954,7 @@ window.loadManualData = loadManualData;
       }
 
       if (photoOptions.length > 0) {
-        await window._savePhotoOptionVariants(savedId, photoOptions, true);
+        await window._varSave(savedId, photoOptions, true, 'admin');
       }
     } catch (err) {
       showToast('⚠️ ' + err.message, 'error');
@@ -12128,7 +11973,7 @@ window.loadManualData = loadManualData;
     if (document.getElementById("adminStock")) document.getElementById("adminStock").value = "";
 
     window._resetWholesaleTiers('admin');
-    window._resetPhotoOptions('admin');
+    window._varReset('admin');
 
     if (document.getElementById("adminLowStock")) document.getElementById("adminLowStock").value = "";
 
@@ -12177,7 +12022,7 @@ window.loadManualData = loadManualData;
     if (document.getElementById("adminStock")) document.getElementById("adminStock").value = "";
 
     window._resetWholesaleTiers('admin');
-    window._resetPhotoOptions('admin');
+    window._varReset('admin');
 
     if (document.getElementById("adminLowStock")) document.getElementById("adminLowStock").value = "";
 
@@ -20860,423 +20705,237 @@ window._collectWholesaleTiers = function(which) {
 };
 
 // ════════════════════════════════════════════════════════════
-// PHOTO OPTIONS - each purchasable option is a photo with its own
-// price and stock, no size/colour naming needed. Built on the same
-// product_variants backend as wholesale/attribute variants - each
-// option becomes a variant row with zero attribute options, just
-// its own price, stock, and images_json.
+// VARIANT EDITOR (admin/seller product form) - one option type
+// (Colour, Size, Storage...) and one row (a specific combination
+// with its own photo, price, stock, SKU) are stored together in a
+// single state object per mode, instead of several separate arrays
+// that previously had to be kept in sync by hand. A row can never
+// exist referencing a type that isn't there, because rows only ever
+// get created with keys for the types that already exist at that
+// moment - the earlier version allowed a row to be created before
+// any type existed at all, which is exactly how a real product ended
+// up with a priced, stocked variant but zero selectable options.
 // ════════════════════════════════════════════════════════════
-window._photoOptionsState = { seller: [], admin: [] };
-// The set of option "types" this product uses, e.g. ['Colour', 'Size'] -
-// entered as a comma-separated field, so a product can mix any number
-// of attribute dimensions (Colour, Size, Storage, RAM, whatever the
-// seller types) rather than being limited to a single "Colour" one.
-window._photoOptionAttrTypes = { seller: ['Colour'], admin: ['Colour'] };
-// Single-select (radio-style, one value at a time - the original
-// behaviour) vs multi-select (checkboxes, several values can be picked
-// at once and each becomes its own cart line) per attribute name.
-// Defaults to single for every attribute, matching how the feature
-// behaved before multi-select existed at all.
-window._photoOptionAttrSelectionType = { seller: { Colour: 'single' }, admin: { Colour: 'single' } };
-// Tracks which values are currently ticked in the "bulk add" checklist,
-// per attribute type - lets a seller/admin tick several colours (or
-// sizes, etc) at once and generate one option row per combination,
-// instead of adding rows one at a time.
-window._photoOptionBulkSelections = { seller: {}, admin: {} };
-
-// Common attribute types and their typical values - powers the dropdown
-// pickers so a seller/admin can pick "Storage" and get 64GB/128GB/256GB
-// etc. offered directly, instead of typing every value by hand. Types
-// not in this list (Model, Brand, Network Provider, ...) are genuinely
-// open-ended, so they get a free-text field instead of a dropdown - no
-// realistic list could cover every phone model or brand name.
-const VARIANT_ATTRIBUTE_CATALOG = {
-  'Colour': ['Black','White','Red','Blue','Green','Yellow','Grey','Silver','Gold','Rose Gold','Brown','Beige','Pink','Purple','Orange','Navy','Maroon','Khaki'],
-  'Size': ['XS','S','M','L','XL','XXL','XXXL','36','37','38','39','40','41','42','43','44','45','46'],
-  'Storage': ['16GB','32GB','64GB','128GB','256GB','512GB','1TB','2TB'],
-  'RAM': ['1GB','2GB','3GB','4GB','6GB','8GB','12GB','16GB','32GB'],
-  'Network': ['2G','3G','4G','5G'],
-  'SIM': ['Single SIM','Dual SIM','eSIM'],
-  'Material': ['Leather','Cotton','Polyester','Stainless Steel','Plastic','Wood','Metal','Glass','Wool','Denim','Silk','Rubber'],
-  'Capacity': ['0.5L','1L','1.5L','2L','3L','5L','10L','15L','20L'],
-  'Weight': ['100g','250g','500g','1kg','2kg','5kg','10kg','20kg'],
-  'Power': ['300W','500W','800W','1000W','1200W','1500W','2000W','2500W'],
-  'Voltage': ['110V','120V','220V','230V','240V'],
-  'Configuration': ['2.0CH','2.1CH','5.1CH','7.1CH'],
-  'Connectivity': ['Bluetooth','Wi-Fi','USB','AUX','NFC','Wired'],
-  'Condition': ['New','Refurbished','Used - Like New','Used - Good'],
-  'Pattern': ['Plain','Floral','Striped','Printed','Checked','Polka Dot','Camouflage'],
-  'Style': ['Classic','Modern','Sport','Casual','Formal','Vintage'],
-  'Pack': ['1pc','2pcs','3pcs','5pcs','6pcs','12pcs','24pcs'],
-  'Finish': ['Matte','Glossy','Metallic','Satin'],
-  'Shape': ['Round','Square','Rectangular','Oval','Triangular'],
-  'Length': ['0.5m','1m','1.5m','2m','3m','5m','10m'],
-  'Screen Size': ['24"','32"','40"','43"','50"','55"','58"','65"','75"','85"'],
-  'Resolution': ['HD','Full HD','2K','4K','8K'],
-  'Smart TV': ['Smart','Non-Smart'],
-  'Fuel Type': ['Gas','Electric','Gas + Electric','Infrared'],
-  'Oven Type': ['With Oven','Without Oven'],
-  'Number of Burners': ['1','2','3','4','5','6'],
-  'Generation': ['1st Gen','2nd Gen','3rd Gen','4th Gen','5th Gen'],
-  'Model Year': ['2022','2023','2024','2025','2026']
-};
-// Tracks which variant ids existed when a product was opened for
-// editing, so removed rows can be deleted from the backend on save
-// instead of just silently staying there.
-window._photoOptionsOriginalIds = { seller: [], admin: [] };
+window._varEditor = { seller: { types: [], rows: [] }, admin: { types: [], rows: [] } };
+window._varOriginalIds = { seller: [], admin: [] };
 
 window._togglePhotoOptionsWrap = function(which) {
   const on = document.getElementById(which + 'HasPhotoOptions')?.checked;
   const wrap = document.getElementById(which + 'PhotoOptionsWrap');
   if (wrap) wrap.style.display = on ? '' : 'none';
+  if (on) window._varRender(which);
 };
 
-window._onAttrTypeSelectChange = function(which) {
-  const select = document.getElementById(which + 'PhotoOptionTypeSelect');
-  const customInput = document.getElementById(which + 'PhotoOptionCustomType');
-  if (!select || !customInput) return;
-  customInput.style.display = select.value === '__custom__' ? '' : 'none';
-  if (select.value === '__custom__') customInput.focus();
-};
-
-window._addPhotoOptionAttrType = function(which) {
-  const select = document.getElementById(which + 'PhotoOptionTypeSelect');
-  const customInput = document.getElementById(which + 'PhotoOptionCustomType');
-  if (!select) return;
-  let typeName = select.value === '__custom__' ? (customInput?.value || '').trim() : select.value;
-  if (!typeName) { showToast('Please choose or type an option type first.', 'error'); return; }
-  const current = window._photoOptionAttrTypes[which];
-  if (current.some(t => t.toLowerCase() === typeName.toLowerCase())) { showToast(`"${typeName}" is already added.`, 'error'); return; }
-  current.push(typeName);
-  window._photoOptionAttrSelectionType[which][typeName] = 'single';
-  select.value = '';
-  if (customInput) { customInput.value = ''; customInput.style.display = 'none'; }
-  window._renderAttrTypeChips(which);
-  window._renderBulkAddPanel(which);
-  window._renderPhotoOptionsList(which);
-};
-
-window._removePhotoOptionAttrType = function(which, typeName) {
-  window._photoOptionAttrTypes[which] = window._photoOptionAttrTypes[which].filter(t => t !== typeName);
-  // Clear that type's values off every existing row too, so stale data
-  // doesn't linger once the type is no longer configured.
-  window._photoOptionsState[which].forEach(opt => { if (opt.values) delete opt.values[typeName]; });
-  delete window._photoOptionBulkSelections[which][typeName];
-  delete window._photoOptionAttrSelectionType[which][typeName];
-  window._renderAttrTypeChips(which);
-  window._renderBulkAddPanel(which);
-  window._renderPhotoOptionsList(which);
-};
-
-// Toggles one attribute between single-select (one value at a time) and
-// multi-select (buyer can tick several at once, each becomes its own
-// cart line) - purely a per-product configuration choice, doesn't
-// affect any other product.
-window._toggleAttrSelectionType = function(which, typeName) {
-  const current = window._photoOptionAttrSelectionType[which][typeName] || 'single';
-  window._photoOptionAttrSelectionType[which][typeName] = current === 'single' ? 'multiple' : 'single';
-  window._renderAttrTypeChips(which);
-};
-
-window._renderAttrTypeChips = function(which) {
-  const wrap = document.getElementById(which + 'PhotoOptionAttrChips');
-  if (!wrap) return;
-  const types = window._photoOptionAttrTypes[which];
-  wrap.innerHTML = types.map(t => {
-    const selType = window._photoOptionAttrSelectionType[which][t] || 'single';
-    return `
-    <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,193,7,0.12); border:1px solid var(--gold); color:var(--gold); font-size:11.5px; font-weight:600; border-radius:999px; padding:4px 6px 4px 12px;">
-      ${escapeHtml(t)}
-      <button type="button" onclick="window._toggleAttrSelectionType('${which}', '${attrJsString(t)}')"
-        title="Click to switch between single-select and multi-select"
-        style="background:rgba(0,0,0,0.25); border:none; color:var(--gold); cursor:pointer; font-size:10px; font-weight:700; border-radius:999px; padding:2px 8px;">
-        ${selType === 'multiple' ? '☑ Multi-select' : '◉ Single-select'}
-      </button>
-      <button type="button" onclick="window._removePhotoOptionAttrType('${which}', '${attrJsString(t)}')" style="background:none; border:none; color:var(--gold); cursor:pointer; font-size:13px; line-height:1; padding:2px 4px;">✕</button>
-    </span>
-  `;
-  }).join('');
-};
-
-// Bulk-add: for each configured option type that has a preset value
-// list (Colour, Size, Storage, ...), shows a tick-list of its values.
-// Ticking several and clicking "Add Selected" generates one option row
-// per combination across every catalog-backed type at once, instead of
-// clicking "+ Add Option" and picking a value one row at a time.
-window._renderBulkAddPanel = function(which) {
-  const panel = document.getElementById(which + 'BulkAddPanel');
-  if (!panel) return;
-  const types = window._photoOptionAttrTypes[which] || [];
-  const catalogTypes = types.filter(t => VARIANT_ATTRIBUTE_CATALOG[t] && VARIANT_ATTRIBUTE_CATALOG[t].length);
-  if (!catalogTypes.length) { panel.innerHTML = ''; return; }
-  const selections = window._photoOptionBulkSelections[which];
-
-  panel.innerHTML = `
-    <div style="background:var(--surface-2); border:1px solid var(--gold); border-radius:10px; padding:12px; margin-bottom:10px;">
-      <div style="font-size:12.5px; font-weight:700; color:var(--gold); margin-bottom:2px;">🚀 Bulk Add</div>
-      <div style="font-size:11px; color:var(--gray); margin-bottom:10px;">Tick every value this product comes in, then add them all at once - you'll still fill in each one's photo, price and stock afterward.</div>
-      ${catalogTypes.map(attrType => {
-        const values = VARIANT_ATTRIBUTE_CATALOG[attrType];
-        const selectedSet = selections[attrType] || new Set();
-        return `
-        <div style="margin-bottom:10px;">
-          <div style="font-size:11.5px; font-weight:600; color:var(--white); margin-bottom:6px;">${escapeHtml(attrType)}</div>
-          <div style="display:flex; flex-wrap:wrap; gap:6px;">
-            ${values.map(v => {
-              const isChecked = selectedSet.has(v);
-              return `<label style="display:inline-flex; align-items:center; gap:5px; background:${isChecked ? 'rgba(255,193,7,0.15)' : 'var(--surface-3)'}; border:1px solid ${isChecked ? 'var(--gold)' : 'var(--border-strong)'}; border-radius:999px; padding:4px 10px 4px 6px; font-size:11.5px; color:${isChecked ? 'var(--gold)' : 'var(--white)'}; cursor:pointer;">
-                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="window._toggleBulkSelection('${which}', '${escapeHtml(attrType).replace(/'/g, "\\'")}', '${escapeHtml(v).replace(/'/g, "\\'")}')" style="width:13px; height:13px; margin:0;">
-                ${escapeHtml(v)}
-              </label>`;
-            }).join('')}
-          </div>
-        </div>`;
-      }).join('')}
-      <button type="button" onclick="window._generateBulkOptions('${which}')" style="background:var(--gold); color:#111; border:none; border-radius:8px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer;">+ Add Selected</button>
-    </div>
-  `;
-};
-
-window._toggleBulkSelection = function(which, attrType, value) {
-  const selections = window._photoOptionBulkSelections[which];
-  if (!selections[attrType]) selections[attrType] = new Set();
-  if (selections[attrType].has(value)) selections[attrType].delete(value);
-  else selections[attrType].add(value);
-  window._renderBulkAddPanel(which);
-};
-
-window._generateBulkOptions = function(which) {
-  const types = window._photoOptionAttrTypes[which] || [];
-  const catalogTypes = types.filter(t => VARIANT_ATTRIBUTE_CATALOG[t] && VARIANT_ATTRIBUTE_CATALOG[t].length);
-  const selections = window._photoOptionBulkSelections[which];
-
-  for (const attrType of catalogTypes) {
-    if (!selections[attrType] || !selections[attrType].size) {
-      showToast(`Please tick at least one "${attrType}" value before adding.`, 'error');
-      return;
-    }
-  }
-
-  // Cartesian product across every catalog-backed type's ticked values -
-  // e.g. 3 colours x 2 sizes ticked generates 6 rows, one per combination.
-  let combos = [{}];
-  for (const attrType of catalogTypes) {
-    const values = [...selections[attrType]];
-    const next = [];
-    for (const combo of combos) {
-      for (const v of values) next.push({ ...combo, [attrType]: v });
-    }
-    combos = next;
-  }
-
-  const existing = window._photoOptionsState[which];
-  let added = 0, skipped = 0;
-  for (const combo of combos) {
-    const alreadyThere = existing.some(opt =>
-      catalogTypes.every(t => (opt.values && opt.values[t]) === combo[t])
-    );
-    if (alreadyThere) { skipped++; continue; }
-    existing.push({ id: null, values: { ...combo }, image: '', price: '', stock: '', sku: '' });
-    added++;
-  }
-
-  window._photoOptionBulkSelections[which] = {};
-  window._renderBulkAddPanel(which);
-  window._renderPhotoOptionsList(which);
-  showToast(`${added} option${added !== 1 ? 's' : ''} added${skipped ? ` (${skipped} already existed, skipped)` : ''} - fill in each one's photo, price and stock below.`, 'success');
-};
-
-// Show the default "Colour" chip on both forms as soon as the page loads.
-window._renderAttrTypeChips('seller');
-window._renderAttrTypeChips('admin');
-window._renderBulkAddPanel('seller');
-window._renderBulkAddPanel('admin');
-
-window._renderPhotoOptionsList = function(which) {
-  const wrap = document.getElementById(which + 'PhotoOptionsListWrap');
-  if (!wrap) return;
-  const options = window._photoOptionsState[which];
-  const attrTypes = window._photoOptionAttrTypes[which] || ['Colour'];
-  if (!options.length) {
-    wrap.innerHTML = '<div style="font-size:11px; color:var(--gray);">No options yet - add at least one below.</div>';
-    return;
-  }
-  wrap.innerHTML = options.map((opt, i) => `
-    <div style="display:flex; gap:10px; align-items:start; background:var(--surface-3); border:1px solid var(--border-strong); border-radius:8px; padding:8px;">
-      <div>
-        <input type="file" accept="image/*" id="photoOption_${which}_${i}_file" style="display:none;" onchange="window._handlePhotoOptionImageSelected('${which}', ${i}, this.files[0])">
-        <button type="button" onclick="document.getElementById('photoOption_${which}_${i}_file').click()" title="Choose photo" style="width:60px; height:60px; border-radius:8px; border:1px dashed var(--border-strong); background:var(--surface-2); cursor:pointer; padding:0; overflow:hidden; flex-shrink:0;">
-          ${opt.image ? `<img src="${opt.image}" style="width:60px; height:60px; object-fit:cover; display:block;">` : `<span style="color:var(--gray); font-size:18px;">+</span>`}
-        </button>
-      </div>
-      <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-        ${attrTypes.map(attrType => {
-          const catalogValues = VARIANT_ATTRIBUTE_CATALOG[attrType];
-          const currentVal = (opt.values && opt.values[attrType]) || '';
-          const explicitCustom = opt._customMode && opt._customMode[attrType];
-          const isCustom = explicitCustom || (currentVal && catalogValues && !catalogValues.includes(currentVal));
-          if (catalogValues && catalogValues.length) {
-            return `
-            <div style="grid-column:1/-1;">
-              <label style="font-size:10px; color:var(--gray); display:block;">${escapeHtml(attrType)}</label>
-              <select onchange="window._onPhotoOptionAttrSelectChange('${which}', ${i}, '${escapeHtml(attrType).replace(/'/g, "\\'")}', this.value)" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;">
-                <option value="">Choose ${escapeHtml(attrType)}…</option>
-                ${catalogValues.map(v => `<option value="${escapeHtml(v)}" ${(!isCustom && currentVal === v) ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}
-                <option value="__other__" ${isCustom ? 'selected' : ''}>Other (type manually)</option>
-              </select>
-              <input type="text" placeholder="Type custom ${escapeHtml(attrType.toLowerCase())} value" value="${escapeHtml(isCustom ? currentVal : '')}" style="width:100%; margin-top:5px; display:${isCustom ? '' : 'none'}; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionAttrValue('${which}', ${i}, '${escapeHtml(attrType).replace(/'/g, "\\'")}', this.value)">
-            </div>`;
-          }
-          return `
-          <div style="grid-column:1/-1;">
-            <label style="font-size:10px; color:var(--gray); display:block;">${escapeHtml(attrType)}</label>
-            <input type="text" placeholder="e.g. ${escapeHtml(attrType)} value" value="${escapeHtml(currentVal)}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionAttrValue('${which}', ${i}, '${escapeHtml(attrType).replace(/'/g, "\\'")}', this.value)">
-          </div>`;
-        }).join('')}
-        <div>
-          <label style="font-size:10px; color:var(--gray); display:block;">Selling Price (KES) *</label>
-          <input type="number" min="0" placeholder="e.g. 3000" value="${opt.seller_price ?? ''}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'seller_price', this.value)">
-        </div>
-        <div>
-          <label style="font-size:10px; color:var(--gray); display:block;">Original Price (optional)</label>
-          <input type="number" min="0" placeholder="for a crossed-out price" value="${opt.original_price ?? ''}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'original_price', this.value)">
-        </div>
-        <div>
-          <label style="font-size:10px; color:var(--gray); display:block;">Stock</label>
-          <input type="number" min="0" value="${opt.stock ?? ''}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'stock', this.value)">
-        </div>
-        <div style="grid-column:1/-1;">
-          <label style="font-size:10px; color:var(--gray); display:block;">SKU (optional)</label>
-          <input type="text" placeholder="e.g. CARPET-BLK-01" value="${escapeHtml(opt.sku ?? '')}" style="width:100%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._updatePhotoOptionField('${which}', ${i}, 'sku', this.value)">
-        </div>
-      </div>
-      <button type="button" onclick="window._removePhotoOption('${which}', ${i})" title="Remove option" style="background:#e74c3c; border:none; color:#fff; border-radius:6px; width:26px; height:26px; cursor:pointer; flex-shrink:0;">✕</button>
-    </div>
-  `).join('');
-};
-
-window._updatePhotoOptionAttrValue = function(which, i, attrType, value) {
-  const opt = window._photoOptionsState[which][i];
-  if (!opt) return;
-  if (!opt.values) opt.values = {};
-  opt.values[attrType] = value;
-};
-
-// Handles the dropdown for a catalog-backed attribute type (e.g.
-// Storage) - picking a real value stores it directly; picking "Other"
-// clears the value and reveals the free-text field below instead.
-window._onPhotoOptionAttrSelectChange = function(which, i, attrType, selectedValue) {
-  const opt = window._photoOptionsState[which][i];
-  if (!opt) return;
-  if (!opt._customMode) opt._customMode = {};
-  if (selectedValue === '__other__') {
-    opt._customMode[attrType] = true;
-    window._updatePhotoOptionAttrValue(which, i, attrType, '');
-  } else {
-    opt._customMode[attrType] = false;
-    window._updatePhotoOptionAttrValue(which, i, attrType, selectedValue);
-  }
-  window._renderPhotoOptionsList(which);
-};
-
-window.addPhotoOption = function(which) {
-  window._photoOptionsState[which].push({ id: null, values: {}, image: '', stock: '', sku: '', seller_price: '', original_price: '' });
-  window._renderPhotoOptionsList(which);
-};
-
-window._removePhotoOption = function(which, i) {
-  window._photoOptionsState[which].splice(i, 1);
-  window._renderPhotoOptionsList(which);
-};
-
-window._updatePhotoOptionField = function(which, i, field, value) {
-  const opt = window._photoOptionsState[which][i];
-  if (!opt) return;
-  opt[field] = value;
-};
-
-window._handlePhotoOptionImageSelected = async function(which, i, file) {
-  if (!file) return;
-  try {
-    const compressed = await compressImageFile(file, 900, 0.8);
-    if (!compressed) { showToast('Could not read that image. Please try a different photo.', 'error'); return; }
-    const opt = window._photoOptionsState[which][i];
-    if (opt) opt.image = compressed;
-    window._renderPhotoOptionsList(which);
-  } catch (err) {
-    console.error('Photo option image upload failed:', err);
-    showToast('⚠️ Could not process that photo. Please try again.', 'error');
-  }
-};
-
-window._resetPhotoOptions = function(which) {
-  window._photoOptionsState[which] = [];
-  window._photoOptionsOriginalIds[which] = [];
-  window._photoOptionAttrTypes[which] = ['Colour'];
-  window._photoOptionAttrSelectionType[which] = { Colour: 'single' };
-  window._photoOptionBulkSelections[which] = {};
-  window._renderAttrTypeChips(which);
-  window._renderBulkAddPanel(which);
-  window._renderPhotoOptionsList(which);
+// Called when starting a brand new product (not editing an existing
+// one), so a leftover option type or row from a previous product in
+// the same session can never bleed into this one.
+window._varReset = function(which) {
+  window._varEditor[which] = { types: [], rows: [] };
+  window._varOriginalIds[which] = [];
   const checkbox = document.getElementById(which + 'HasPhotoOptions');
   if (checkbox) checkbox.checked = false;
   const wrap = document.getElementById(which + 'PhotoOptionsWrap');
   if (wrap) wrap.style.display = 'none';
+  const root = document.getElementById(which + 'VarEditorRoot');
+  if (root) root.innerHTML = '';
 };
 
-// Validates and returns the option list, or null (with a toast) if
-// invalid. Returns [] untouched when the checkbox isn't checked. Each
-// option needs a value for every configured attribute type, and the
-// full combination (e.g. Colour=Black + Size=M) must be unique - not
-// just a single field, since a product can have several attribute
-// dimensions now.
-window._collectPhotoOptions = function(which) {
-  const enabled = document.getElementById(which + 'HasPhotoOptions')?.checked;
-  const list = window._photoOptionsState[which];
-  const attrTypes = window._photoOptionAttrTypes[which] || ['Colour'];
-  if (!enabled || !list.length) return [];
-  // Every option row needs at least one attribute type (Colour, Size,
-  // whatever) actually configured - without this check, a row could
-  // save successfully with a real price/stock/photo but zero attribute
-  // values attached to it at all, which then shows buyers "This product
-  // has no selectable options yet" despite a perfectly good variant
-  // existing behind the scenes.
-  if (!attrTypes.length) { showToast('Please add at least one option type (like Size or Colour) before adding options.', 'error'); return null; }
-  const seenCombos = new Set();
-  for (const opt of list) {
-    const values = opt.values || {};
-    const labelParts = [];
-    for (const attrType of attrTypes) {
-      const v = (values[attrType] || '').trim();
-      if (!v) { showToast(`Please fill in "${attrType}" for every option.`, 'error'); return null; }
-      labelParts.push(`${attrType}: ${v}`);
-    }
-    const comboLabel = labelParts.join(', ');
-    const comboKey = attrTypes.map(t => (values[t] || '').trim().toLowerCase()).join('||');
-    if (seenCombos.has(comboKey)) { showToast(`"${comboLabel}" is used more than once - each combination must be unique.`, 'error'); return null; }
-    seenCombos.add(comboKey);
-    if (!opt.image) { showToast(`"${comboLabel}" needs its own photo.`, 'error'); return null; }
-    if (opt.stock === '' || isNaN(Number(opt.stock)) || Number(opt.stock) < 0) { showToast(`"${comboLabel}" needs a stock quantity.`, 'error'); return null; }
-    if (opt.seller_price === '' || isNaN(Number(opt.seller_price)) || Number(opt.seller_price) <= 0) { showToast(`"${comboLabel}" needs a selling price.`, 'error'); return null; }
+window._varAddType = function(which) {
+  const nameInput = document.getElementById(which + 'VarNewTypeName');
+  const name = nameInput ? nameInput.value.trim() : '';
+  if (!name) { showToast('Enter an option name like Size or Colour.', 'error'); return; }
+  const state = window._varEditor[which];
+  if (state.types.some(t => t.name.toLowerCase() === name.toLowerCase())) {
+    showToast('That option type already exists.', 'error');
+    return;
   }
-  return list.map(opt => ({
-    id: opt.id,
-    values: attrTypes.reduce((acc, t) => { acc[t] = (opt.values[t] || '').trim(); return acc; }, {}),
-    image: opt.image, stock: parseInt(opt.stock, 10), sku: (opt.sku || '').trim() || undefined,
-    seller_price: Number(opt.seller_price),
-    original_price: (opt.original_price !== '' && opt.original_price !== undefined && opt.original_price !== null) ? Number(opt.original_price) : undefined
+  state.types.push({ name, multi: false });
+  // Every existing row picks up this new type as an empty field, so
+  // types and rows can never drift out of sync with each other.
+  state.rows.forEach(r => { r.values[name] = ''; });
+  if (nameInput) nameInput.value = '';
+  window._varRender(which);
+};
+
+window._varRemoveType = function(which, name) {
+  const state = window._varEditor[which];
+  state.types = state.types.filter(t => t.name !== name);
+  state.rows.forEach(r => { delete r.values[name]; });
+  window._varRender(which);
+};
+
+// Toggles this option type between single-select (the original
+// behaviour - one value at a time) and multi-select (buyer can tick
+// several at once, each becoming its own cart line).
+window._varToggleTypeMulti = function(which, name) {
+  const t = window._varEditor[which].types.find(t => t.name === name);
+  if (t) t.multi = !t.multi;
+  window._varRender(which);
+};
+
+window._varAddRow = function(which) {
+  const state = window._varEditor[which];
+  if (!state.types.length) { showToast('Add at least one option type first (e.g. Size).', 'error'); return; }
+  const values = {};
+  state.types.forEach(t => { values[t.name] = ''; });
+  state.rows.push({ id: null, values, price: '', originalPrice: '', stock: '', sku: '', image: '' });
+  window._varRender(which);
+};
+
+window._varRemoveRow = function(which, index) {
+  window._varEditor[which].rows.splice(index, 1);
+  window._varRender(which);
+};
+
+window._varUpdateRowValue = function(which, index, typeName, value) {
+  window._varEditor[which].rows[index].values[typeName] = value;
+};
+
+window._varUpdateRowField = function(which, index, field, value) {
+  window._varEditor[which].rows[index][field] = value;
+};
+
+window._varUploadRowImage = async function(which, index, fileInput) {
+  const file = fileInput.files[0];
+  if (!file) return;
+  try {
+    const compressed = await compressImageFile(file, 900, 0.8);
+    if (!compressed) { showToast('Could not read that image. Please try a different photo.', 'error'); return; }
+    window._varEditor[which].rows[index].image = compressed;
+    window._varRender(which);
+  } catch (err) {
+    console.error('Variant row image upload failed:', err);
+    showToast('⚠️ Could not process that photo. Please try again.', 'error');
+  }
+};
+
+window._varRender = function(which) {
+  const root = document.getElementById(which + 'VarEditorRoot');
+  if (!root) return;
+  const state = window._varEditor[which];
+
+  let html = `<div style="font-size:11.5px; color:var(--gray); margin-bottom:12px;">Step 1: add the option types this product uses (e.g. Size, Colour). Step 2: add a row for each combination with its own price, stock and photo.</div>`;
+
+  html += `<div style="background:var(--surface-2); border-radius:10px; padding:12px; margin-bottom:14px;">
+    <div style="font-size:12px; font-weight:700; color:var(--white); margin-bottom:8px;">Option Types</div>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+      ${state.types.map(t => `
+        <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,193,7,0.12); border:1px solid var(--gold); color:var(--gold); font-size:12px; font-weight:600; border-radius:999px; padding:5px 6px 5px 12px;">
+          ${escapeHtml(t.name)}
+          <button type="button" onclick="window._varToggleTypeMulti('${which}', '${attrJsString(t.name)}')" title="Click to switch single-select / multi-select" style="background:rgba(0,0,0,0.25); border:none; color:var(--gold); cursor:pointer; font-size:10px; font-weight:700; border-radius:999px; padding:2px 8px;">
+            ${t.multi ? '☑ Multi-select' : '◉ Single-select'}
+          </button>
+          <button type="button" onclick="window._varRemoveType('${which}', '${attrJsString(t.name)}')" style="background:none; border:none; color:var(--gold); cursor:pointer; font-size:13px; line-height:1; padding:2px 4px;">✕</button>
+        </span>
+      `).join('') || '<span style="color:var(--gray); font-size:12px;">No option types yet - add one below.</span>'}
+    </div>
+    <div style="display:flex; gap:8px;">
+      <input type="text" id="${which}VarNewTypeName" placeholder="e.g. Size, Colour, Storage" style="flex:1; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:8px 10px; font-size:12.5px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); window._varAddType('${which}');}">
+      <button type="button" onclick="window._varAddType('${which}')" style="background:var(--gold); color:#111; border:none; border-radius:6px; padding:0 16px; font-size:12.5px; font-weight:700; cursor:pointer;">+ Add Type</button>
+    </div>
+  </div>`;
+
+  html += `<div style="font-size:12px; font-weight:700; color:var(--white); margin-bottom:8px;">Options (${state.rows.length})</div>`;
+
+  state.rows.forEach((row, i) => {
+    html += `<div style="background:var(--surface-2); border:1px solid var(--border-strong); border-radius:10px; padding:12px; margin-bottom:10px;">
+      <div style="display:flex; gap:10px; margin-bottom:10px;">
+        <div style="flex-shrink:0;">
+          <input type="file" accept="image/*" id="${which}VarRowImg${i}" style="display:none;" onchange="window._varUploadRowImage('${which}', ${i}, this)">
+          <label for="${which}VarRowImg${i}" style="display:block; width:56px; height:56px; border-radius:8px; background:var(--surface-3); border:1px dashed var(--border-strong); cursor:pointer; overflow:hidden;">
+            ${row.image ? `<img src="${row.image}" style="width:100%; height:100%; object-fit:cover;">` : `<div style="display:flex; align-items:center; justify-content:center; height:100%; font-size:18px;">📷</div>`}
+          </label>
+        </div>
+        <div style="flex:1; display:grid; grid-template-columns:repeat(auto-fit, minmax(90px, 1fr)); gap:8px;">
+          ${state.types.map(t => `
+            <div>
+              <label style="font-size:10px; color:var(--gray); display:block;">${escapeHtml(t.name)} *</label>
+              <input type="text" value="${escapeHtml(row.values[t.name] || '')}" placeholder="value"
+                style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;"
+                oninput="window._varUpdateRowValue('${which}', ${i}, '${attrJsString(t.name)}', this.value)">
+            </div>
+          `).join('')}
+        </div>
+        <button type="button" onclick="window._varRemoveRow('${which}', ${i})" style="flex-shrink:0; background:#e74c3c; border:none; color:#fff; border-radius:6px; width:28px; height:28px; cursor:pointer; align-self:flex-start;">✕</button>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(90px, 1fr)); gap:8px;">
+        <div>
+          <label style="font-size:10px; color:var(--gray); display:block;">Selling Price (KES) *</label>
+          <input type="number" min="0" value="${row.price}" placeholder="e.g. 3000" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._varUpdateRowField('${which}', ${i}, 'price', this.value)">
+        </div>
+        <div>
+          <label style="font-size:10px; color:var(--gray); display:block;">Original Price (optional)</label>
+          <input type="number" min="0" value="${row.originalPrice}" placeholder="for a crossed-out price" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._varUpdateRowField('${which}', ${i}, 'originalPrice', this.value)">
+        </div>
+        <div>
+          <label style="font-size:10px; color:var(--gray); display:block;">Stock *</label>
+          <input type="number" min="0" value="${row.stock}" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._varUpdateRowField('${which}', ${i}, 'stock', this.value)">
+        </div>
+        <div>
+          <label style="font-size:10px; color:var(--gray); display:block;">SKU (optional)</label>
+          <input type="text" value="${escapeHtml(row.sku)}" placeholder="e.g. CARPET-5x8" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._varUpdateRowField('${which}', ${i}, 'sku', this.value)">
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += `<button type="button" onclick="window._varAddRow('${which}')"
+    style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:8px 16px; cursor:pointer; font-size:12.5px; font-weight:600; ${!state.types.length ? 'opacity:0.5; cursor:not-allowed;' : ''}"
+    ${!state.types.length ? 'disabled title="Add an option type first"' : ''}>+ Add Option Row</button>`;
+
+  root.innerHTML = html;
+};
+
+// Validates the current state and returns clean data ready to send to
+// the backend, or null (with a toast explaining why) if something's
+// missing. Unlike the old version, this can never produce a row with
+// values for a type that doesn't exist, or a type with no rows -
+// state.types and state.rows[].values are updated together everywhere
+// above, so they can't drift apart in the first place.
+window._varCollect = function(which) {
+  const enabled = document.getElementById(which + 'HasPhotoOptions')?.checked;
+  const state = window._varEditor[which];
+  if (!enabled || !state.rows.length) return [];
+  if (!state.types.length) {
+    showToast('Please add at least one option type (like Size or Colour) before saving.', 'error');
+    return null;
+  }
+
+  const seen = new Set();
+  for (const row of state.rows) {
+    const labelParts = [];
+    for (const t of state.types) {
+      const v = (row.values[t.name] || '').trim();
+      if (!v) { showToast(`Please fill in "${t.name}" for every option row.`, 'error'); return null; }
+      labelParts.push(`${t.name}: ${v}`);
+    }
+    const label = labelParts.join(', ');
+    const key = state.types.map(t => (row.values[t.name] || '').trim().toLowerCase()).join('||');
+    if (seen.has(key)) { showToast(`"${label}" is used more than once - each combination must be unique.`, 'error'); return null; }
+    seen.add(key);
+    if (!row.image) { showToast(`"${label}" needs its own photo.`, 'error'); return null; }
+    if (row.stock === '' || isNaN(Number(row.stock)) || Number(row.stock) < 0) { showToast(`"${label}" needs a stock quantity.`, 'error'); return null; }
+    if (row.price === '' || isNaN(Number(row.price)) || Number(row.price) <= 0) { showToast(`"${label}" needs a selling price.`, 'error'); return null; }
+  }
+
+  return state.rows.map(row => ({
+    id: row.id,
+    values: state.types.reduce((acc, t) => { acc[t.name] = (row.values[t.name] || '').trim(); return acc; }, {}),
+    image: row.image,
+    stock: parseInt(row.stock, 10),
+    sku: (row.sku || '').trim() || undefined,
+    seller_price: Number(row.price),
+    original_price: (row.originalPrice !== '' && row.originalPrice !== undefined && row.originalPrice !== null) ? Number(row.originalPrice) : undefined
   }));
 };
 
-// Creates/updates/deletes variant rows to match the current option
-// list - called after the base product itself has already been saved,
-// since it needs a real product id to attach variants to. isAdminMode
-// picks which set of variant endpoints to call (admin's own
-// /admin/variants/:id routes work on any product; the seller-scoped
-// ones are ownership-checked and need the product id in the URL too).
-async function _savePhotoOptionVariants(productId, options, isAdminMode) {
-  const keptIds = options.filter(o => o.id).map(o => o.id);
-  const removedIds = window._photoOptionsOriginalIds[isAdminMode ? 'admin' : 'seller'].filter(id => !keptIds.includes(id));
+// Saves everything to the backend - called after the base product
+// itself has already been saved, since it needs a real product id.
+// rows is the array _varCollect() returned (already validated).
+async function _varSave(productId, rows, isAdminMode, which) {
+  const state = window._varEditor[which];
+  const keptIds = rows.filter(r => r.id).map(r => r.id);
+  const removedIds = (window._varOriginalIds[which] || []).filter(id => !keptIds.includes(id));
   for (const id of removedIds) {
     try {
       if (isAdminMode) await adminApiCall(`/admin/variants/${id}`, { method: 'DELETE' });
@@ -21284,62 +20943,87 @@ async function _savePhotoOptionVariants(productId, options, isAdminMode) {
     } catch (e) { console.error('Failed to remove old option variant:', e.message); }
   }
 
-  // Ensure every configured attribute type (Colour, Size, Storage, ...)
-  // exists on this product as a real attribute, so each variant's
-  // values are real, queryable data - not just a photo label - matching
-  // how the buyer-facing picker and the cart/order snapshot both expect
-  // to read them.
-  const attrTypes = options.length ? Object.keys(options[0].values) : [];
   let attrIdByName = {};
-  if (attrTypes.length) {
+  if (state.types.length) {
     try {
-      const which = isAdminMode ? 'admin' : 'seller';
-      const selTypeMap = window._photoOptionAttrSelectionType[which] || {};
       const attrBody = JSON.stringify({
-        attributes: attrTypes.map(name => ({ name, selection_type: selTypeMap[name] === 'multiple' ? 'multiple' : 'single' }))
+        attributes: state.types.map(t => ({ name: t.name, selection_type: t.multi ? 'multiple' : 'single' }))
       });
       const attrRes = isAdminMode
         ? await adminApiCall(`/admin/products/${productId}/attributes`, { method: 'PUT', body: attrBody })
         : await apiCall(`/products/${productId}/attributes`, { method: 'PUT', body: attrBody });
       for (const a of (attrRes.data.attributes || [])) attrIdByName[a.name] = a.id;
     } catch (e) {
-      console.error('Failed to set up option attributes:', e.message);
+      console.error('Failed to save option types:', e.message);
       showToast('⚠️ Could not save option types - please try editing this product again.', 'error');
+      return;
     }
-  } else if (options.length) {
-    // Should be unreachable now that _collectPhotoOptions blocks this
-    // upstream, but surfacing it loudly here too means a future bug
-    // elsewhere in this chain can never again silently create a
-    // priced, stocked variant with zero buyer-selectable options.
-    console.error('Photo option variants have no attribute types - buyers will not be able to select them.');
-    showToast('⚠️ These options were saved without a Size/Colour type attached - buyers won\'t see them as selectable. Please edit this product and add an option type.', 'error');
   }
 
-  for (const opt of options) {
-    const comboLabel = Object.entries(opt.values).map(([k, v]) => `${k}: ${v}`).join(', ');
+  for (const row of rows) {
+    const comboLabel = Object.entries(row.values).map(([k, v]) => `${k}: ${v}`).join(', ');
     const body = JSON.stringify({
-      stock: opt.stock, sku: opt.sku,
-      seller_price: opt.seller_price, original_price: opt.original_price,
-      images_json: JSON.stringify([opt.image]),
-      options: Object.entries(opt.values)
-        .filter(([attrName]) => attrIdByName[attrName])
-        .map(([attrName, value]) => ({ attribute_id: attrIdByName[attrName], value }))
+      stock: row.stock, sku: row.sku,
+      seller_price: row.seller_price, original_price: row.original_price,
+      images_json: JSON.stringify([row.image]),
+      options: Object.entries(row.values)
+        .filter(([k]) => attrIdByName[k])
+        .map(([k, v]) => ({ attribute_id: attrIdByName[k], value: v }))
     });
     try {
-      if (opt.id) {
-        if (isAdminMode) await adminApiCall(`/admin/variants/${opt.id}`, { method: 'PUT', body });
-        else await apiCall(`/products/${productId}/variants/${opt.id}`, { method: 'PUT', body });
+      if (row.id) {
+        if (isAdminMode) await adminApiCall(`/admin/variants/${row.id}`, { method: 'PUT', body });
+        else await apiCall(`/products/${productId}/variants/${row.id}`, { method: 'PUT', body });
       } else {
         if (isAdminMode) await adminApiCall(`/admin/products/${productId}/variants`, { method: 'POST', body });
         else await apiCall(`/products/${productId}/variants`, { method: 'POST', body });
       }
     } catch (e) {
-      console.error('Failed to save option variant:', e.message);
+      console.error('Failed to save option row:', e.message);
       showToast(`⚠️ Could not save "${comboLabel}": ${e.message}`, 'error');
     }
   }
 }
-window._savePhotoOptionVariants = _savePhotoOptionVariants;
+window._varSave = _varSave;
+
+// Loads an existing product's variant data into the editor for
+// editing - returns true if it found real variant data, false
+// otherwise (a plain product with no options).
+window._varLoadExisting = async function(which, productId, isAdminMode) {
+  try {
+    const vRes = isAdminMode
+      ? await adminApiCall(`/admin/products/${productId}/variants`)
+      : await apiCall(`/products/${productId}/variants`);
+    const attrs = vRes.data.attributes || [];
+    const variants = (vRes.data.variants || []).filter(v => v.options && v.options.length);
+    window._varOriginalIds[which] = variants.map(v => v.id);
+    if (!attrs.length || !variants.length) return false;
+
+    window._varEditor[which] = {
+      types: attrs.map(a => ({ name: a.name, multi: a.selection_type === 'multiple' })),
+      rows: variants.map(v => ({
+        id: v.id,
+        values: v.options.reduce((acc, o) => { acc[o.attribute_name] = o.value; return acc; }, {}),
+        image: (v.images && v.images.length) ? v.images[0] : '',
+        price: v.seller_price != null ? v.seller_price : '',
+        originalPrice: v.original_price != null ? v.original_price : '',
+        stock: v.stock,
+        sku: v.sku || ''
+      }))
+    };
+
+    const checkbox = document.getElementById(which + 'HasPhotoOptions');
+    if (checkbox) checkbox.checked = true;
+    const wrap = document.getElementById(which + 'PhotoOptionsWrap');
+    if (wrap) wrap.style.display = '';
+    window._varRender(which);
+    return true;
+  } catch (e) {
+    console.error('Failed to load existing variants:', e.message);
+    return false;
+  }
+};
+
 
 // Returns the correct unit price for a given quantity, honouring wholesale
 // tiers when present. Falls back to the product's normal Selling Price.
@@ -21479,7 +21163,7 @@ window.cancelEditProduct = function() {
   renderImageThumbnails(uploadedImages, 'sellerImagePreview', 'sellerImageCount', 'removeImageAt');
 
   window._resetWholesaleTiers('seller');
-  window._resetPhotoOptions('seller');
+  window._varReset('seller');
 };
 
 // Seller ShopStream management tab
