@@ -10909,7 +10909,7 @@ window._simpleProductSubmit = async function(mode) {
     editingProductId = id;
 
     document.getElementById("sellerName").value = product.name;
-    document.getElementById("sellerPrice").value = product.price;
+    document.getElementById("sellerPrice").value = product.sellerPrice != null ? product.sellerPrice : product.price;
     document.getElementById("sellerOriginalPrice").value = product.originalPrice || '';
     document.getElementById("sellerDesc").value = product.desc || '';
     if (document.getElementById("sellerBrand")) document.getElementById("sellerBrand").value = product.brand || '';
@@ -11192,7 +11192,7 @@ async function renderAdminProducts() {
 
       document.getElementById("adminName").value = product.name;
 
-      document.getElementById("adminPrice").value = product.price;
+      document.getElementById("adminPrice").value = product.sellerPrice != null ? product.sellerPrice : product.price;
 
       document.getElementById("adminOriginalPrice").value = product.originalPrice || '';
 
@@ -16906,6 +16906,15 @@ window.renderSMSLog = renderSMSLog;
       kanyagaStartAt: p.kanyaga_start_at ? p.kanyaga_start_at.replace(' ', 'T') + 'Z' : null,
       kanyagaEndAt: p.kanyaga_end_at ? p.kanyaga_end_at.replace(' ', 'T') + 'Z' : null,
       kanyagaCampaign: p.kanyaga_campaign || null,
+      // Only ever present on admin-facing responses (stripped for
+      // buyers and sellers elsewhere) - exposed here so the admin edit
+      // form can pre-fill with the real seller price. Was previously
+      // missing entirely, so the edit form fell back to pre-filling
+      // with the FINAL computed buyer price instead - editing and
+      // re-saving a product would run that already-marked-up number
+      // through the pricing formula again, inflating the price a
+      // little more with every single save.
+      sellerPrice: p.seller_price != null ? Number(p.seller_price) : null,
       rating: Number(p.rating) || 0,
       numReviews: p.num_reviews || 0,
       sellerEmail: p.seller_email || null,
