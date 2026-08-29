@@ -15361,9 +15361,18 @@ function createAdminSellerManagement() {
   let _detailShowAllColours = {}; // { attributeId: true/false } - "View all colours" expand state
   let _detailProduct = null;
 
+  // A variant with no options at all (a leftover/orphaned row - can
+  // happen if a product's options were rebuilt without first clearing
+  // the old ones) must never match a real selection. `[].every(...)` is
+  // vacuously true in JS - a variant with zero options would otherwise
+  // "match" any combination the buyer picks, and since it comes first
+  // in the array, it would win over the real, correctly-optioned
+  // variant every time. This is what silently broke Kanyaga-per-variant
+  // pricing (and would have broken regular per-variant pricing too, for
+  // any product carrying this kind of leftover row).
   function _findMatchingVariant(variants, selected) {
     return variants.find(v =>
-      v.options.every(o => selected[o.attribute_name] === o.value)
+      v.options.length > 0 && v.options.every(o => selected[o.attribute_name] === o.value)
     ) || null;
   }
 
@@ -15439,7 +15448,6 @@ function createAdminSellerManagement() {
       const basePrice = (matched && matched.price != null) ? Number(matched.price) : Number(product.price);
       const kanyagaPrice = (matched && matched.kanyaga_price != null) ? Number(matched.kanyaga_price) : Number(product.kanyagaPrice);
       const showPrice = kanyaga ? kanyagaPrice : basePrice;
-      console.log('[KANYAGA DEBUG]', { combo, matchedId: matched ? matched.id : null, matchedKanyagaPrice: matched ? matched.kanyaga_price : null, productKanyagaPrice: product.kanyagaPrice, kanyaga, kanyagaPrice, showPrice });
       return { combo, matched, basePrice, showPrice, isKanyaga: kanyaga };
     });
 
