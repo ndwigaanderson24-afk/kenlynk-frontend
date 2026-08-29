@@ -7728,6 +7728,17 @@ if(page === "admin") {
 
   }
 
+  // A single 5-star review looks statistically meaningless and can read
+  // as fake confidence - the rating and review count only show once a
+  // product has a real sample size behind them. Below the threshold,
+  // nothing shows at all (no "0 reviews", no empty stars) rather than
+  // a count that would just count up 1, 2, 3, 4 before finally becoming
+  // visible - it appears already showing 5 the moment it qualifies.
+  const MIN_REVIEWS_TO_SHOW = 5;
+  function shouldShowRating(numReviews) {
+    return (numReviews || 0) >= MIN_REVIEWS_TO_SHOW;
+  }
+
   // Converts a UTC Date/ISO string into the "YYYY-MM-DDTHH:MM" format a
   // <input type="datetime-local"> field expects, in the browser's own
   // local time - the inverse of the local->UTC conversion done when a
@@ -7831,7 +7842,7 @@ if(page === "admin") {
         <div class="pcard-body">
           <div class="pcard-name">${escapeHtml(p.name)}</div>
           ${p.sellerBusinessName ? `<div class="pcard-seller" data-seller="${escapeHtml(p.sellerEmail||'')}">🏪 ${escapeHtml(p.sellerBusinessName)}</div>` : ''}
-          ${p.rating ? `<div class="pcard-rating">${'★'.repeat(Math.round(p.rating))}${'☆'.repeat(5-Math.round(p.rating))} <span style="color:var(--gray)">(${p.numReviews||0})</span></div>` : ''}
+          ${shouldShowRating(p.numReviews) ? `<div class="pcard-rating">${'★'.repeat(Math.round(p.rating))}${'☆'.repeat(5-Math.round(p.rating))} <span style="color:var(--gray)">(${p.numReviews})</span></div>` : ''}
           ${kanyagaActive ? `
             <div class="pcard-price" style="color:#e63946;">KES ${p.kanyagaPrice.toLocaleString()}</div>
             <div class="pcard-original">KES ${p.price.toLocaleString()}</div>
@@ -7873,7 +7884,7 @@ if(page === "admin") {
             <span class="card-seller-badge">✓ Seller</span>
           </div>` : ''}
         <div class="card-name">${escapeHtml(p.name)}</div>
-        ${p.rating ? `<div class="card-rating">${'★'.repeat(Math.round(p.rating))}${'☆'.repeat(5-Math.round(p.rating))} <span style="color:var(--gray); font-size:10px;">(${p.numReviews||0})</span></div>` : ''}
+        ${shouldShowRating(p.numReviews) ? `<div class="card-rating">${'★'.repeat(Math.round(p.rating))}${'☆'.repeat(5-Math.round(p.rating))} <span style="color:var(--gray); font-size:10px;">(${p.numReviews})</span></div>` : ''}
         ${kanyagaActive ? `
           <div class="card-price-row">
             <span class="card-price" style="color:#e63946;">KES ${p.kanyagaPrice.toLocaleString()}</span>
@@ -8233,13 +8244,15 @@ if(page === "admin") {
 
         <div class="desc">${escapeHtml(p.desc)}</div>
 
+        ${shouldShowRating(p.numReviews) ? `
         <div style="display:flex; align-items:center; gap:6px; margin:4px 0;">
 
-          <span style="font-size:14px;">${getStarRating(p.rating || 0)}</span>
+          <span style="font-size:14px;">${getStarRating(p.rating)}</span>
 
-          <span style="color:var(--gray); font-size:12px;">(${p.numReviews || 0})</span>
+          <span style="color:var(--gray); font-size:12px;">(${p.numReviews})</span>
 
         </div>
+        ` : ''}
 
         <div class="price-row"><span class="price">KES ${p.price.toLocaleString()}</span>${p.originalPrice ? `<span class="price-strike">KES ${p.originalPrice.toLocaleString()}</span>` : ''}</div>
 
@@ -16231,10 +16244,12 @@ function createAdminSellerManagement() {
             <span style="color:var(--green-light); font-weight:700;">✓ Seller</span>
             <span style="color:var(--gray);">— view shop ›</span>
           </div>` : ''}
+          ${shouldShowRating(product.numReviews) ? `
           <div style="display:flex; align-items:center; gap:10px;">
-            <span style="font-size:20px;">${getStarRating(product.rating || 0)}</span>
-            <span style="color:var(--gray); font-size:14px;">(${product.numReviews || 0} reviews)</span>
+            <span style="font-size:20px;">${getStarRating(product.rating)}</span>
+            <span style="color:var(--gray); font-size:14px;">(${product.numReviews} reviews)</span>
           </div>
+          ` : ''}
           ${!hasVariants ? `
           <div class="price" id="detailUnitPrice">KES ${product.price.toLocaleString()}</div>
           ${product.originalPrice ? `<div style="color:var(--gray);"><s>KES ${product.originalPrice.toLocaleString()}</s> <span style="color:var(--green-light);">${Math.round((1 - product.price/product.originalPrice) * 100)}% OFF</span></div>` : ''}
@@ -16290,7 +16305,7 @@ function createAdminSellerManagement() {
             <ul style="color:var(--gray); font-size:13px; list-style:none; padding:0;">
               <li>📦 Product ID: #${product.id}</li>
               <li>📂 Category: ${product.category || 'N/A'}</li>
-              ${product.rating ? `<li>⭐ Rating: ${product.rating}/5 (${product.numReviews} reviews)</li>` : ''}
+              ${shouldShowRating(product.numReviews) ? `<li>⭐ Rating: ${product.rating}/5 (${product.numReviews} reviews)</li>` : ''}
             </ul>
           </div>
         </div>
@@ -18400,10 +18415,12 @@ window._renderSellerShopPage = async function() {
             <h2 style="font-family:var(--font-display); margin:0;">🏪 ${escapeHtml(businessName)}</h2>
             ${profile.verified ? `<span style="background:var(--green); color:#fff; font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px;">✓ Verified Seller</span>` : ''}
           </div>
+          ${shouldShowRating(profile.num_reviews) ? `
           <div style="display:flex; align-items:center; gap:10px; margin-top:6px; flex-wrap:wrap;">
-            <span style="font-size:14px;">${getStarRating(profile.rating || 0)}</span>
-            <span style="color:var(--gray); font-size:13px;">(${profile.num_reviews || 0} reviews)</span>
+            <span style="font-size:14px;">${getStarRating(profile.rating)}</span>
+            <span style="color:var(--gray); font-size:13px;">(${profile.num_reviews} reviews)</span>
           </div>
+          ` : ''}
         </div>
         <button onclick="window._toggleFollowSeller('${sellerEmail}')" style="background:${isFollowing ? 'var(--surface-3)' : 'var(--green)'}; color:${isFollowing ? 'var(--white)' : '#fff'}; border:1px solid ${isFollowing ? 'var(--border-strong)' : 'var(--green)'}; border-radius:10px; padding:10px 20px; cursor:pointer; font-weight:700; font-size:13px;">${isFollowing ? '✓ Following' : '+ Follow Shop'}</button>
       </div>
