@@ -15439,6 +15439,7 @@ function createAdminSellerManagement() {
       const basePrice = (matched && matched.price != null) ? Number(matched.price) : Number(product.price);
       const kanyagaPrice = (matched && matched.kanyaga_price != null) ? Number(matched.kanyaga_price) : Number(product.kanyagaPrice);
       const showPrice = kanyaga ? kanyagaPrice : basePrice;
+      console.log('[KANYAGA DEBUG]', { combo, matchedId: matched ? matched.id : null, matchedKanyagaPrice: matched ? matched.kanyaga_price : null, productKanyagaPrice: product.kanyagaPrice, kanyaga, kanyagaPrice, showPrice });
       return { combo, matched, basePrice, showPrice, isKanyaga: kanyaga };
     });
 
