@@ -15813,6 +15813,15 @@ function createAdminSellerManagement() {
 
     const COLOUR_VISIBLE_LIMIT = 6;
 
+    // When nothing's selected yet (or nothing matched), fall back to
+    // showing the parent product's own price - but that fallback still
+    // has to respect an active Kanyaga deal, otherwise the very first
+    // thing a buyer sees before touching any checkbox is the wrong,
+    // un-discounted price.
+    const noSelectionKanyaga = !lines.length && window.isKanyagaActive && window.isKanyagaActive(product);
+    const fallbackRegularPrice = Number(product.price);
+    const fallbackShowPrice = noSelectionKanyaga ? Number(product.kanyagaPrice) : fallbackRegularPrice;
+
     let html = `
       <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px; padding-right:36px;">
         <img id="variantModalThumb" src="${displayImage}" style="width:64px; height:64px; border-radius:12px; object-fit:cover; flex-shrink:0;">
@@ -15821,10 +15830,10 @@ function createAdminSellerManagement() {
           <div id="variantModalPriceLine" style="margin-top:2px;">
             ${hasMultiAttr && lines.length > 1 ? `
               <div style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700;">KES ${total.toLocaleString()} <span style="font-size:11px; color:var(--gray); font-weight:500;">(${lines.length} items)</span></div>
-            ` : lines[0] && lines[0].isKanyaga ? `
-              <div style="font-family:var(--font-mono); font-size:13px; color:var(--gray); text-decoration:line-through;">KES ${lines[0].basePrice.toLocaleString()}</div>
-              <div style="font-family:var(--font-mono); font-size:16px; color:#e63946; font-weight:800;">KES ${lines[0].showPrice.toLocaleString()} <span style="font-size:11px; font-weight:700;">🔥 Kanyaga</span></div>
-            ` : `<div style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700;">KES ${(lines[0] ? lines[0].showPrice : Number(product.price)).toLocaleString()}</div>`}
+            ` : (lines[0] && lines[0].isKanyaga) || noSelectionKanyaga ? `
+              <div style="font-family:var(--font-mono); font-size:13px; color:var(--gray); text-decoration:line-through;">KES ${(lines[0] ? lines[0].basePrice : fallbackRegularPrice).toLocaleString()}</div>
+              <div style="font-family:var(--font-mono); font-size:16px; color:#e63946; font-weight:800;">KES ${(lines[0] ? lines[0].showPrice : fallbackShowPrice).toLocaleString()} <span style="font-size:11px; font-weight:700;">🔥 Kanyaga</span></div>
+            ` : `<div style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700;">KES ${(lines[0] ? lines[0].showPrice : fallbackShowPrice).toLocaleString()}</div>`}
           </div>
           <div id="variantModalStockLine" style="font-size:11.5px; margin-top:2px;">
             ${!attributes.length ? '' : !allPicked ? '<span style="color:var(--gray);">Select options below</span>'
