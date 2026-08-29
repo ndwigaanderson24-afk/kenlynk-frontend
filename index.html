@@ -15614,7 +15614,6 @@ function createAdminSellerManagement() {
               onchange="window._toggleDetailMultiOption('${attrJsString(attr.name)}', '${attrJsString(val)}')"
               style="width:18px; height:18px; accent-color:var(--gold); flex-shrink:0;">
             <span style="flex:1; font-size:13px; font-weight:${isChecked ? 700 : 500}; color:${isChecked ? 'var(--gold)' : 'var(--white)'};">${escapeHtml(val)}${!hasStock ? ' (out of stock)' : ''}</span>
-            ${hasStock ? `<span style="font-family:var(--font-mono); font-size:12.5px; color:var(--gray);">KES ${valPrice.toLocaleString()}</span>` : ''}
           </label>`;
         }
         html += `</div>`;
@@ -15897,7 +15896,6 @@ function createAdminSellerManagement() {
               onchange="window._toggleModalMultiOption('${attrJsString(attr.name)}', '${attrJsString(val)}')"
               style="width:18px; height:18px; accent-color:var(--gold); flex-shrink:0;">
             <span style="flex:1; font-size:13px; font-weight:${isChecked ? 700 : 500}; color:${isChecked ? 'var(--gold)' : 'var(--white)'};">${escapeHtml(val)}${!hasStock ? ' (out of stock)' : ''}</span>
-            ${hasStock ? `<span style="font-family:var(--font-mono); font-size:12.5px; color:var(--gray);">KES ${valPrice.toLocaleString()}</span>` : ''}
           </label>`;
         }
         html += `</div>`;
