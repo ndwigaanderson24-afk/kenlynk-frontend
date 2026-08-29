@@ -15396,7 +15396,11 @@ function createAdminSellerManagement() {
 
     const basePrice = (matched && matched.price != null) ? Number(matched.price) : Number(product.price);
     const kanyaga = !!(window.isKanyagaActive && window.isKanyagaActive(product));
-    const showPrice = kanyaga ? Number(product.kanyagaPrice) : basePrice;
+    // A variant with its own Kanyaga price overrides the product's one
+    // flat Kanyaga price - falls back to the product's when this
+    // specific variant doesn't have its own set.
+    const kanyagaPrice = (matched && matched.kanyaga_price != null) ? Number(matched.kanyaga_price) : Number(product.kanyagaPrice);
+    const showPrice = kanyaga ? kanyagaPrice : basePrice;
 
     return { matched, allPicked, basePrice, showPrice, isKanyaga: kanyaga };
   }
@@ -15433,7 +15437,8 @@ function createAdminSellerManagement() {
     const lines = combos.map(combo => {
       const matched = _findMatchingVariant(variantData.variants, combo);
       const basePrice = (matched && matched.price != null) ? Number(matched.price) : Number(product.price);
-      const showPrice = kanyaga ? Number(product.kanyagaPrice) : basePrice;
+      const kanyagaPrice = (matched && matched.kanyaga_price != null) ? Number(matched.kanyaga_price) : Number(product.kanyagaPrice);
+      const showPrice = kanyaga ? kanyagaPrice : basePrice;
       return { combo, matched, basePrice, showPrice, isKanyaga: kanyaga };
     });
 
@@ -15450,7 +15455,8 @@ function createAdminSellerManagement() {
 
     const basePrice = (matched && matched.price != null) ? Number(matched.price) : Number(product.price);
     const kanyaga = !!(window.isKanyagaActive && window.isKanyagaActive(product));
-    const showPrice = kanyaga ? Number(product.kanyagaPrice) : basePrice;
+    const kanyagaPrice = (matched && matched.kanyaga_price != null) ? Number(matched.kanyaga_price) : Number(product.kanyagaPrice);
+    const showPrice = kanyaga ? kanyagaPrice : basePrice;
 
     return { matched, basePrice, showPrice, isKanyaga: kanyaga };
   }
@@ -21137,7 +21143,7 @@ window._varGenerateRows = function(which) {
   combos.forEach(combo => {
     const key = state.types.map(t => (combo[t.name] || '').trim().toLowerCase()).join('||');
     if (existingKeys.has(key)) return;
-    state.rows.push({ id: null, values: combo, price: '', originalPrice: '', stock: '', sku: '', image: '' });
+    state.rows.push({ id: null, values: combo, price: '', originalPrice: '', kanyagaPrice: '', stock: '', sku: '', image: '' });
     existingKeys.add(key);
     added++;
   });
@@ -21154,7 +21160,7 @@ window._varAddRow = function(which) {
   if (!state.types.length) { showToast('Add at least one option type first (e.g. Size).', 'error'); return; }
   const values = {};
   state.types.forEach(t => { values[t.name] = ''; });
-  state.rows.push({ id: null, values, price: '', originalPrice: '', stock: '', sku: '', image: '' });
+  state.rows.push({ id: null, values, price: '', originalPrice: '', kanyagaPrice: '', stock: '', sku: '', image: '' });
   window._varRender(which);
 };
 
@@ -21267,6 +21273,10 @@ window._varRender = function(which) {
           <input type="number" min="0" value="${row.originalPrice}" placeholder="for a crossed-out price" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._varUpdateRowField('${which}', ${i}, 'originalPrice', this.value)">
         </div>
         <div>
+          <label style="font-size:10px; color:#e63946; display:block;">🔥 Kanyaga Price (optional)</label>
+          <input type="number" min="0" value="${row.kanyagaPrice}" placeholder="leave blank to use product's Kanyaga price" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._varUpdateRowField('${which}', ${i}, 'kanyagaPrice', this.value)">
+        </div>
+        <div>
           <label style="font-size:10px; color:var(--gray); display:block;">Stock *</label>
           <input type="number" min="0" value="${row.stock}" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._varUpdateRowField('${which}', ${i}, 'stock', this.value)">
         </div>
@@ -21315,6 +21325,9 @@ window._varCollect = function(which) {
     if (!row.image) { showToast(`"${label}" needs its own photo.`, 'error'); return null; }
     if (row.stock === '' || isNaN(Number(row.stock)) || Number(row.stock) < 0) { showToast(`"${label}" needs a stock quantity.`, 'error'); return null; }
     if (row.price === '' || isNaN(Number(row.price)) || Number(row.price) <= 0) { showToast(`"${label}" needs a selling price.`, 'error'); return null; }
+    if (row.kanyagaPrice !== '' && row.kanyagaPrice !== undefined && row.kanyagaPrice !== null && (isNaN(Number(row.kanyagaPrice)) || Number(row.kanyagaPrice) <= 0)) {
+      showToast(`"${label}"'s Kanyaga price must be a valid number, or left blank.`, 'error'); return null;
+    }
   }
 
   return state.rows.map(row => ({
@@ -21324,7 +21337,8 @@ window._varCollect = function(which) {
     stock: parseInt(row.stock, 10),
     sku: (row.sku || '').trim() || undefined,
     seller_price: Number(row.price),
-    original_price: (row.originalPrice !== '' && row.originalPrice !== undefined && row.originalPrice !== null) ? Number(row.originalPrice) : undefined
+    original_price: (row.originalPrice !== '' && row.originalPrice !== undefined && row.originalPrice !== null) ? Number(row.originalPrice) : undefined,
+    kanyaga_price: (row.kanyagaPrice !== '' && row.kanyagaPrice !== undefined && row.kanyagaPrice !== null) ? Number(row.kanyagaPrice) : undefined
   }));
 };
 
@@ -21363,7 +21377,7 @@ async function _varSave(productId, rows, isAdminMode, which) {
     const comboLabel = Object.entries(row.values).map(([k, v]) => `${k}: ${v}`).join(', ');
     const body = JSON.stringify({
       stock: row.stock, sku: row.sku,
-      seller_price: row.seller_price, original_price: row.original_price,
+      seller_price: row.seller_price, original_price: row.original_price, kanyaga_price: row.kanyaga_price,
       images_json: JSON.stringify([row.image]),
       options: Object.entries(row.values)
         .filter(([k]) => attrIdByName[k])
@@ -21406,6 +21420,7 @@ window._varLoadExisting = async function(which, productId, isAdminMode) {
         image: (v.images && v.images.length) ? v.images[0] : '',
         price: v.seller_price != null ? v.seller_price : '',
         originalPrice: v.original_price != null ? v.original_price : '',
+        kanyagaPrice: v.kanyaga_price != null ? v.kanyaga_price : '',
         stock: v.stock,
         sku: v.sku || ''
       }))
