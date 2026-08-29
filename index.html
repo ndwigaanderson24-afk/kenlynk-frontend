@@ -15470,6 +15470,7 @@ function createAdminSellerManagement() {
     html += `</div>`;
 
     const matched = variants.find(v => v.id === _detailSelectedVariantId) || null;
+    const { basePrice, showPrice, isKanyaga } = resolvePhotoVariantPrice(product, variantData, _detailSelectedVariantId);
     html += `<div id="variantMatchInfo" style="margin-top:10px; padding:10px; border-radius:8px; background:var(--surface); border:1px solid var(--border);">`;
     if (!matched) {
       html += `<div style="color:var(--gray); font-size:13px;">👆 Tap a photo above to see its price and availability.</div>`;
@@ -15479,8 +15480,8 @@ function createAdminSellerManagement() {
       html += `
         <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
           <div>
-            <span style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:var(--gold);">KES ${Number(product.price).toLocaleString()}</span>
-            ${product.originalPrice ? `<span style="color:var(--gray); font-size:12px; text-decoration:line-through; margin-left:8px;">KES ${Number(product.originalPrice).toLocaleString()}</span>` : ''}
+            ${isKanyaga ? `<span style="color:var(--gray); font-size:12px; text-decoration:line-through; margin-right:8px;">KES ${basePrice.toLocaleString()}</span>` : ''}
+            <span style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:${isKanyaga ? '#e63946' : 'var(--gold)'};">KES ${showPrice.toLocaleString()}${isKanyaga ? ' 🔥' : ''}</span>
           </div>
           <div style="font-size:12px; color:var(--green-light);">✅ ${matched.stock} in stock</div>
         </div>
@@ -15538,6 +15539,7 @@ function createAdminSellerManagement() {
   function _renderVariantPicker(variantData, product) {
     if (!variantData || !variantData.attributes || !variantData.attributes.length) return '';
     const { attributes, variants, attributeValues } = variantData;
+    const hasMultiAttr = attributes.some(a => a.selection_type === 'multiple');
 
     let html = `<div id="variantPickerWrapModal" style="margin:14px 0; padding:14px; background:var(--surface-2); border-radius:12px; border:1px solid var(--border);">`;
 
@@ -15546,12 +15548,19 @@ function createAdminSellerManagement() {
     for (const attr of attributes) {
       const values = attributeValues[attr.name] || [];
       const isColour = attr.name.toLowerCase() === 'colour' || attr.name.toLowerCase() === 'color';
+      const isMulti = attr.selection_type === 'multiple';
       const selectedVal = _detailSelectedOptions[attr.name];
+      const selectedList = isMulti ? (Array.isArray(selectedVal) ? selectedVal : []) : [];
 
       html += `<div style="margin-bottom:12px;">`;
-      html += `<div style="font-size:13px; font-weight:700; color:var(--white); margin-bottom:8px;">${escapeHtml(attr.name)}: <span style="color:var(--gold);">${selectedVal ? escapeHtml(selectedVal) : 'please select'}</span></div>`;
+      html += `<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <div style="font-size:13px; font-weight:700; color:var(--white);">${escapeHtml(attr.name)}${isMulti ? ' <span style="color:var(--gray); font-weight:500; font-size:11px;">(choose one or more)</span>' : ''}:
+          <span style="color:var(--gold);">${isMulti ? (selectedList.length ? `${selectedList.length} selected` : 'please select') : (selectedVal ? escapeHtml(selectedVal) : 'please select')}</span>
+        </div>
+        ${isMulti ? `<button type="button" onclick="window._toggleDetailSelectAll('${attrJsString(attr.name)}')" style="background:none; border:1px solid var(--gold); color:var(--gold); font-size:11px; font-weight:700; border-radius:999px; padding:4px 12px; cursor:pointer;">Select All</button>` : ''}
+      </div>`;
 
-      if (isColour) {
+      if (isColour && !isMulti) {
         const expanded = !!_detailShowAllColours[attr.id];
         const visibleValues = expanded ? values : values.slice(0, COLOUR_VISIBLE_LIMIT);
 
@@ -15577,6 +15586,25 @@ function createAdminSellerManagement() {
             ${expanded ? 'Show fewer colours' : `View all ${values.length} colours`}
           </button>`;
         }
+      } else if (isMulti) {
+        // Checkbox row - mirrors the Order Now popup exactly, each
+        // value shows its own price so the buyer can see what each
+        // tick costs before adding anything to cart.
+        html += `<div style="display:flex; flex-direction:column; gap:8px;" id="attr_${attr.id}_btns">`;
+        for (const val of values) {
+          const variantForVal = variants.find(v => v.options.some(o => o.attribute_name === attr.name && o.value === val));
+          const hasStock = !!(variantForVal && variantForVal.is_active && variantForVal.stock > 0);
+          const valPrice = (variantForVal && variantForVal.price != null) ? Number(variantForVal.price) : Number(product.price);
+          const isChecked = selectedList.includes(val);
+          html += `<label style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; border:2px solid ${isChecked ? 'var(--gold)' : 'var(--border-strong)'}; background:${isChecked ? 'rgba(255,193,7,0.08)' : 'var(--surface-3)'}; cursor:${hasStock ? 'pointer' : 'default'}; opacity:${hasStock ? 1 : 0.5};">
+            <input type="checkbox" ${isChecked ? 'checked' : ''} ${!hasStock ? 'disabled' : ''}
+              onchange="window._toggleDetailMultiOption('${attrJsString(attr.name)}', '${attrJsString(val)}')"
+              style="width:18px; height:18px; accent-color:var(--gold); flex-shrink:0;">
+            <span style="flex:1; font-size:13px; font-weight:${isChecked ? 700 : 500}; color:${isChecked ? 'var(--gold)' : 'var(--white)'};">${escapeHtml(val)}${!hasStock ? ' (out of stock)' : ''}</span>
+            ${hasStock ? `<span style="font-family:var(--font-mono); font-size:12.5px; color:var(--gray);">KES ${valPrice.toLocaleString()}</span>` : ''}
+          </label>`;
+        }
+        html += `</div>`;
       } else {
         html += `<div style="display:flex; flex-wrap:wrap; gap:6px;" id="attr_${attr.id}_btns">`;
         for (const val of values) {
@@ -15603,27 +15631,45 @@ function createAdminSellerManagement() {
       html += `</div>`;
     }
 
-    // Matched variant info
-    const matched = _findMatchingVariant(variants, _detailSelectedOptions);
-    const allAttrsPicked = attributes.every(a => _detailSelectedOptions[a.name]);
+    // Matched variant / selected-combination info - uses the exact same
+    // resolver functions the Order Now popup uses, so this box and the
+    // main #detailUnitPrice display can never disagree about price
+    // again (previously hardcoded to product.price regardless of which
+    // variant was actually selected).
+    const single = resolveVariantPrice(product, variantData, _detailSelectedOptions);
+    const multi = hasMultiAttr ? resolveMultiVariantPrices(product, variantData, _detailSelectedOptions) : null;
+    const matched = single.matched;
+    const allPicked = hasMultiAttr ? multi.allPicked : single.allPicked;
+    const lines = hasMultiAttr ? multi.lines.filter(l => l.matched) : (matched ? [{ matched, basePrice: single.basePrice, showPrice: single.showPrice, isKanyaga: single.isKanyaga }] : []);
+    const total = lines.reduce((sum, l) => sum + l.showPrice, 0);
 
     html += `<div id="variantMatchInfoModal" style="margin-top:10px; padding:10px; border-radius:8px; background:var(--surface); border:1px solid var(--border);">`;
-    if (!allAttrsPicked) {
-      html += `<div style="color:var(--gray); font-size:13px;">👆 Please select a colour to see price and availability.</div>`;
-    } else if (!matched) {
-      html += `<div style="color:#e74c3c; font-size:13px; font-weight:600;">❌ This combination is not available.</div>`;
-    } else if (!matched.is_active || matched.stock === 0) {
-      html += `<div style="color:#e74c3c; font-size:13px; font-weight:600;">❌ Out of stock.</div>`;
+    if (!allPicked) {
+      html += `<div style="color:var(--gray); font-size:13px;">👆 Please select an option above to see price and availability.</div>`;
+    } else if (!lines.length) {
+      html += `<div style="color:#e74c3c; font-size:13px; font-weight:600;">❌ That combination is not available.</div>`;
+    } else if (hasMultiAttr && lines.length > 1) {
+      html += `<div style="font-size:12px; font-weight:700; color:var(--white); margin-bottom:6px;">Selected (${lines.length})</div>`;
+      html += lines.map(l => `
+        <div style="display:flex; justify-content:space-between; font-size:12px; padding:3px 0; color:var(--gray);">
+          <span>${escapeHtml(Object.values(l.matched.options.reduce((a,o)=>{a[o.attribute_name]=o.value;return a;},{})).join(' · '))}</span>
+          <span style="color:var(--white); font-weight:600;">KES ${l.showPrice.toLocaleString()}</span>
+        </div>
+      `).join('');
+      html += `<div style="display:flex; justify-content:space-between; font-size:13px; font-weight:800; color:var(--gold); border-top:1px solid var(--border); margin-top:6px; padding-top:6px;">
+        <span>Total</span><span>KES ${total.toLocaleString()}</span>
+      </div>`;
     } else {
+      const l = lines[0];
       html += `
         <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
           <div>
-            <span style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:var(--gold);">KES ${Number(product.price).toLocaleString()}</span>
-            ${product.originalPrice ? `<span style="color:var(--gray); font-size:12px; text-decoration:line-through; margin-left:8px;">KES ${Number(product.originalPrice).toLocaleString()}</span>` : ''}
+            ${l.isKanyaga ? `<span style="color:var(--gray); font-size:12px; text-decoration:line-through; margin-right:8px;">KES ${l.basePrice.toLocaleString()}</span>` : ''}
+            <span style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:${l.isKanyaga ? '#e63946' : 'var(--gold)'};">KES ${l.showPrice.toLocaleString()}${l.isKanyaga ? ' 🔥' : ''}</span>
           </div>
-          <div style="font-size:12px; color:var(--green-light);">✅ ${matched.stock} in stock</div>
+          <div style="font-size:12px; color:var(--green-light);">✅ ${l.matched.stock} in stock</div>
         </div>
-        ${matched.sku ? `<div style="font-size:11px; color:var(--gray); margin-top:4px;">SKU: ${escapeHtml(matched.sku)}</div>` : ''}
+        ${l.matched.sku ? `<div style="font-size:11px; color:var(--gray); margin-top:4px;">SKU: ${escapeHtml(l.matched.sku)}</div>` : ''}
       `;
     }
     html += `</div></div>`;
@@ -15994,25 +16040,87 @@ function createAdminSellerManagement() {
 
   window._toggleShowAllColours = function(attrId) {
     _detailShowAllColours[attrId] = !_detailShowAllColours[attrId];
-    const wrap = document.getElementById('variantPickerWrap');
+    const wrap = document.getElementById('variantPickerWrapModal');
     if (wrap) wrap.outerHTML = _renderVariantPicker(_detailVariantData, _detailProduct);
   };
 
   window._selectVariantOption = function(attrName, value) {
     _detailSelectedOptions[attrName] = value;
     // Re-render picker in place
-    const wrap = document.getElementById('variantPickerWrap');
+    const wrap = document.getElementById('variantPickerWrapModal');
     if (wrap) wrap.outerHTML = _renderVariantPicker(_detailVariantData, _detailProduct);
     // Update price display and add-to-cart button state
     _syncVariantDetailUI();
   };
 
+  // Multi-select equivalents - value is added to or removed from an
+  // array instead of replacing a single choice.
+  window._toggleDetailMultiOption = function(attrName, value) {
+    const current = Array.isArray(_detailSelectedOptions[attrName]) ? _detailSelectedOptions[attrName] : [];
+    _detailSelectedOptions[attrName] = current.includes(value)
+      ? current.filter(v => v !== value)
+      : [...current, value];
+    const wrap = document.getElementById('variantPickerWrapModal');
+    if (wrap) wrap.outerHTML = _renderVariantPicker(_detailVariantData, _detailProduct);
+    _syncVariantDetailUI();
+  };
+
+  window._toggleDetailSelectAll = function(attrName) {
+    const values = (_detailVariantData.attributeValues && _detailVariantData.attributeValues[attrName]) || [];
+    const purchasable = values.filter(val =>
+      _detailVariantData.variants.some(v => v.is_active && v.stock > 0 && v.options.some(o => o.attribute_name === attrName && o.value === val))
+    );
+    const current = Array.isArray(_detailSelectedOptions[attrName]) ? _detailSelectedOptions[attrName] : [];
+    const allSelected = purchasable.length > 0 && purchasable.every(v => current.includes(v));
+    _detailSelectedOptions[attrName] = allSelected ? [] : [...purchasable];
+    const wrap = document.getElementById('variantPickerWrapModal');
+    if (wrap) wrap.outerHTML = _renderVariantPicker(_detailVariantData, _detailProduct);
+    _syncVariantDetailUI();
+  };
+
   function _syncVariantDetailUI() {
     if (!_detailVariantData) return;
-    const { matched, allPicked, basePrice, showPrice, isKanyaga } = resolveVariantPrice(_detailProduct, _detailVariantData, _detailSelectedOptions);
+    const attributes = _detailVariantData.attributes || [];
+    const hasMultiAttr = attributes.some(a => a.selection_type === 'multiple');
     const cartBtn = document.getElementById('detailAddToCartBtn');
-
     const priceEl = document.getElementById('detailUnitPrice');
+
+    if (hasMultiAttr) {
+      const { lines, allPicked } = resolveMultiVariantPrices(_detailProduct, _detailVariantData, _detailSelectedOptions);
+      const validLines = lines.filter(l => l.matched && l.matched.is_active && l.matched.stock > 0);
+      const total = validLines.reduce((sum, l) => sum + l.showPrice, 0);
+
+      if (priceEl) {
+        priceEl.innerHTML = validLines.length > 1
+          ? `KES ${total.toLocaleString()} <span style="font-size:0.5em; color:var(--gray); font-weight:500;">(${validLines.length} items)</span>`
+          : (validLines.length === 1
+              ? (validLines[0].isKanyaga
+                  ? `<span style="text-decoration:line-through; color:var(--gray); font-size:0.6em; margin-right:6px;">KES ${validLines[0].basePrice.toLocaleString()}</span><span style="color:#e63946;">KES ${validLines[0].showPrice.toLocaleString()} 🔥</span>`
+                  : `KES ${validLines[0].showPrice.toLocaleString()}`)
+              : `KES ${Number(_detailProduct.price).toLocaleString()}`);
+      }
+
+      if (!cartBtn) return;
+      if (allPicked && validLines.length) {
+        cartBtn.disabled = false;
+        cartBtn.style.opacity = '1';
+        cartBtn.onclick = async () => {
+          for (const line of validLines) await addToCart(_detailProduct.id, 1, line.matched);
+        };
+        if (validLines[0].matched.images && validLines[0].matched.images.length) {
+          const img = document.getElementById('detailMainImage');
+          if (img) img.src = validLines[0].matched.images[0];
+        }
+      } else {
+        cartBtn.disabled = true;
+        cartBtn.style.opacity = '0.6';
+        cartBtn.onclick = null;
+      }
+      return;
+    }
+
+    const { matched, allPicked, basePrice, showPrice, isKanyaga } = resolveVariantPrice(_detailProduct, _detailVariantData, _detailSelectedOptions);
+
     if (priceEl) {
       priceEl.innerHTML = isKanyaga
         ? `<span style="text-decoration:line-through; color:var(--gray); font-size:0.6em; margin-right:6px;">KES ${basePrice.toLocaleString()}</span><span style="color:#e63946;">KES ${showPrice.toLocaleString()} 🔥</span>`
@@ -16077,7 +16185,9 @@ function createAdminSellerManagement() {
           if (_detailVariantData.attributes) {
             for (const attr of _detailVariantData.attributes) {
               const values = (_detailVariantData.attributeValues && _detailVariantData.attributeValues[attr.name]) || [];
-              if (values.length === 1) _detailSelectedOptions[attr.name] = values[0];
+              if (values.length === 1) {
+                _detailSelectedOptions[attr.name] = attr.selection_type === 'multiple' ? [values[0]] : values[0];
+              }
             }
           }
           variantHtml = (vRes.data.attributes && vRes.data.attributes.length)
