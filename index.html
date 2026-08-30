@@ -3858,6 +3858,24 @@
         </div>
       </div>
 
+      <div id="markPurchasedModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2000; align-items:center; justify-content:center; padding:20px;" onclick="if(event.target===this) closeMarkPurchasedModal();">
+        <div style="background:var(--surface); border:1px solid var(--border-strong); border-radius:16px; max-width:420px; width:100%; padding:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="margin:0;">📦 Record Supplier Purchase</h3>
+            <button onclick="closeMarkPurchasedModal()" style="background:none; border:none; color:var(--gray); font-size:20px; cursor:pointer;">✕</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <input id="mpSupplierName" type="text" placeholder="Supplier name" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:10px; font-size:13px;">
+            <input id="mpSupplierOrderNumber" type="text" placeholder="Supplier order number" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:10px; font-size:13px;">
+            <input id="mpSupplierCost" type="number" placeholder="Actual purchase cost (KES)" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:10px; font-size:13px;">
+            <input id="mpSupplierDate" type="date" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:10px; font-size:13px;">
+            <input id="mpSupplierTracking" type="text" placeholder="Supplier tracking number" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:10px; font-size:13px;">
+            <textarea id="mpSupplierNotes" placeholder="Internal notes" rows="2" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:10px; font-size:13px; resize:vertical;"></textarea>
+            <button onclick="submitMarkPurchased()" style="background:var(--green); color:#fff; border:none; border-radius:10px; padding:12px; cursor:pointer; font-weight:700; font-size:14px; margin-top:6px;">✅ Record Purchase & Mark Purchased</button>
+          </div>
+        </div>
+      </div>
+
     </div>
 
           
@@ -8612,7 +8630,8 @@ function mapApiAdminOrder(o) {
     rider: o.rider_name ? { name: o.rider_name, phone: o.rider_phone, photo: o.rider_photo } : null,
     customerConfirmedAt: o.customer_confirmed_at || null,
     returnReason: o.return_reason || null,
-    refundAmount: o.refund_amount || null
+    refundAmount: o.refund_amount || null,
+    sellerId: o.seller_id || null
   };
 }
 
@@ -18418,8 +18437,18 @@ window.trackOrder = trackOrder
 
 async function renderTrackingResult(order, resultDiv) {
 
-  const STATUS_FLOW = ['Pending Payment', 'Paid', 'Processing', 'Ready for Delivery', 'Out for Delivery', 'Delivered', 'Awaiting Admin Confirmation', 'Completed'];
-  const STATUS_ICONS = { 'Pending Payment': '⏳', 'Paid': '💳', 'Processing': '⚙️', 'Ready for Delivery': '📦', 'Out for Delivery': '🚚', 'Delivery Failed': '⚠️', 'Delivered': '🏠', 'Awaiting Admin Confirmation': '🔎', 'Completed': '✅', 'Return Requested': '↩️', 'Return Approved': '↩️', 'Returned': '📦', 'Refund Processing': '⚙️', 'Cancelled': '❌', 'Refunded': '↩️' };
+  // The path from Paid to Ready for Delivery differs depending on
+  // whether this is a platform/admin-sourced product (seller_id NULL -
+  // KenLynk has to go buy it from a supplier first) or a third-party
+  // seller's own listing (seller_id set - they already have the
+  // stock). Matches orderStatus.js's branching exactly, so the
+  // customer's tracking timeline shows the real steps their specific
+  // order actually goes through, not a generic one that doesn't apply.
+  const isPlatformSourced = !order.seller_id;
+  const STATUS_FLOW = isPlatformSourced
+    ? ['Pending Payment', 'Paid', 'Availability Confirmed', 'Processing / Sourcing', 'Product Purchased', 'Ready for Delivery', 'Out for Delivery', 'Delivered', 'Awaiting Admin Confirmation', 'Completed']
+    : ['Pending Payment', 'Paid', 'Seller Confirmed', 'Seller Preparing', 'Ready for Delivery', 'Out for Delivery', 'Delivered', 'Awaiting Admin Confirmation', 'Completed'];
+  const STATUS_ICONS = { 'Pending Payment': '⏳', 'Paid': '💳', 'Availability Confirmed': '🔍', 'Processing / Sourcing': '🔵', 'Product Purchased': '🛒', 'Product Unavailable': '❌', 'Seller Confirmed': '✅', 'Seller Preparing': '📦', 'Processing': '⚙️', 'Ready for Delivery': '📦', 'Out for Delivery': '🚚', 'Delivery Failed': '⚠️', 'Delivered': '🏠', 'Awaiting Admin Confirmation': '🔎', 'Completed': '✅', 'Return Requested': '↩️', 'Return Approved': '↩️', 'Returned': '📦', 'Refund Processing': '⚙️', 'Cancelled': '❌', 'Refunded': '↩️' };
   const currentStatus = order.status || 'Pending Payment';
   // Anything outside the normal happy-path sequence renders as its own
   // standalone message instead of trying to slot into the linear
@@ -18528,6 +18557,10 @@ async function renderTrackingResult(order, resultDiv) {
       <div style="background:rgba(231,76,60,0.15); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:#e74c3c; font-size:13px;">
         ⚠️ We couldn't complete delivery. Our team will be in touch to reschedule.
       </div>
+    ` : currentStatus === 'Product Unavailable' ? `
+      <div style="background:rgba(231,76,60,0.15); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:#e74c3c; font-size:13px;">
+        ❌ Unfortunately this item is no longer available. Our team will be in touch about a refund.
+      </div>
     ` : currentStatus === 'Return Requested' ? `
       <div style="background:rgba(255,215,0,0.1); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--gold); font-size:13px;">
         ↩️ Your return request has been received and is under review.
@@ -18614,16 +18647,44 @@ function clearTrackResult(inputId, resultId) {
 // is what lets the dropdown only ever offer real, legal moves instead
 // of showing all 9 statuses and relying on the server to reject bad
 // ones. The server is still the final authority either way.
-function _nextOrderStatusOptions(currentStatus, isAdmin) {
+function _nextOrderStatusOptions(currentStatus, isAdmin, sellerId) {
+  // 'Paid' is the one status whose next step depends on WHO owns the
+  // product, not on isAdmin - determined automatically from sellerId,
+  // never a manual choice. Matches orderStatus.js's branching exactly
+  // (PLATFORM_SOURCING_TRANSITIONS vs SELLER_OWNED_TRANSITIONS) - kept
+  // in sync by hand since the frontend has no access to the real
+  // server-side transitions map. The server is still the final
+  // authority either way; a stale list here only affects which options
+  // are offered, never what's actually allowed.
+  if (currentStatus === 'Paid') {
+    if (sellerId) {
+      // Seller-owned product - only a seller/admin can confirm it
+      // (there's no supplier to check with).
+      return ['Seller Confirmed', 'Cancelled'];
+    }
+    // Platform/admin-owned product - only admin can act here (no
+    // seller exists on this order at all).
+    return isAdmin ? ['Availability Confirmed', 'Cancelled'] : [];
+  }
+
   const SELLER_MAP = {
-    'Paid': ['Processing', 'Cancelled'],
-    'Processing': ['Ready for Delivery'],
-    'Ready for Delivery': ['Out for Delivery'],
-    'Out for Delivery': ['Delivered']
+    'Seller Confirmed': ['Seller Preparing'],
+    'Seller Preparing': ['Ready for Delivery'],
+    'Processing': ['Ready for Delivery'], // legacy status, kept for any pre-existing order
+    'Ready for Delivery': ['Out for Delivery']
+    // 'Out for Delivery' deliberately has no dropdown option - Delivered
+    // is only reachable via delivery OTP verification (see the "Verify
+    // Delivery Code" button), never a raw dropdown pick, matching the
+    // admin side exactly.
   };
   const ADMIN_MAP = {
-    'Paid': ['Processing', 'Cancelled'],
-    'Processing': ['Ready for Delivery', 'Cancelled'],
+    'Availability Confirmed': ['Processing / Sourcing'], // 'Product Unavailable' is its own dedicated button
+    'Processing / Sourcing': [], // 'Product Purchased' is its own dedicated button (captures supplier data)
+    'Product Purchased': ['Ready for Delivery'],
+    'Product Unavailable': ['Cancelled'], // 'Refunded' via Process Refund button
+    'Seller Confirmed': ['Seller Preparing'],
+    'Seller Preparing': ['Ready for Delivery'],
+    'Processing': ['Ready for Delivery', 'Cancelled'], // legacy status, kept for any pre-existing order
     'Ready for Delivery': ['Out for Delivery'],
     // 'Delivered' deliberately NOT offered here anymore - it's only
     // reachable via delivery OTP verification (see the "Verify Delivery
@@ -18722,7 +18783,9 @@ window.confirmOrderComplete = confirmOrderComplete;
 // (a stale/wrong list here only affects whether the button shows, never
 // whether the refund is actually allowed).
 const REFUNDABLE_STATUSES = [
-  'Paid', 'Processing', 'Ready for Delivery', 'Out for Delivery', 'Delivery Failed',
+  'Paid', 'Availability Confirmed', 'Processing / Sourcing', 'Product Purchased', 'Product Unavailable',
+  'Seller Confirmed', 'Seller Preparing', 'Processing',
+  'Ready for Delivery', 'Out for Delivery', 'Delivery Failed',
   'Delivered', 'Awaiting Admin Confirmation', 'Completed',
   'Return Requested', 'Return Approved', 'Returned', 'Refund Processing'
 ];
@@ -18779,6 +18842,66 @@ async function processRefundPrompt(dbId) {
   }
 }
 window.processRefundPrompt = processRefundPrompt;
+
+// ── Supplier sourcing (platform/admin-owned products only) ─────────────
+async function markProductUnavailablePrompt(dbId) {
+  const reason = prompt('Why is this product unavailable from the supplier?');
+  if (!reason || !reason.trim()) return;
+  try {
+    await adminApiCall(`/orders/admin/${dbId}/product-unavailable`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason.trim() })
+    });
+    showToast('❌ Marked as unavailable.', 'success');
+    renderAdminOrdersList();
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
+  }
+}
+window.markProductUnavailablePrompt = markProductUnavailablePrompt;
+
+let _markPurchasedDbId = null;
+function openMarkPurchasedModal(dbId) {
+  _markPurchasedDbId = dbId;
+  ['mpSupplierName', 'mpSupplierOrderNumber', 'mpSupplierCost', 'mpSupplierDate', 'mpSupplierTracking', 'mpSupplierNotes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const modal = document.getElementById('markPurchasedModal');
+  if (modal) modal.style.display = 'flex';
+}
+window.openMarkPurchasedModal = openMarkPurchasedModal;
+
+function closeMarkPurchasedModal() {
+  const modal = document.getElementById('markPurchasedModal');
+  if (modal) modal.style.display = 'none';
+  _markPurchasedDbId = null;
+}
+window.closeMarkPurchasedModal = closeMarkPurchasedModal;
+
+async function submitMarkPurchased() {
+  if (!_markPurchasedDbId) return;
+  const body = {
+    supplier_name: document.getElementById('mpSupplierName')?.value.trim() || null,
+    supplier_order_number: document.getElementById('mpSupplierOrderNumber')?.value.trim() || null,
+    supplier_purchase_cost: document.getElementById('mpSupplierCost')?.value || null,
+    supplier_purchase_date: document.getElementById('mpSupplierDate')?.value || null,
+    supplier_tracking_number: document.getElementById('mpSupplierTracking')?.value.trim() || null,
+    notes: document.getElementById('mpSupplierNotes')?.value.trim() || null
+  };
+  try {
+    await adminApiCall(`/orders/admin/${_markPurchasedDbId}/mark-purchased`, {
+      method: 'PUT',
+      body: JSON.stringify(body)
+    });
+    showToast('📦 Purchase recorded - order moved to Product Purchased.', 'success');
+    closeMarkPurchasedModal();
+    renderAdminOrdersList();
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
+  }
+}
+window.submitMarkPurchased = submitMarkPurchased;
 
 // ── Admin order status counters (clickable tiles) ──────────────────────
 // Buckets the already-loaded adminOrdersMirror into the spec's overview
@@ -18904,6 +19027,17 @@ function _renderAdminOrderDetailHtml(o, history) {
     ${_detailRow('Seller Earnings', money(o.seller_earnings))}
     ${o.refund_amount ? _detailRow('Refund Amount', money(o.refund_amount)) : ''}
     ${o.return_reason ? _detailRow('Return Reason', escapeHtml(o.return_reason)) : ''}
+
+    ${o.supplier_name || o.supplier_order_number || o.supplier_purchase_cost ? `
+    <h4 style="color:var(--gold); margin:16px 0 6px;">🏭 Supplier Sourcing</h4>
+    ${_detailRow('Supplier', escapeHtml(o.supplier_name || ''))}
+    ${_detailRow('Supplier Order #', escapeHtml(o.supplier_order_number || ''))}
+    ${_detailRow('Purchase Cost', money(o.supplier_purchase_cost))}
+    ${_detailRow('Purchase Date', o.supplier_purchase_date || '')}
+    ${_detailRow('Tracking Number', escapeHtml(o.supplier_tracking_number || ''))}
+    ${_detailRow('Notes', escapeHtml(o.supplier_notes || ''))}
+    ${_detailRow('Purchased At', when(o.product_purchased_at))}
+    ` : ''}
 
     <h4 style="color:var(--gold); margin:16px 0 6px;">🚚 Delivery</h4>
     ${_detailRow('Rider', escapeHtml(o.rider_name || ''))}
@@ -19240,7 +19374,7 @@ async function renderAdminOrdersList(loadMore) {
 
   <select onchange="updateAdminOrderStatus('${o.dbId}', this.value)" style="background:var(--surface-3); color:var(--white); border:1px solid var(--border-strong); border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer;">
     <option value="${o.status}" selected>${o.status} (current)</option>
-    ${_nextOrderStatusOptions(o.status, true).map(s => `<option value="${s}">→ ${s}</option>`).join('')}
+    ${_nextOrderStatusOptions(o.status, true, o.sellerId).map(s => `<option value="${s}">→ ${s}</option>`).join('')}
   </select>
 
   ${o.rider ? `
@@ -19251,6 +19385,15 @@ async function renderAdminOrdersList(loadMore) {
   ` : `
     <button onclick="openAssignRiderModal('${o.dbId}')" style="background:var(--green-light); color:#111; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">🚴 Assign Rider</button>
   `}
+
+  ${o.status === 'Availability Confirmed' ? `
+    <button onclick="markProductUnavailablePrompt('${o.dbId}')" style="background:var(--surface-3); border:1px solid #e74c3c; color:#e74c3c; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px;">❌ Mark Unavailable</button>
+  ` : ''}
+
+  ${o.status === 'Processing / Sourcing' ? `
+    <button onclick="openMarkPurchasedModal('${o.dbId}')" style="background:var(--gold); color:#111; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">📦 Record Purchase</button>
+    <button onclick="markProductUnavailablePrompt('${o.dbId}')" style="background:var(--surface-3); border:1px solid #e74c3c; color:#e74c3c; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px;">❌ Mark Unavailable</button>
+  ` : ''}
 
   ${o.status === 'Out for Delivery' ? `
     <button onclick="sendDeliveryOtp('${o.dbId}')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px;">📲 Send Delivery Code</button>
@@ -19334,7 +19477,7 @@ function renderSellerOrdersList() {
           ${o.status === 'Completed' ? `<span style="color:var(--green-light); font-size:11px;">✅ Paid out</span>` : `<span style="color:var(--gray); font-size:11px;">⏳ Paid once Completed</span>`}
           <select onchange="updateOrderStatus('${o.dbId}', this.value)" style="background:var(--surface-3); color:var(--white); border:1px solid var(--border-strong); border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer;">
             <option value="${o.status}" selected>${o.status} (current)</option>
-            ${_nextOrderStatusOptions(o.status, false).map(s => `<option value="${s}">→ ${s}</option>`).join('')}
+            ${_nextOrderStatusOptions(o.status, false, true).map(s => `<option value="${s}">→ ${s}</option>`).join('')}
           </select>
         </div>
       </div>
