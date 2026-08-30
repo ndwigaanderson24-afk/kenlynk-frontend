@@ -3816,6 +3816,8 @@
 
       <div id="adminSellerEarningsOverview" style="margin-bottom:16px;"></div>
 
+      <div id="adminOrderStatusCounters" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:8px; margin-bottom:16px;"></div>
+
       <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
 
         <select id="adminOrderSellerFilter" onchange="renderAdminOrdersList()" style="background:var(--surface-2); color:var(--white); border:1px solid var(--border-strong); border-radius:8px; padding:8px 12px; font-size:13px;">
@@ -3824,27 +3826,37 @@
 
         </select>
 
-        <select id="adminOrderStatusFilter" onchange="renderAdminOrdersList()" style="background:var(--surface-2); color:var(--white); border:1px solid var(--border-strong); border-radius:8px; padding:8px 12px; font-size:13px;">
+        <select id="adminOrderStatusFilter" onchange="window._adminOrdersQuickFilter=null; renderAdminOrdersList()" style="background:var(--surface-2); color:var(--white); border:1px solid var(--border-strong); border-radius:8px; padding:8px 12px; font-size:13px;">
 
           <option value="" id="allStatusesFilterOptionEl">All Statuses</option>
 
-          <option value="Pending" id="statusFilterPending">Pending</option>
-
-          <option value="Accepted" id="statusFilterAccepted">Accepted</option>
-
-          <option value="Packed" id="statusFilterPacked">Packed</option>
-
-          <option value="In Transit" id="statusFilterInTransit">In Transit</option>
-
-          <option value="Delivered" id="statusFilterDelivered">Delivered</option>
-
-          <option value="Completed" id="statusFilterCompleted">Completed</option>
+          <option value="Pending Payment">Pending Payment</option>
+          <option value="Paid">Paid</option>
+          <option value="Processing">Processing</option>
+          <option value="Ready for Delivery">Ready for Delivery</option>
+          <option value="Out for Delivery">Out for Delivery</option>
+          <option value="Delivery Failed">Delivery Failed</option>
+          <option value="Delivered">Delivered</option>
+          <option value="Awaiting Admin Confirmation">Awaiting Admin Confirmation</option>
+          <option value="Completed">Completed</option>
+          <option value="Return Requested">Return Requested</option>
+          <option value="Return Approved">Return Approved</option>
+          <option value="Returned">Returned</option>
+          <option value="Refund Processing">Refund Processing</option>
+          <option value="Cancelled">Cancelled</option>
+          <option value="Refunded">Refunded</option>
 
         </select>
 
       </div>
 
       <div id="adminOrdersList"></div>
+
+      <div id="adminOrderDetailModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2000; align-items:center; justify-content:center; padding:20px;" onclick="if(event.target===this) closeAdminOrderDetailModal();">
+        <div style="background:var(--surface); border:1px solid var(--border-strong); border-radius:16px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; padding:24px;">
+          <div id="adminOrderDetailContent"></div>
+        </div>
+      </div>
 
     </div>
 
@@ -18768,6 +18780,153 @@ async function processRefundPrompt(dbId) {
 }
 window.processRefundPrompt = processRefundPrompt;
 
+// ── Admin order status counters (clickable tiles) ──────────────────────
+// Buckets the already-loaded adminOrdersMirror into the spec's overview
+// groups. Purely a client-side view over data already fetched for the
+// list below it - no extra API calls. "Issues" and "Returns & Refunds"
+// each span more than one real status, which is why they use the
+// quick-filter array mechanism instead of the single-status dropdown.
+const ADMIN_ORDER_COUNTER_TILES = [
+  { key: 'new', label: 'New Orders', icon: '🟡', statuses: ['Paid'] },
+  { key: 'payment_pending', label: 'Payment Pending', icon: '💰', statuses: ['Pending Payment'] },
+  { key: 'processing', label: 'Processing', icon: '🔵', statuses: ['Processing'] },
+  { key: 'ready', label: 'Ready for Delivery', icon: '📦', statuses: ['Ready for Delivery'] },
+  { key: 'out', label: 'Out for Delivery', icon: '🚚', statuses: ['Out for Delivery'] },
+  { key: 'awaiting', label: 'Awaiting Confirmation', icon: '🔎', statuses: ['Awaiting Admin Confirmation'] },
+  { key: 'completed', label: 'Completed', icon: '✅', statuses: ['Completed'] },
+  { key: 'issues', label: 'Issues', icon: '⚠️', statuses: ['Delivery Failed', 'Cancelled'] },
+  { key: 'returns', label: 'Returns & Refunds', icon: '↩️', statuses: ['Return Requested', 'Return Approved', 'Returned', 'Refund Processing', 'Refunded'] }
+];
+
+function renderAdminOrderStatusCounters() {
+  const container = document.getElementById('adminOrderStatusCounters');
+  if (!container) return;
+
+  container.innerHTML = ADMIN_ORDER_COUNTER_TILES.map(tile => {
+    const count = adminOrdersMirror.filter(o => tile.statuses.includes(o.status)).length;
+    const isActive = window._adminOrdersQuickFilter && JSON.stringify(window._adminOrdersQuickFilter) === JSON.stringify(tile.statuses);
+    return `
+      <div onclick="_applyAdminOrderQuickFilter(${JSON.stringify(tile.statuses).replace(/"/g, '&quot;')})"
+           style="cursor:pointer; background:${isActive ? 'rgba(255,215,0,0.15)' : 'var(--surface-2)'}; border:1px solid ${isActive ? 'var(--gold)' : 'var(--border)'}; border-radius:10px; padding:10px; text-align:center; transition:background 0.15s;">
+        <div style="font-size:18px;">${tile.icon}</div>
+        <div style="font-size:18px; font-weight:700; color:var(--white);">${count}</div>
+        <div style="font-size:10px; color:var(--gray);">${tile.label}</div>
+      </div>`;
+  }).join('') + `
+      <div onclick="_applyAdminOrderQuickFilter(null)"
+           style="cursor:pointer; background:${!window._adminOrdersQuickFilter ? 'rgba(255,215,0,0.15)' : 'var(--surface-2)'}; border:1px solid ${!window._adminOrdersQuickFilter ? 'var(--gold)' : 'var(--border)'}; border-radius:10px; padding:10px; text-align:center;">
+        <div style="font-size:18px;">📋</div>
+        <div style="font-size:18px; font-weight:700; color:var(--white);">${adminOrdersMirror.length}</div>
+        <div style="font-size:10px; color:var(--gray);">All Orders</div>
+      </div>`;
+}
+window.renderAdminOrderStatusCounters = renderAdminOrderStatusCounters;
+
+function _applyAdminOrderQuickFilter(statuses) {
+  window._adminOrdersQuickFilter = statuses;
+  const statusFilterEl = document.getElementById('adminOrderStatusFilter');
+  if (statusFilterEl) statusFilterEl.value = ''; // dropdown and tiles never fight each other
+  renderAdminOrdersList();
+}
+window._applyAdminOrderQuickFilter = _applyAdminOrderQuickFilter;
+
+// ── Admin order detail modal ────────────────────────────────────────────
+// Fetches the FULL, unstripped order (admin sees everything - see
+// orderRoutes.js's GET /:id) plus its real status_history, rather than
+// reusing the already-trimmed adminOrdersMirror entry the list rows use -
+// this is the one place that shows the complete internal financial
+// breakdown the spec asks for (§10), which the list rows deliberately
+// don't surface inline.
+async function openAdminOrderDetailModal(dbId) {
+  const modal = document.getElementById('adminOrderDetailModal');
+  const content = document.getElementById('adminOrderDetailContent');
+  if (!modal || !content) return;
+  modal.style.display = 'flex';
+  content.innerHTML = `<div style="text-align:center; padding:30px; color:var(--gray);">Loading order details...</div>`;
+
+  try {
+    const [orderRes, historyRes] = await Promise.all([
+      adminApiCall(`/orders/${dbId}`),
+      adminApiCall(`/orders/${dbId}/history`)
+    ]);
+    content.innerHTML = _renderAdminOrderDetailHtml(orderRes.data.order, historyRes.data.history || []);
+  } catch (err) {
+    content.innerHTML = `<div style="color:#f44336; padding:20px; text-align:center;">Could not load order details: ${escapeHtml(err.message)}</div>`;
+  }
+}
+window.openAdminOrderDetailModal = openAdminOrderDetailModal;
+
+function closeAdminOrderDetailModal() {
+  const modal = document.getElementById('adminOrderDetailModal');
+  if (modal) modal.style.display = 'none';
+}
+window.closeAdminOrderDetailModal = closeAdminOrderDetailModal;
+
+function _detailRow(label, value) {
+  if (value === null || value === undefined || value === '') return '';
+  return `<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--border); font-size:13px;">
+    <span style="color:var(--gray);">${label}</span><span style="color:var(--white); font-weight:600; text-align:right; max-width:60%;">${value}</span>
+  </div>`;
+}
+
+function _renderAdminOrderDetailHtml(o, history) {
+  const money = v => (v === null || v === undefined) ? '' : `KES ${Number(v).toLocaleString()}`;
+  const when = v => v ? new Date(v).toLocaleString('en-KE') : '';
+
+  return `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h3 style="margin:0;">Order #${escapeHtml(o.order_number || o.id)}</h3>
+      <button onclick="closeAdminOrderDetailModal()" style="background:none; border:none; color:var(--gray); font-size:20px; cursor:pointer;">✕</button>
+    </div>
+
+    <div style="margin-bottom:6px;"><span class="status-pill ${(o.status || '').toLowerCase().replace(/\s+/g, '-')}">${escapeHtml(o.status)}</span></div>
+
+    <h4 style="color:var(--gold); margin:16px 0 6px;">📦 Order Information</h4>
+    ${_detailRow('Tracking Number', escapeHtml(o.tracking_number || ''))}
+    ${_detailRow('Placed At', when(o.placed_at))}
+    ${_detailRow('Customer', escapeHtml(o.customer_name || ''))}
+    ${_detailRow('Phone', escapeHtml(o.customer_phone || ''))}
+    ${_detailRow('ID Number', escapeHtml(o.customer_id_number || ''))}
+    ${_detailRow('Delivery Type', escapeHtml(o.delivery_type || ''))}
+    ${_detailRow('Address', escapeHtml(o.delivery_address || o.customer_address || ''))}
+    ${_detailRow('Destination', escapeHtml([o.dest_area, o.dest_county].filter(Boolean).join(', ')))}
+    ${_detailRow('Seller', escapeHtml(o.seller_business_name || o.seller_email || 'Platform'))}
+    ${_detailRow('Items', (o.items || []).map(i => `${escapeHtml(i.product_name)} x${i.qty}${i.variant_name ? ' (' + escapeHtml(i.variant_name) + ')' : ''}`).join('<br>'))}
+
+    <h4 style="color:var(--gold); margin:16px 0 6px;">💳 Customer Payment</h4>
+    ${_detailRow('Customer Final Price', money(o.total))}
+    ${_detailRow('Payment Status', escapeHtml(o.status))}
+
+    <h4 style="color:var(--gold); margin:16px 0 6px;">🔒 Internal Financials (Admin Only)</h4>
+    ${_detailRow('Subtotal', money(o.subtotal))}
+    ${_detailRow('Commission (KenLynk)', money(o.commission))}
+    ${_detailRow('Delivery Fee (baked into price)', money(o.delivery_fee))}
+    ${_detailRow('Seller Earnings', money(o.seller_earnings))}
+    ${o.refund_amount ? _detailRow('Refund Amount', money(o.refund_amount)) : ''}
+    ${o.return_reason ? _detailRow('Return Reason', escapeHtml(o.return_reason)) : ''}
+
+    <h4 style="color:var(--gold); margin:16px 0 6px;">🚚 Delivery</h4>
+    ${_detailRow('Rider', escapeHtml(o.rider_name || ''))}
+    ${_detailRow('Rider Phone', escapeHtml(o.rider_phone || ''))}
+    ${_detailRow('Delivered At', when(o.delivered_at))}
+    ${_detailRow('OTP Verified At', when(o.otp_verified_at))}
+    ${_detailRow('Awaiting Confirmation Since', when(o.awaiting_confirmation_at))}
+    ${_detailRow('Customer Confirmed At', when(o.customer_confirmed_at))}
+    ${_detailRow('Completed At', when(o.completed_at))}
+    ${_detailRow('Refunded At', when(o.refunded_at))}
+
+    <h4 style="color:var(--gold); margin:16px 0 6px;">🕒 Order Timeline</h4>
+    <div style="max-height:200px; overflow-y:auto;">
+      ${history.length ? history.map(h => `
+        <div style="font-size:12px; color:var(--gray); padding:4px 0; border-bottom:1px solid var(--border);">
+          <strong style="color:var(--white);">${escapeHtml(h.from_status || 'Created')} → ${escapeHtml(h.to_status)}</strong>
+          <span style="float:right;">${when(h.created_at)}</span><br>
+          by ${escapeHtml(h.changed_by_type)}${h.notes ? ' — ' + escapeHtml(h.notes) : ''}
+        </div>`).join('') : '<div style="color:var(--gray); font-size:12px;">No history recorded yet.</div>'}
+    </div>
+  `;
+}
+
 async function updateOrderStatus(orderId, newStatus) {
 
   // The real lifecycle now lives server-side in models/orderStatus.js -
@@ -19031,6 +19190,7 @@ async function renderAdminOrdersList(loadMore) {
 
   populateAdminOrderSellerFilter();
   renderAdminSellerEarningsOverview();
+  renderAdminOrderStatusCounters();
 
   const sellerFilterEl = document.getElementById('adminOrderSellerFilter');
   const statusFilterEl = document.getElementById('adminOrderStatusFilter');
@@ -19039,7 +19199,17 @@ async function renderAdminOrdersList(loadMore) {
 
   let filteredOrders = adminOrdersMirror;
   if (sellerFilter) filteredOrders = filteredOrders.filter(o => (o.sellerEmail || '') === sellerFilter);
-  if (statusFilter) filteredOrders = filteredOrders.filter(o => o.status === statusFilter);
+  // A status-counter tile click sets window._adminOrdersQuickFilter to an
+  // array of statuses (for grouped tiles like "Issues" or "Returns &
+  // Refunds", which span more than one real status) - takes priority
+  // over the single-status dropdown, which gets cleared whenever a tile
+  // is clicked (see _applyAdminOrderQuickFilter) so the two never fight
+  // each other.
+  if (window._adminOrdersQuickFilter) {
+    filteredOrders = filteredOrders.filter(o => window._adminOrdersQuickFilter.includes(o.status));
+  } else if (statusFilter) {
+    filteredOrders = filteredOrders.filter(o => o.status === statusFilter);
+  }
 
   if (adminOrdersMirror.length === 0) {
     container.innerHTML = `<div style="color:var(--gray); text-align:center; padding:20px;">${t('noOrdersYetAdmin')}</div>`;
@@ -19066,6 +19236,7 @@ async function renderAdminOrdersList(loadMore) {
         <div style="display:flex; flex-direction:column; gap:6px; min-width:170px;">
   <span class="status-pill ${o.status.toLowerCase().replace(/\s+/g, '-')}">${o.status}</span>
   ${o.status === 'Completed' ? `<span style="color:var(--green-light); font-size:11px;">✅ Seller paid out</span>` : `<span style="color:var(--gray); font-size:11px;">⏳ Not yet payable</span>`}
+  <button onclick="openAdminOrderDetailModal('${o.dbId}')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px;">🔍 View Full Details</button>
 
   <select onchange="updateAdminOrderStatus('${o.dbId}', this.value)" style="background:var(--surface-3); color:var(--white); border:1px solid var(--border-strong); border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer;">
     <option value="${o.status}" selected>${o.status} (current)</option>
