@@ -18565,7 +18565,7 @@ function _nextOrderStatusOptions(currentStatus, isAdmin) {
     'Processing': ['Ready for Delivery', 'Cancelled', 'Refunded'],
     'Ready for Delivery': ['Out for Delivery', 'Refunded'],
     'Out for Delivery': ['Delivered', 'Refunded'],
-    'Delivered': ['Refunded'],
+    'Delivered': ['Completed', 'Refunded'],
     'Completed': ['Refunded']
   };
   const map = isAdmin ? ADMIN_MAP : SELLER_MAP;
