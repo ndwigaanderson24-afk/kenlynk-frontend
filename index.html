@@ -1995,6 +1995,7 @@
 
 
 
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 
 <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.22.0.js"></script>
@@ -3116,6 +3117,11 @@
               </div>
             </div>
 
+            <div class="field" style="grid-column:1/-1;">
+              <label>Product Video (optional, max 5 minutes)</label>
+              <div id="sellerVideoWrap"></div>
+            </div>
+
             <div class="field" style="grid-column:1/-1; background:var(--surface-2); border-radius:10px; padding:14px;">
               <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white); font-weight:600; margin-bottom:8px;">
                 <input type="checkbox" id="sellerSimpleHasVariants" onchange="document.getElementById('sellerSimpleVariantsWrap').style.display=this.checked?'block':'none';"> This product comes in different sizes or colours
@@ -3697,6 +3703,7 @@
         </div>
 
         <div class="field"><label>Product Photos * (add at least 1 - 5 to 30 recommended)</label><div style="display:flex; gap:10px; flex-wrap:wrap;"><label style="flex:1; min-width:140px; background:var(--surface-2); border:1px solid var(--border-strong); border-radius:10px; padding:10px; text-align:center; cursor:pointer; color:var(--white);">🖼️ Choose from Gallery<input type="file" id="adminImageFile" accept="image/*" multiple style="display:none;"></label><label style="flex:1; min-width:140px; background:var(--surface-2); border:1px solid var(--border-strong); border-radius:10px; padding:10px; text-align:center; cursor:pointer; color:var(--white);">📷 Take Photo<input type="file" id="adminImageCameraFile" accept="image/*" capture="environment" style="display:none;"></label></div><div id="adminImagePreview" style="margin-top:10px; display:none; flex-wrap:wrap; gap:8px; flex-direction:row;"></div><div style="font-size:12px; color:var(--gray); margin-top:6px;" id="adminImageCount">0 of 30 added - at least 1 required</div></div>
+        <div class="field"><label>Product Video (optional, max 5 minutes)</label><div id="adminVideoWrap"></div></div>
 
         <div class="field" style="background:var(--surface-2); border-radius:10px; padding:14px;">
           <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--white); font-weight:600; margin-bottom:8px;">
@@ -10945,6 +10952,7 @@ window._simpleProductSubmit = async function(mode) {
     fragile,
     stock: isNaN(stock) ? 0 : stock, weight, brand: brand || undefined, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt,
     images: window._getUploadedImages(),
+    video: window._videoState.seller.url,
     wholesale_tiers: wholesaleTiers,
     kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt,
     kanyaga_campaign: kanyagaOn ? 'kanyaga' : null,
@@ -11072,6 +11080,8 @@ window._simpleProductSubmit = async function(mode) {
     // reconstruction logic lives in one place now (_varLoadExisting)
     // instead of being duplicated here and in the admin edit path.
     window._varReset('seller');
+    window._videoResetState('seller');
+    if (product.video) { window._videoState.seller.url = product.video; window._videoRenderPreview('seller'); }
     if (product.has_variants) {
       await window._varLoadExisting('seller', id, isAdmin());
     }
@@ -11330,6 +11340,8 @@ async function renderAdminProducts() {
       window._renderWholesaleTiers('admin');
 
       window._varReset('admin');
+      window._videoResetState('admin');
+      if (product.video) { window._videoState.admin.url = product.video; window._videoRenderPreview('admin'); }
       if (product.has_variants) {
         await window._varLoadExisting('admin', id, true);
       }
@@ -12044,7 +12056,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall(`/products/admin/${editingProductId}`, {
           method: 'PUT',
-          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, weight, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt, kanyaga_campaign: kanyagaOn ? 'kanyaga' : null, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
+          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, weight, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt, kanyaga_campaign: kanyagaOn ? 'kanyaga' : null, video: window._videoState.admin.url, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
         savedId = editingProductId;
         showToast("Product updated successfully!", "success");
@@ -12061,7 +12073,7 @@ window.loadManualData = loadManualData;
 
         const createRes = await adminApiCall('/products/admin', {
           method: 'POST',
-          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, weight, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt, kanyaga_campaign: kanyagaOn ? 'kanyaga' : null, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
+          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, weight, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt, kanyaga_campaign: kanyagaOn ? 'kanyaga' : null, video: window._videoState.admin.url, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
         savedId = createRes.data.product.id;
         showToast("Product added successfully!", "success");
@@ -12089,6 +12101,7 @@ window.loadManualData = loadManualData;
 
     window._resetWholesaleTiers('admin');
     window._varReset('admin');
+    window._videoResetState('admin');
 
     if (document.getElementById("adminLowStock")) document.getElementById("adminLowStock").value = "";
 
@@ -12138,6 +12151,7 @@ window.loadManualData = loadManualData;
 
     window._resetWholesaleTiers('admin');
     window._varReset('admin');
+    window._videoResetState('admin');
 
     if (document.getElementById("adminLowStock")) document.getElementById("adminLowStock").value = "";
 
@@ -21159,6 +21173,201 @@ window._varReset = function(which) {
   if (root) root.innerHTML = '';
 };
 
+// ══════════════════════════════════════════════════════════════════
+// PRODUCT VIDEO UPLOAD - shared between the Admin and Seller Add
+// Product forms. A buyer-facing product video: pick an existing one
+// from the gallery, or record live in-browser, capped at 5 minutes
+// either way. Uploaded through its own dedicated multipart endpoint
+// rather than folded into the rest of the product form's payload - a
+// 5-minute video is genuinely large, and this codebase's existing
+// image handling sends everything as base64 inside the JSON body,
+// which would make for a huge, timeout-prone request for something
+// this size. `which` is 'admin' or 'seller', same convention as the
+// variant editor above.
+// ══════════════════════════════════════════════════════════════════
+const VIDEO_MAX_SECONDS = 300; // 5 minutes
+
+window._videoState = {
+  admin: { url: null, uploading: false, recording: false },
+  seller: { url: null, uploading: false, recording: false }
+};
+window._videoRecorder = { admin: null, seller: null };
+window._videoStream = { admin: null, seller: null };
+window._videoChunks = { admin: [], seller: [] };
+window._videoTimer = { admin: null, seller: null };
+
+window._videoRenderPreview = function(which) {
+  const wrap = document.getElementById(which + 'VideoWrap');
+  if (!wrap) return;
+  const state = window._videoState[which];
+
+  if (state.recording) {
+    wrap.innerHTML = `
+      <video id="${which}VideoLivePreview" autoplay muted playsinline style="width:100%; max-width:280px; border-radius:10px; background:#000; display:block;"></video>
+      <div style="display:flex; align-items:center; gap:10px; margin-top:8px;">
+        <span id="${which}VideoTimer" style="font-family:var(--font-mono); color:#e63946; font-weight:700; font-size:13px;">● 0:00</span>
+        <button type="button" onclick="window._videoStopRecording('${which}')" style="background:#e63946; border:none; color:#fff; border-radius:8px; padding:8px 16px; cursor:pointer; font-size:13px; font-weight:700;">⏹ Stop Recording</button>
+      </div>
+    `;
+    const stream = window._videoStream[which];
+    const livePreview = document.getElementById(which + 'VideoLivePreview');
+    if (stream && livePreview) livePreview.srcObject = stream;
+    return;
+  }
+
+  if (state.uploading) {
+    wrap.innerHTML = `<div style="color:var(--gray); font-size:13px; padding:10px; display:flex; align-items:center; gap:8px;"><span class="spinner" style="width:14px;height:14px;border:2px solid var(--border-strong);border-top-color:var(--gold);border-radius:50%;display:inline-block;animation:spin 0.8s linear infinite;"></span> Uploading video…</div>`;
+    return;
+  }
+
+  if (state.url) {
+    wrap.innerHTML = `
+      <video src="${state.url}" controls style="width:100%; max-width:280px; border-radius:10px; display:block;"></video>
+      <div style="margin-top:6px;">
+        <button type="button" onclick="window._videoRemove('${which}')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px;">✕ Remove Video</button>
+      </div>
+    `;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <label style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:8px 16px; cursor:pointer; font-size:13px;">
+        🎞️ Choose from Gallery
+        <input type="file" id="${which}VideoFile" accept="video/*" style="display:none;" onchange="window._videoFileSelected('${which}', this)">
+      </label>
+      <button type="button" onclick="window._videoStartRecording('${which}')" style="background:var(--surface-2); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:8px 16px; cursor:pointer; font-size:13px;">🔴 Record Video</button>
+    </div>
+  `;
+};
+
+// A video picked from the gallery has its duration checked locally
+// first (via a throwaway <video> element) - costs nothing and avoids
+// uploading something that's just going to get rejected as too long.
+window._videoFileSelected = async function(which, fileInput) {
+  const file = fileInput.files[0];
+  fileInput.value = '';
+  if (!file) return;
+  if (!file.type.startsWith('video/')) { showToast('Please choose a video file.', 'error'); return; }
+
+  const tempUrl = URL.createObjectURL(file);
+  const probe = document.createElement('video');
+  probe.preload = 'metadata';
+  probe.onloadedmetadata = () => {
+    URL.revokeObjectURL(tempUrl);
+    if (probe.duration > VIDEO_MAX_SECONDS) {
+      showToast(`That video is ${Math.round(probe.duration)}s long - the maximum is 5 minutes.`, 'error');
+      return;
+    }
+    window._videoUpload(which, file);
+  };
+  probe.onerror = () => {
+    URL.revokeObjectURL(tempUrl);
+    showToast('Could not read that video file. Please try a different one.', 'error');
+  };
+  probe.src = tempUrl;
+};
+
+window._videoStartRecording = async function(which) {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    window._videoStream[which] = stream;
+    window._videoState[which].recording = true;
+    window._videoRenderPreview(which);
+
+    const chunks = [];
+    window._videoChunks[which] = chunks;
+    const recorder = new MediaRecorder(stream);
+    window._videoRecorder[which] = recorder;
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    recorder.start();
+
+    let seconds = 0;
+    window._videoTimer[which] = setInterval(() => {
+      seconds++;
+      const timerEl = document.getElementById(which + 'VideoTimer');
+      if (timerEl) timerEl.textContent = `● ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+      if (seconds >= VIDEO_MAX_SECONDS) window._videoStopRecording(which);
+    }, 1000);
+  } catch (err) {
+    showToast('Could not access your camera/microphone: ' + err.message, 'error');
+  }
+};
+
+window._videoStopRecording = function(which) {
+  const recorder = window._videoRecorder[which];
+  if (!recorder || recorder.state === 'inactive') return;
+
+  recorder.onstop = () => {
+    const blob = new Blob(window._videoChunks[which], { type: 'video/webm' });
+    window._videoUpload(which, blob);
+  };
+  recorder.stop();
+
+  if (window._videoStream[which]) {
+    window._videoStream[which].getTracks().forEach(t => t.stop());
+    window._videoStream[which] = null;
+  }
+  if (window._videoTimer[which]) { clearInterval(window._videoTimer[which]); window._videoTimer[which] = null; }
+  window._videoState[which].recording = false;
+};
+
+// Bypasses apiCall/adminApiCall (built for JSON bodies) in favour of a
+// direct fetch with FormData - the right tool for a real binary file
+// upload, and matches exactly how the backend's multer middleware on
+// this route expects to receive it.
+window._videoUpload = async function(which, fileOrBlob) {
+  window._videoState[which].uploading = true;
+  window._videoRenderPreview(which);
+
+  try {
+    const formData = new FormData();
+    formData.append('video', fileOrBlob, fileOrBlob.name || 'recording.webm');
+
+    const isAdminMode = which === 'admin';
+    const token = isAdminMode ? adminToken : authToken;
+    const endpoint = isAdminMode ? '/products/admin/upload-video' : '/products/upload-video';
+
+    const res = await fetch(API_BASE + endpoint, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: formData
+    });
+    const result = await res.json();
+    if (!result.success) throw new Error(result.message || 'Upload failed');
+
+    window._videoState[which].url = result.data.url;
+    window._videoState[which].uploading = false;
+    window._videoRenderPreview(which);
+    showToast('✅ Video uploaded.', 'success');
+  } catch (err) {
+    window._videoState[which].uploading = false;
+    window._videoRenderPreview(which);
+    showToast('⚠️ Video upload failed: ' + err.message, 'error');
+  }
+};
+
+window._videoRemove = function(which) {
+  window._videoState[which].url = null;
+  window._videoRenderPreview(which);
+};
+
+// Called on form reset (new product / cancel) so a leftover video from
+// an earlier attempt in the same session can never bleed into the next
+// product - mirrors _varReset above.
+window._videoResetState = function(which) {
+  if (window._videoRecorder[which] && window._videoRecorder[which].state !== 'inactive') {
+    try { window._videoRecorder[which].stop(); } catch (e) { /* ignore */ }
+  }
+  if (window._videoStream[which]) {
+    window._videoStream[which].getTracks().forEach(t => t.stop());
+    window._videoStream[which] = null;
+  }
+  if (window._videoTimer[which]) { clearInterval(window._videoTimer[which]); window._videoTimer[which] = null; }
+  window._videoState[which] = { url: null, uploading: false, recording: false };
+  window._videoRenderPreview(which);
+};
+
 window._varAddType = function(which) {
   const nameInput = document.getElementById(which + 'VarNewTypeName');
   const name = nameInput ? nameInput.value.trim() : '';
@@ -21679,6 +21888,7 @@ window.cancelEditProduct = function() {
 
   window._resetWholesaleTiers('seller');
   window._varReset('seller');
+  window._videoResetState('seller');
 };
 
 // Seller ShopStream management tab
