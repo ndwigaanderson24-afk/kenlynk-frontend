@@ -15470,6 +15470,50 @@ function createAdminSellerManagement() {
     return { matched, basePrice, showPrice, isKanyaga: kanyaga };
   }
 
+  // A price preview for when the buyer has started picking (e.g. just
+  // tapped a Size) but hasn't finished every attribute yet - rather than
+  // showing nothing until everything's chosen, this looks at every
+  // variant consistent with what's picked so far. If they all share the
+  // exact same price, that's shown as a real number; if they genuinely
+  // differ (a size where colours are priced differently), a "from KES
+  // X" is shown instead rather than guessing which one they'll land on.
+  // Returns null when nothing's been picked yet, or nothing matches.
+  function resolvePartialVariantPrice(product, variantData, selectedOptions) {
+    const attributes = (variantData && variantData.attributes) || [];
+    if (!attributes.length) return null;
+
+    const activeAttrs = attributes.filter(a => {
+      const v = selectedOptions[a.name];
+      return a.selection_type === 'multiple' ? (Array.isArray(v) && v.length > 0) : !!v;
+    });
+    if (!activeAttrs.length) return null;
+
+    const matches = (variantData.variants || []).filter(v => {
+      if (!v.options.length) return false; // never match an orphaned zero-option row
+      return activeAttrs.every(a => {
+        const sel = selectedOptions[a.name];
+        const selList = Array.isArray(sel) ? sel : [sel];
+        const opt = v.options.find(o => o.attribute_name === a.name);
+        return opt && selList.includes(opt.value);
+      });
+    });
+    if (!matches.length) return null;
+
+    const kanyaga = !!(window.isKanyagaActive && window.isKanyagaActive(product));
+    const prices = matches.map(v => {
+      const base = v.price != null ? Number(v.price) : Number(product.price);
+      const kp = (v.kanyaga_price != null) ? Number(v.kanyaga_price) : Number(product.kanyagaPrice);
+      return kanyaga ? kp : base;
+    });
+    const uniquePrices = [...new Set(prices)];
+
+    return {
+      price: uniquePrices.length === 1 ? uniquePrices[0] : Math.min(...prices),
+      isRange: uniquePrices.length > 1,
+      isKanyaga: kanyaga
+    };
+  }
+
   let _detailSelectedVariantId = null; // for photo-option variants (no attributes)
 
   // A lightweight alternative to the attribute-based picker above - for
@@ -15672,7 +15716,15 @@ function createAdminSellerManagement() {
 
     html += `<div id="variantMatchInfoModal" style="margin-top:10px; padding:10px; border-radius:8px; background:var(--surface); border:1px solid var(--border);">`;
     if (!allPicked) {
-      html += `<div style="color:var(--gray); font-size:13px;">👆 Please select an option above to see price and availability.</div>`;
+      const partial = resolvePartialVariantPrice(product, variantData, _detailSelectedOptions);
+      if (partial) {
+        const prefix = partial.isRange ? 'From ' : '';
+        html += partial.isKanyaga
+          ? `<div style="font-family:var(--font-mono); font-size:16px; color:#e63946; font-weight:800;">${prefix}KES ${partial.price.toLocaleString()} <span style="font-size:11px; font-weight:700;">🔥 Kanyaga</span></div><div style="color:var(--gray); font-size:12px; margin-top:2px;">Pick the rest to lock in the exact one.</div>`
+          : `<div style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700;">${prefix}KES ${partial.price.toLocaleString()}</div><div style="color:var(--gray); font-size:12px; margin-top:2px;">Pick the rest to lock in the exact one.</div>`;
+      } else {
+        html += `<div style="color:var(--gray); font-size:13px;">👆 Please select an option above to see price and availability.</div>`;
+      }
     } else if (!lines.length) {
       html += `<div style="color:#e74c3c; font-size:13px; font-weight:600;">❌ That combination is not available.</div>`;
     } else if (hasMultiAttr && lines.length > 1) {
@@ -15833,9 +15885,35 @@ function createAdminSellerManagement() {
     // has to respect an active Kanyaga deal, otherwise the very first
     // thing a buyer sees before touching any checkbox is the wrong,
     // un-discounted price.
-    const noSelectionKanyaga = !lines.length && window.isKanyagaActive && window.isKanyagaActive(product);
+    //
+    // "partial" covers the middle ground: something's picked (e.g. just
+    // Size) but not everything yet, so there's no single matched
+    // variant - rather than showing the generic product-level fallback
+    // in that case, show a real preview based on what's actually
+    // possible from here (an exact price if every remaining option
+    // shares one, otherwise "From KES X").
+    const partial = !lines.length ? resolvePartialVariantPrice(product, variantData, _modalSelectedOptions) : null;
+    const noSelectionAtAll = !lines.length && !partial;
+    const noSelectionKanyaga = noSelectionAtAll && !!(window.isKanyagaActive && window.isKanyagaActive(product));
     const fallbackRegularPrice = Number(product.price);
     const fallbackShowPrice = noSelectionKanyaga ? Number(product.kanyagaPrice) : fallbackRegularPrice;
+
+    let priceLineHtml;
+    if (hasMultiAttr && lines.length > 1) {
+      priceLineHtml = `<div style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700;">KES ${total.toLocaleString()} <span style="font-size:11px; color:var(--gray); font-weight:500;">(${lines.length} items)</span></div>`;
+    } else if (partial) {
+      const prefix = partial.isRange ? 'From ' : '';
+      priceLineHtml = partial.isKanyaga
+        ? `<div style="font-family:var(--font-mono); font-size:16px; color:#e63946; font-weight:800;">${prefix}KES ${partial.price.toLocaleString()} <span style="font-size:11px; font-weight:700;">🔥 Kanyaga</span></div>`
+        : `<div style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700;">${prefix}KES ${partial.price.toLocaleString()}</div>`;
+    } else if ((lines[0] && lines[0].isKanyaga) || noSelectionKanyaga) {
+      priceLineHtml = `
+        <div style="font-family:var(--font-mono); font-size:13px; color:var(--gray); text-decoration:line-through;">KES ${(lines[0] ? lines[0].basePrice : fallbackRegularPrice).toLocaleString()}</div>
+        <div style="font-family:var(--font-mono); font-size:16px; color:#e63946; font-weight:800;">KES ${(lines[0] ? lines[0].showPrice : fallbackShowPrice).toLocaleString()} <span style="font-size:11px; font-weight:700;">🔥 Kanyaga</span></div>
+      `;
+    } else {
+      priceLineHtml = `<div style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700;">KES ${(lines[0] ? lines[0].showPrice : fallbackShowPrice).toLocaleString()}</div>`;
+    }
 
     let html = `
       <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px; padding-right:36px;">
@@ -15843,12 +15921,7 @@ function createAdminSellerManagement() {
         <div style="min-width:0;">
           <div style="font-weight:700; font-size:14.5px; color:var(--white); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(product.name)}</div>
           <div id="variantModalPriceLine" style="margin-top:2px;">
-            ${hasMultiAttr && lines.length > 1 ? `
-              <div style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700;">KES ${total.toLocaleString()} <span style="font-size:11px; color:var(--gray); font-weight:500;">(${lines.length} items)</span></div>
-            ` : (lines[0] && lines[0].isKanyaga) || noSelectionKanyaga ? `
-              <div style="font-family:var(--font-mono); font-size:13px; color:var(--gray); text-decoration:line-through;">KES ${(lines[0] ? lines[0].basePrice : fallbackRegularPrice).toLocaleString()}</div>
-              <div style="font-family:var(--font-mono); font-size:16px; color:#e63946; font-weight:800;">KES ${(lines[0] ? lines[0].showPrice : fallbackShowPrice).toLocaleString()} <span style="font-size:11px; font-weight:700;">🔥 Kanyaga</span></div>
-            ` : `<div style="font-family:var(--font-mono); font-size:16px; color:var(--gold); font-weight:700;">KES ${(lines[0] ? lines[0].showPrice : fallbackShowPrice).toLocaleString()}</div>`}
+            ${priceLineHtml}
           </div>
           <div id="variantModalStockLine" style="font-size:11.5px; margin-top:2px;">
             ${!attributes.length ? '' : !allPicked ? '<span style="color:var(--gray);">Select options below</span>'
