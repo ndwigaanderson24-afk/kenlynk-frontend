@@ -21325,7 +21325,13 @@ window._videoUpload = async function(which, fileOrBlob) {
     formData.append('video', fileOrBlob, fileOrBlob.name || 'recording.webm');
 
     const isAdminMode = which === 'admin';
-    const token = isAdminMode ? adminToken : authToken;
+    // Read straight from localStorage rather than the in-memory
+    // adminToken/authToken variables - those are let-scoped in a
+    // different <script> block on this page and aren't reachable from
+    // here, the same cross-block scoping gap that bit several other
+    // globals earlier in this project. localStorage is what they're
+    // initialized from anyway, so this is always in sync.
+    const token = isAdminMode ? localStorage.getItem('adminToken') : localStorage.getItem('authToken');
     const endpoint = isAdminMode ? '/products/admin/upload-video' : '/products/upload-video';
 
     const res = await fetch(API_BASE + endpoint, {
