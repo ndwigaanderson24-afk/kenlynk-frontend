@@ -8598,7 +8598,9 @@ function mapApiAdminOrder(o) {
     sellerEmail: o.seller_email || null,
     sellerBusinessName: o.seller_business_name || null,
     rider: o.rider_name ? { name: o.rider_name, phone: o.rider_phone, photo: o.rider_photo } : null,
-    customerConfirmedAt: o.customer_confirmed_at || null
+    customerConfirmedAt: o.customer_confirmed_at || null,
+    returnReason: o.return_reason || null,
+    refundAmount: o.refund_amount || null
   };
 }
 
@@ -18405,9 +18407,13 @@ window.trackOrder = trackOrder
 async function renderTrackingResult(order, resultDiv) {
 
   const STATUS_FLOW = ['Pending Payment', 'Paid', 'Processing', 'Ready for Delivery', 'Out for Delivery', 'Delivered', 'Awaiting Admin Confirmation', 'Completed'];
-  const STATUS_ICONS = { 'Pending Payment': '⏳', 'Paid': '💳', 'Processing': '⚙️', 'Ready for Delivery': '📦', 'Out for Delivery': '🚚', 'Delivered': '🏠', 'Awaiting Admin Confirmation': '🔎', 'Completed': '✅', 'Cancelled': '❌', 'Refunded': '↩️' };
+  const STATUS_ICONS = { 'Pending Payment': '⏳', 'Paid': '💳', 'Processing': '⚙️', 'Ready for Delivery': '📦', 'Out for Delivery': '🚚', 'Delivery Failed': '⚠️', 'Delivered': '🏠', 'Awaiting Admin Confirmation': '🔎', 'Completed': '✅', 'Return Requested': '↩️', 'Return Approved': '↩️', 'Returned': '📦', 'Refund Processing': '⚙️', 'Cancelled': '❌', 'Refunded': '↩️' };
   const currentStatus = order.status || 'Pending Payment';
-  const isTerminalOffTrack = currentStatus === 'Cancelled' || currentStatus === 'Refunded';
+  // Anything outside the normal happy-path sequence renders as its own
+  // standalone message instead of trying to slot into the linear
+  // step-by-step flow - a return/refund/failed-delivery is a genuine
+  // detour, not just another rung on the same ladder.
+  const isTerminalOffTrack = !STATUS_FLOW.includes(currentStatus);
   const currentIndex = STATUS_FLOW.indexOf(currentStatus);
 
   // Real status history from the server - falls back gracefully if the
@@ -18505,6 +18511,27 @@ async function renderTrackingResult(order, resultDiv) {
       <div style="background:rgba(0,107,63,0.2); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--green-light);">
         🎉 Order completed - thanks for shopping with us!
       </div>
+      <button onclick="window._requestReturnPrompt(${order.id})" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:10px; padding:10px; cursor:pointer; font-size:13px; margin-top:8px;">↩️ Request a return</button>
+    ` : currentStatus === 'Delivery Failed' ? `
+      <div style="background:rgba(231,76,60,0.15); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:#e74c3c; font-size:13px;">
+        ⚠️ We couldn't complete delivery. Our team will be in touch to reschedule.
+      </div>
+    ` : currentStatus === 'Return Requested' ? `
+      <div style="background:rgba(255,215,0,0.1); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--gold); font-size:13px;">
+        ↩️ Your return request has been received and is under review.
+      </div>
+    ` : currentStatus === 'Return Approved' ? `
+      <div style="background:rgba(255,215,0,0.1); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--gold); font-size:13px;">
+        ↩️ Return approved - please send the item back as instructed.
+      </div>
+    ` : currentStatus === 'Returned' || currentStatus === 'Refund Processing' ? `
+      <div style="background:rgba(255,215,0,0.1); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--gold); font-size:13px;">
+        ⚙️ We've received your return - your refund is being processed.
+      </div>
+    ` : currentStatus === 'Refunded' ? `
+      <div style="background:rgba(0,107,63,0.2); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--green-light); font-size:13px;">
+        ↩️ Refund completed${order.refund_amount ? ` - KES ${Number(order.refund_amount).toLocaleString()}` : ''}.
+      </div>
     ` : !isTerminalOffTrack ? `
       <div style="background:rgba(255,215,0,0.1); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--gold); font-size:13px;">
         🚚 Your order is being processed. Check back for updates!
@@ -18522,6 +18549,22 @@ window._confirmOrderReceipt = async function(orderId) {
     showToast('✅ Thanks for confirming! Our team will do a final review shortly.', 'success');
     const resultDiv = document.getElementById('trackResult');
     if (resultDiv) trackOrder();
+    if (window.renderOrders) window.renderOrders();
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
+  }
+};
+
+window._requestReturnPrompt = async function(orderId) {
+  const reason = prompt('Please tell us why you want to return this order:');
+  if (!reason || !reason.trim()) return;
+  try {
+    await apiCall(`/orders/${orderId}/request-return`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason.trim() })
+    });
+    showToast('↩️ Return request submitted. Our team will review it shortly.', 'success');
+    if (document.getElementById('trackResult')) trackOrder();
     if (window.renderOrders) window.renderOrders();
   } catch (err) {
     showToast('⚠️ ' + err.message, 'error');
@@ -18567,9 +18610,9 @@ function _nextOrderStatusOptions(currentStatus, isAdmin) {
     'Out for Delivery': ['Delivered']
   };
   const ADMIN_MAP = {
-    'Paid': ['Processing', 'Cancelled', 'Refunded'],
-    'Processing': ['Ready for Delivery', 'Cancelled', 'Refunded'],
-    'Ready for Delivery': ['Out for Delivery', 'Refunded'],
+    'Paid': ['Processing', 'Cancelled'],
+    'Processing': ['Ready for Delivery', 'Cancelled'],
+    'Ready for Delivery': ['Out for Delivery'],
     // 'Delivered' deliberately NOT offered here anymore - it's only
     // reachable via delivery OTP verification (see the "Verify Delivery
     // Code" button rendered for Out for Delivery orders), never as a
@@ -18577,10 +18620,19 @@ function _nextOrderStatusOptions(currentStatus, isAdmin) {
     // Confirmation' - that's the dedicated "Confirm Order Complete"
     // button, not a dropdown option, matching the spec's requirement
     // that completing an order is a distinct, deliberate admin action.
-    'Out for Delivery': ['Refunded'],
-    'Delivered': ['Refunded'],
-    'Awaiting Admin Confirmation': ['Refunded'],
-    'Completed': ['Refunded']
+    // 'Delivery Failed' is its own dedicated button (captures a reason)
+    // and 'Refunded' is ALWAYS via the dedicated "Process Refund"
+    // button (captures an amount) - never a bare dropdown pick, on any
+    // status, so a refund can never happen without recording how much.
+    'Out for Delivery': [],
+    'Delivery Failed': ['Cancelled'], // retry is its own dedicated button
+    'Delivered': [],
+    'Awaiting Admin Confirmation': [],
+    'Completed': ['Return Requested'],
+    'Return Requested': ['Return Approved', 'Completed'], // 'Completed' here = decline the return
+    'Return Approved': ['Returned'],
+    'Returned': ['Refund Processing'],
+    'Refund Processing': []
   };
   const map = isAdmin ? ADMIN_MAP : SELLER_MAP;
   return map[currentStatus] || [];
@@ -18649,6 +18701,72 @@ async function confirmOrderComplete(dbId) {
   }
 }
 window.confirmOrderComplete = confirmOrderComplete;
+
+// Statuses from which a refund is a legal next move - mirrors
+// orderStatus.js's TRANSITIONS server-side (every status that lists
+// 'Refunded' as an option). Kept as a flat list here rather than
+// re-deriving it, since the frontend has no access to the real
+// TRANSITIONS map - the server is still the final authority either way
+// (a stale/wrong list here only affects whether the button shows, never
+// whether the refund is actually allowed).
+const REFUNDABLE_STATUSES = [
+  'Paid', 'Processing', 'Ready for Delivery', 'Out for Delivery', 'Delivery Failed',
+  'Delivered', 'Awaiting Admin Confirmation', 'Completed',
+  'Return Requested', 'Return Approved', 'Returned', 'Refund Processing'
+];
+function _orderIsRefundable(status) {
+  return REFUNDABLE_STATUSES.includes(status);
+}
+window._orderIsRefundable = _orderIsRefundable;
+
+// Prompts for (and records) the reason a delivery attempt failed.
+async function markDeliveryFailedPrompt(dbId) {
+  const reason = prompt('Why did the delivery attempt fail? (e.g. customer unreachable, refused delivery, wrong address)');
+  if (!reason || !reason.trim()) return;
+  try {
+    await adminApiCall(`/orders/${dbId}/delivery-failed`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason.trim() })
+    });
+    showToast('⚠️ Marked as delivery failed.', 'success');
+    renderAdminOrdersList();
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
+  }
+}
+window.markDeliveryFailedPrompt = markDeliveryFailedPrompt;
+
+// Sends the order back to Out for Delivery for another attempt.
+async function retryDelivery(dbId) {
+  try {
+    await adminApiCall(`/orders/${dbId}/retry-delivery`, { method: 'PUT' });
+    showToast('🔁 Order moved back to Out for Delivery.', 'success');
+    renderAdminOrdersList();
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
+  }
+}
+window.retryDelivery = retryDelivery;
+
+// The only way an order's refund_amount ever gets set and the only way
+// a status ever actually reaches Refunded - always captures an amount,
+// never a bare status pick, so financial records stay trustworthy.
+async function processRefundPrompt(dbId) {
+  const amount = prompt('Enter the refund amount (KES):');
+  if (!amount) return;
+  if (!confirm(`Confirm refunding KES ${amount}? This cannot be undone from here.`)) return;
+  try {
+    await adminApiCall(`/orders/admin/${dbId}/process-refund`, {
+      method: 'PUT',
+      body: JSON.stringify({ amount: Number(amount) })
+    });
+    showToast(`💰 Refund of KES ${amount} processed.`, 'success');
+    renderAdminOrdersList();
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
+  }
+}
+window.processRefundPrompt = processRefundPrompt;
 
 async function updateOrderStatus(orderId, newStatus) {
 
@@ -18966,6 +19084,11 @@ async function renderAdminOrdersList(loadMore) {
   ${o.status === 'Out for Delivery' ? `
     <button onclick="sendDeliveryOtp('${o.dbId}')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px;">📲 Send Delivery Code</button>
     <button onclick="verifyDeliveryOtpPrompt('${o.dbId}')" style="background:var(--gold); color:#111; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">✅ Verify Delivery Code</button>
+    <button onclick="markDeliveryFailedPrompt('${o.dbId}')" style="background:var(--surface-3); border:1px solid #e74c3c; color:#e74c3c; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px;">⚠️ Mark Delivery Failed</button>
+  ` : ''}
+
+  ${o.status === 'Delivery Failed' ? `
+    <button onclick="retryDelivery('${o.dbId}')" style="background:var(--gold); color:#111; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">🔁 Retry Delivery</button>
   ` : ''}
 
   ${o.status === 'Awaiting Admin Confirmation' ? `
@@ -18975,6 +19098,19 @@ async function renderAdminOrdersList(loadMore) {
       Customer confirmed receipt ${o.customerConfirmedAt ? '✅' : '— not yet'}
     </div>
     <button onclick="confirmOrderComplete('${o.dbId}')" style="background:var(--green); color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:700;">✅ CONFIRM ORDER COMPLETE</button>
+  ` : ''}
+
+  ${o.status === 'Return Requested' && o.returnReason ? `
+    <div style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:8px; padding:8px; font-size:11px; color:var(--gray);">
+      ↩️ Reason: ${escapeHtml(o.returnReason)}
+    </div>
+  ` : ''}
+
+  ${_orderIsRefundable(o.status) ? `
+    <button onclick="processRefundPrompt('${o.dbId}')" style="background:var(--surface-3); border:1px solid var(--gold); color:var(--gold); padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">💰 Process Refund</button>
+  ` : ''}
+  ${o.status === 'Refunded' && o.refundAmount ? `
+    <div style="color:var(--gray); font-size:11px;">↩️ Refunded: KES ${Number(o.refundAmount).toLocaleString()}</div>
   ` : ''}
 
   <button onclick="deleteOrder('${o.id}')" style="background:#f44336; color:white; border:none; padding:4px 12px; border-radius:4px; cursor:pointer; font-size:11px;">🗑️ Delete</button>
