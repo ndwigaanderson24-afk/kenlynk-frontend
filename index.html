@@ -8597,7 +8597,8 @@ function mapApiAdminOrder(o) {
     placedAt: o.placed_at,
     sellerEmail: o.seller_email || null,
     sellerBusinessName: o.seller_business_name || null,
-    rider: o.rider_name ? { name: o.rider_name, phone: o.rider_phone, photo: o.rider_photo } : null
+    rider: o.rider_name ? { name: o.rider_name, phone: o.rider_phone, photo: o.rider_photo } : null,
+    customerConfirmedAt: o.customer_confirmed_at || null
   };
 }
 
@@ -18403,8 +18404,8 @@ window.trackOrder = trackOrder
 
 async function renderTrackingResult(order, resultDiv) {
 
-  const STATUS_FLOW = ['Pending Payment', 'Paid', 'Processing', 'Ready for Delivery', 'Out for Delivery', 'Delivered', 'Completed'];
-  const STATUS_ICONS = { 'Pending Payment': '⏳', 'Paid': '💳', 'Processing': '⚙️', 'Ready for Delivery': '📦', 'Out for Delivery': '🚚', 'Delivered': '🏠', 'Completed': '✅', 'Cancelled': '❌', 'Refunded': '↩️' };
+  const STATUS_FLOW = ['Pending Payment', 'Paid', 'Processing', 'Ready for Delivery', 'Out for Delivery', 'Delivered', 'Awaiting Admin Confirmation', 'Completed'];
+  const STATUS_ICONS = { 'Pending Payment': '⏳', 'Paid': '💳', 'Processing': '⚙️', 'Ready for Delivery': '📦', 'Out for Delivery': '🚚', 'Delivered': '🏠', 'Awaiting Admin Confirmation': '🔎', 'Completed': '✅', 'Cancelled': '❌', 'Refunded': '↩️' };
   const currentStatus = order.status || 'Pending Payment';
   const isTerminalOffTrack = currentStatus === 'Cancelled' || currentStatus === 'Refunded';
   const currentIndex = STATUS_FLOW.indexOf(currentStatus);
@@ -18488,6 +18489,7 @@ async function renderTrackingResult(order, resultDiv) {
     ${canConfirm ? `
     <div style="border-top:1px solid var(--border); margin-top:16px; padding-top:16px;">
       <button onclick="window._confirmOrderReceipt(${order.id})" style="width:100%; background:var(--green); border:none; color:#fff; border-radius:10px; padding:12px; cursor:pointer; font-weight:700; font-size:14px;">✅ I've received this order</button>
+      <div style="font-size:11px; color:var(--gray); text-align:center; margin-top:6px;">This lets us know you got it - our team still does a quick final check before the order is fully closed out.</div>
     </div>
     ` : ''}
 
@@ -18495,9 +18497,13 @@ async function renderTrackingResult(order, resultDiv) {
       <div style="background:rgba(0,107,63,0.2); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--green-light);">
         ✅ Order delivered successfully!
       </div>
+    ` : currentStatus === 'Awaiting Admin Confirmation' ? `
+      <div style="background:rgba(255,215,0,0.1); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--gold); font-size:13px;">
+        🔎 Delivery verified - our team is doing a final review before closing out your order.
+      </div>
     ` : currentStatus === 'Completed' ? `
       <div style="background:rgba(0,107,63,0.2); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--green-light);">
-        🎉 Order completed - thanks for confirming!
+        🎉 Order completed - thanks for shopping with us!
       </div>
     ` : !isTerminalOffTrack ? `
       <div style="background:rgba(255,215,0,0.1); border-radius:10px; padding:12px; margin-top:12px; text-align:center; color:var(--gold); font-size:13px;">
@@ -18513,7 +18519,7 @@ window._confirmOrderReceipt = async function(orderId) {
   if (!confirm('Confirm that you have received this order?')) return;
   try {
     await apiCall(`/orders/${orderId}/confirm-receipt`, { method: 'PUT' });
-    showToast('✅ Thanks for confirming! Order marked as completed.', 'success');
+    showToast('✅ Thanks for confirming! Our team will do a final review shortly.', 'success');
     const resultDiv = document.getElementById('trackResult');
     if (resultDiv) trackOrder();
     if (window.renderOrders) window.renderOrders();
@@ -18564,8 +18570,16 @@ function _nextOrderStatusOptions(currentStatus, isAdmin) {
     'Paid': ['Processing', 'Cancelled', 'Refunded'],
     'Processing': ['Ready for Delivery', 'Cancelled', 'Refunded'],
     'Ready for Delivery': ['Out for Delivery', 'Refunded'],
-    'Out for Delivery': ['Delivered', 'Refunded'],
-    'Delivered': ['Completed', 'Refunded'],
+    // 'Delivered' deliberately NOT offered here anymore - it's only
+    // reachable via delivery OTP verification (see the "Verify Delivery
+    // Code" button rendered for Out for Delivery orders), never as a
+    // raw dropdown pick. Same for 'Completed' from 'Awaiting Admin
+    // Confirmation' - that's the dedicated "Confirm Order Complete"
+    // button, not a dropdown option, matching the spec's requirement
+    // that completing an order is a distinct, deliberate admin action.
+    'Out for Delivery': ['Refunded'],
+    'Delivered': ['Refunded'],
+    'Awaiting Admin Confirmation': ['Refunded'],
     'Completed': ['Refunded']
   };
   const map = isAdmin ? ADMIN_MAP : SELLER_MAP;
@@ -18587,6 +18601,54 @@ async function updateAdminOrderStatus(dbId, newStatus) {
   renderAdminOrdersList();
 }
 window.updateAdminOrderStatus = updateAdminOrderStatus;
+
+// Sends (or re-sends) the delivery verification code to the customer's
+// phone via SMS - safe to call more than once, each call invalidates
+// any previously-sent code.
+async function sendDeliveryOtp(dbId) {
+  try {
+    await adminApiCall(`/orders/${dbId}/send-delivery-otp`, { method: 'POST' });
+    showToast('📲 Delivery code sent to the customer.', 'success');
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
+  }
+}
+window.sendDeliveryOtp = sendDeliveryOtp;
+
+// Prompts for the code the rider reports back, then verifies it -
+// a correct match automatically moves the order to Delivered and then
+// Awaiting Admin Confirmation in one step (server-side, see
+// order.js's verifyDeliveryOtp).
+async function verifyDeliveryOtpPrompt(dbId) {
+  const code = prompt('Enter the delivery code the customer gave the rider:');
+  if (!code) return;
+  try {
+    await adminApiCall(`/orders/${dbId}/verify-delivery-otp`, {
+      method: 'POST',
+      body: JSON.stringify({ code: code.trim() })
+    });
+    showToast('✅ Delivery verified - order is now awaiting your final confirmation.', 'success');
+    renderAdminOrdersList();
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
+  }
+}
+window.verifyDeliveryOtpPrompt = verifyDeliveryOtpPrompt;
+
+// The one and only way an order actually becomes Completed - a
+// deliberate, distinct admin action (not a dropdown pick), per the
+// "admin has final say" rule.
+async function confirmOrderComplete(dbId) {
+  if (!confirm('Confirm this order as complete? This finalizes seller earnings and cannot be undone from here (only a separate refund can reverse it).')) return;
+  try {
+    await adminApiCall(`/orders/admin/${dbId}/confirm-complete`, { method: 'PUT' });
+    showToast('✅ Order confirmed complete.', 'success');
+    renderAdminOrdersList();
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
+  }
+}
+window.confirmOrderComplete = confirmOrderComplete;
 
 async function updateOrderStatus(orderId, newStatus) {
 
@@ -18900,6 +18962,20 @@ async function renderAdminOrdersList(loadMore) {
   ` : `
     <button onclick="openAssignRiderModal('${o.dbId}')" style="background:var(--green-light); color:#111; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">🚴 Assign Rider</button>
   `}
+
+  ${o.status === 'Out for Delivery' ? `
+    <button onclick="sendDeliveryOtp('${o.dbId}')" style="background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px;">📲 Send Delivery Code</button>
+    <button onclick="verifyDeliveryOtpPrompt('${o.dbId}')" style="background:var(--gold); color:#111; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">✅ Verify Delivery Code</button>
+  ` : ''}
+
+  ${o.status === 'Awaiting Admin Confirmation' ? `
+    <div style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:8px; padding:8px; font-size:11px; color:var(--gray); line-height:1.6;">
+      Rider marked delivered ✅<br>
+      Customer OTP verified ✅<br>
+      Customer confirmed receipt ${o.customerConfirmedAt ? '✅' : '— not yet'}
+    </div>
+    <button onclick="confirmOrderComplete('${o.dbId}')" style="background:var(--green); color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:700;">✅ CONFIRM ORDER COMPLETE</button>
+  ` : ''}
 
   <button onclick="deleteOrder('${o.id}')" style="background:#f44336; color:white; border:none; padding:4px 12px; border-radius:4px; cursor:pointer; font-size:11px;">🗑️ Delete</button>
 </div>
