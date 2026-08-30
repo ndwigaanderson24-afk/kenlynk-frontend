@@ -6542,6 +6542,7 @@ function mapApiCartItem(row) {
     variantName: row.variant_name || null,
     name: row.name,
     price: Number(row.price),
+    kanyagaPrice: row.kanyaga_price != null ? Number(row.kanyaga_price) : null,
     image: variantImage || row.image,
     emoji: row.emoji,
     category: row.category,
@@ -8378,9 +8379,21 @@ window._trackProductClick = function(productId) {
 
   // Uses the wholesale tier price for the item's current quantity when the
   // product has quantity pricing configured, otherwise the normal unit price.
+  //
+  // The cart item itself (c.price / c.kanyagaPrice) already carries the
+  // correctly variant-aware price straight from the server - cart.js
+  // COALESCEs a selected variant's own price/kanyaga_price over the base
+  // product's when one exists. Looking up PRODUCTS.find() alone and using
+  // its price/kanyagaPrice directly would silently throw that away and
+  // fall back to the base product's numbers for every variant, which is
+  // exactly what was happening before this fix - only wholesaleTiers
+  // (a product-level concept, not variant-level) still needs to come from
+  // the base product lookup.
   function cartItemUnitPrice(c){
     const product = PRODUCTS.find(p => p.id === c.id);
-    return product ? window.getUnitPriceForQty(product, c.qty) : c.price;
+    if (!product) return c.price;
+    const pricedProduct = { ...product, price: c.price, kanyagaPrice: (c.kanyagaPrice != null ? c.kanyagaPrice : product.kanyagaPrice) };
+    return window.getUnitPriceForQty(pricedProduct, c.qty);
   }
 
   function cartTotal(){ return cart.reduce((sum,c)=> sum + c.qty * cartItemUnitPrice(c), 0); }
@@ -8413,7 +8426,13 @@ function renderCart(){
   const cardsHtml = cart.map(c=> {
     const product = PRODUCTS.find(p => p.id === c.id);
     const unitPrice = cartItemUnitPrice(c);
-    const isWholesale = unitPrice < c.price;
+    // A lower unit price can come from either a wholesale tier or an
+    // active Kanyaga deal - these were never told apart before, so a
+    // Kanyaga-discounted item incorrectly said "wholesale price applied"
+    // any time its price came in under c.price for any reason.
+    const kanyagaActive = !!(product && window.isKanyagaActive && window.isKanyagaActive(product));
+    const isKanyagaDiscount = kanyagaActive && unitPrice < c.price;
+    const isWholesale = !kanyagaActive && unitPrice < c.price;
     const tiers = (product && Array.isArray(product.wholesaleTiers)) ? product.wholesaleTiers : [];
     return `
     <div class="cart-v2-card">
@@ -8719,7 +8738,7 @@ function computeCartSellerGroups() {
     const key = sellerEmail || '__platform__';
     if (!groups[key]) groups[key] = { sellerEmail: sellerEmail, county: county, items: [], weight: 0, subtotal: 0 };
     const qty = item.qty;
-    const unitPrice = product ? window.getUnitPriceForQty(product, qty) : item.price;
+    const unitPrice = cartItemUnitPrice(item);
     groups[key].items.push(item);
     groups[key].weight += (product && product.weight ? product.weight : 1) * qty;
     groups[key].subtotal += unitPrice * qty;
