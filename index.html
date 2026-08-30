@@ -10358,15 +10358,24 @@ document.getElementById('supplyOfferSubmitBtn')?.addEventListener('click', async
   }
 });
 
-// Buyer accepts the admin-approved offer -> should create a real order,
-// tied into the normal seller/order pipeline. NOT YET WIRED UP - this
-// needs careful integration with the real order-creation endpoint
-// (commission calc, delivery fee, seller payout) rather than a fake
-// local-only order nobody else would ever see, which is exactly the
-// bug this whole feature is being fixed away from. Flagged honestly
-// rather than silently faking it.
-function acceptApprovedOffer(requestId) {
-  showToast('Accepting offers is coming very soon - for now, please contact us directly to complete this order.', 'error');
+// Buyer accepts the admin-approved offer - creates a real (hidden,
+// non-browsable) product for this specific fulfillment and adds it
+// straight to their cart, so they complete payment through the site's
+// existing Cart -> checkout flow exactly like any other purchase. That
+// real order is what then lets them review it once delivered - the
+// previous version of this function was an honest placeholder ("not
+// yet wired up") rather than faking a local-only order nobody else
+// would ever see.
+async function acceptApprovedOffer(requestId) {
+  try {
+    const body = currentUser ? {} : { session_id: localStorage.getItem('cartSessionId') };
+    await apiCall(`/requests/${requestId}/accept`, { method: 'POST', body: JSON.stringify(body) });
+    showToast('✅ Offer accepted! Added to your cart - complete checkout to place your order.', 'success');
+    renderMyRequests();
+    goToPage('cart');
+  } catch (err) {
+    showToast('⚠️ ' + err.message, 'error');
+  }
 }
 window.acceptApprovedOffer = acceptApprovedOffer;
 
