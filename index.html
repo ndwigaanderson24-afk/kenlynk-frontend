@@ -2069,6 +2069,31 @@
 
 
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Daily theme poster - playful entrance + mascot-style animations */
+    @keyframes themeCardPopIn {
+      0%   { transform: scale(0.6) rotate(-4deg); opacity: 0; }
+      60%  { transform: scale(1.05) rotate(1deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    @keyframes themeEmojiBounce {
+      0%, 100% { transform: translateY(0) rotate(-3deg); }
+      50%      { transform: translateY(-14px) rotate(3deg); }
+    }
+    @keyframes themeFloatUp {
+      0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+      10%  { opacity: 0.5; }
+      90%  { opacity: 0.35; }
+      100% { transform: translateY(-420px) rotate(25deg); opacity: 0; }
+    }
+    @keyframes themePillPop {
+      0%   { transform: scale(0.5) translateY(10px); opacity: 0; }
+      100% { transform: scale(1) translateY(0); opacity: 1; }
+    }
+    #dailyThemePosterCard { animation: themeCardPopIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+    #dailyThemeEmoji { display: inline-block; animation: themeEmojiBounce 1.8s ease-in-out infinite; }
+    .theme-floating-emoji { position: absolute; bottom: -40px; font-size: 28px; animation: themeFloatUp linear infinite; pointer-events: none; user-select: none; }
+    .theme-pill-pop { animation: themePillPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
   </style>
 
 <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.22.0.js"></script>
@@ -4275,6 +4300,18 @@
 
   <img id="zoomImage" src="#" alt="Product zoom">
 
+</div>
+
+<div id="dailyThemePosterOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:3000; align-items:center; justify-content:center; padding:20px; overflow:hidden;" onclick="if(event.target===this) closeDailyThemePoster();">
+  <div id="dailyThemeFloatingLayer" style="position:absolute; inset:0; overflow:hidden; pointer-events:none;"></div>
+  <div id="dailyThemePosterCard" style="background:linear-gradient(160deg, var(--surface) 0%, var(--surface-2) 100%); border:1px solid var(--gold); border-radius:20px; max-width:420px; width:100%; padding:28px 24px; text-align:center; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+    <button onclick="closeDailyThemePoster()" style="position:absolute; top:14px; right:14px; background:none; border:none; color:var(--gray); font-size:22px; cursor:pointer; line-height:1;">✕</button>
+    <div id="dailyThemeEmoji" style="font-size:52px; margin-bottom:6px;"></div>
+    <div id="dailyThemeTitle" style="font-family:var(--font-display); font-size:24px; font-weight:800; color:var(--gold); margin-bottom:8px; line-height:1.2;"></div>
+    <div id="dailyThemeTagline" style="font-size:14px; color:var(--white); margin-bottom:16px; line-height:1.5;"></div>
+    <div id="dailyThemeCategories" style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:20px;"></div>
+    <button onclick="closeDailyThemePoster(); goToPage('shop');" style="width:100%; background:var(--gold); color:#111; border:none; border-radius:12px; padding:13px; font-weight:800; font-size:15px; cursor:pointer;">🛍️ Shop Today's Picks</button>
+  </div>
 </div>
 
 <div id="variantModalOverlay" class="variant-modal-overlay" onclick="if(event.target===this) window.closeVariantModal();">
@@ -7337,11 +7374,110 @@ function toWhatsappNumber(phone) {
 
   let secondsLeft = 6;
 
-  function finishLaunch(){ launcher.classList.add("hide"); appEl.classList.add("show"); setTimeout(()=> launcher.style.display = "none", 650); }
+  function finishLaunch(){ launcher.classList.add("hide"); appEl.classList.add("show"); setTimeout(()=> launcher.style.display = "none", 650); setTimeout(()=> showDailyThemePoster(), 900); }
 
   var launcherTimer = setInterval(()=> { secondsLeft--; if (secondsLeft <= 0) { clearInterval(launcherTimer); finishLaunch(); } else { if (countNum) countNum.textContent = secondsLeft; } }, 1000);
 
   document.getElementById("skipBtn").addEventListener("click", ()=>{ clearInterval(launcherTimer); finishLaunch(); });
+
+  // ── Daily category theme poster ─────────────────────────────────────
+  // Matches the weekly content calendar: each day of the week has its
+  // own shopping theme, so across a Sunday-Saturday cycle every major
+  // category group gets its own spotlight day. Shown once per calendar
+  // day (not every single reload) right after the launcher finishes, so
+  // it feels like the site's own daily "front page" rather than a
+  // repetitive popup.
+  const WEEKLY_THEMES = [
+    { // Sunday
+      emoji: '📱', title: 'TECH SUNDAY',
+      tagline: 'Phones, laptops, smart watches, TVs & more. Find what you need on KenLynk.',
+      categories: ['Phones', 'Refurbished', 'Laptops & Tablets', 'Computer Accessories', 'Storage Devices', 'Earphones & Audio', 'Smart Watches', 'TV'],
+      floatIcons: ['📱', '💻', '⌚', '🎧', '📺', '💾']
+    },
+    { // Monday
+      emoji: '🏠', title: 'HOME MONDAY',
+      tagline: 'Upgrade your space without the stress. Furniture, appliances, kitchen, decor & lighting.',
+      categories: ['Home & Living', 'Furniture', 'Kitchen & Dining', 'Home Appliances', 'Fridge & Freezers', 'Home Decor', 'Bedding & Mattress', 'Lighting'],
+      floatIcons: ['🏠', '🛋️', '🍳', '💡', '🛏️', '🖼️']
+    },
+    { // Tuesday
+      emoji: '👗', title: 'FASHION TUESDAY',
+      tagline: "Fresh looks for everyone - men's and women's clothing, shoes, bags & accessories.",
+      categories: ["Men's Clothes", "Men's Shoes", "Men's Bags", "Men's Accessories", "Women's Clothes", "Women's Shoes", "Women's Bags", "Women's Accessories"],
+      floatIcons: ['👗', '👔', '👠', '👜', '🕶️', '👞']
+    },
+    { // Wednesday
+      emoji: '💄', title: 'BEAUTY & FAMILY WEDNESDAY',
+      tagline: 'Something for you. Something for the little ones. Something for everyone.',
+      categories: ['Beauty', 'Wigs & Hair', 'Jewellery', 'Personal Care', 'Health Care', 'Kids Clothing', 'Kids Shoes', 'Kids & Baby Products'],
+      floatIcons: ['💄', '💅', '🧸', '👶', '💍', '🧴']
+    },
+    { // Thursday
+      emoji: '🔧', title: 'POWER & PRACTICAL THURSDAY',
+      tagline: 'Build it. Fix it. Protect it. Power it. Move it.',
+      categories: ['Automotive', 'Sports & Outdoors', 'Agriculture & Farming', 'Tools & Industrial', 'Construction & Hardware', 'Security & Surveillance', 'Solar Energy'],
+      floatIcons: ['🚗', '⚙️', '🌾', '🔩', '🛡️', '☀️']
+    },
+    { // Friday
+      emoji: '🎮', title: 'FUN FRIDAY',
+      tagline: 'Gaming, music, photography, toys, crafts & more.',
+      categories: ['Gaming & Wearables', 'Gaming', 'Camera & Photography', 'Books & Stationery', 'Toys & Games', 'Musical Instruments', 'Arts & Crafts', 'Pets & Pet Supplies'],
+      floatIcons: ['🎮', '🎧', '📷', '🎨', '🐾', '🎲']
+    },
+    { // Saturday
+      emoji: '🎁', title: 'KENLYNK WEEKEND DEALS',
+      tagline: 'Our strongest deals of the week, plus travel, gifts, party, office & digital picks.',
+      categories: ['Travel & Luggage', 'Party & Event', 'Gift Shop', 'Office & Supplies', 'Digital Products'],
+      floatIcons: ['🎁', '✈️', '🎉', '🖇️', '💻']
+    }
+  ];
+
+  function _todayDateStr() { return new Date().toISOString().slice(0, 10); }
+
+  function showDailyThemePoster() {
+    try {
+      if (localStorage.getItem('kenlynk_daily_theme_seen') === _todayDateStr()) return;
+    } catch (e) { /* localStorage unavailable - just show it, no harm in that */ }
+
+    const theme = WEEKLY_THEMES[new Date().getDay()];
+    if (!theme) return;
+
+    document.getElementById('dailyThemeEmoji').textContent = theme.emoji;
+    document.getElementById('dailyThemeTitle').textContent = theme.title;
+    document.getElementById('dailyThemeTagline').textContent = theme.tagline;
+    document.getElementById('dailyThemeCategories').innerHTML = theme.categories.map((c, i) =>
+      `<span class="theme-pill-pop" style="animation-delay:${0.5 + i * 0.07}s; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); font-size:11px; padding:4px 10px; border-radius:999px;">${escapeHtml(c)}</span>`
+    ).join('');
+
+    // Floating background mascots - a handful of the day's icons drifting
+    // slowly upward at random horizontal spots, staggered so they never
+    // all move in lockstep. Purely decorative (pointer-events:none), and
+    // capped at a modest count so it reads as playful rather than busy.
+    const floatLayer = document.getElementById('dailyThemeFloatingLayer');
+    if (floatLayer) {
+      const icons = theme.floatIcons && theme.floatIcons.length ? theme.floatIcons : [theme.emoji];
+      let floatHtml = '';
+      for (let i = 0; i < 14; i++) {
+        const icon = icons[i % icons.length];
+        const left = Math.round(Math.random() * 92);
+        const duration = (7 + Math.random() * 6).toFixed(1);
+        const delay = (Math.random() * 6).toFixed(1);
+        const size = 20 + Math.round(Math.random() * 20);
+        floatHtml += `<span class="theme-floating-emoji" style="left:${left}%; font-size:${size}px; animation-duration:${duration}s; animation-delay:${delay}s;">${icon}</span>`;
+      }
+      floatLayer.innerHTML = floatHtml;
+    }
+
+    const overlay = document.getElementById('dailyThemePosterOverlay');
+    if (overlay) overlay.style.display = 'flex';
+
+    try { localStorage.setItem('kenlynk_daily_theme_seen', _todayDateStr()); } catch (e) { /* non-fatal */ }
+  }
+
+  window.closeDailyThemePoster = function() {
+    const overlay = document.getElementById('dailyThemePosterOverlay');
+    if (overlay) overlay.style.display = 'none';
+  };
 
 
 
