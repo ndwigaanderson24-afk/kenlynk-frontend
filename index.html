@@ -7373,17 +7373,17 @@ function toWhatsappNumber(phone) {
   // repetitive popup.
   // Real designed poster images, one per day - swapped in from the
   // actual marketing artwork rather than being generated from text/emoji.
-  // Place these 7 files in the frontend repo at assets/daily-posters/
-  // (same level as index.html) so they're served at
-  // https://kenlynk.com/assets/daily-posters/<file> once deployed.
+  // These 7 files live in the frontend repo at assets/ (same level as
+  // index.html) so they're served at https://kenlynk.com/assets/<file>
+  // once deployed.
   const WEEKLY_THEMES = [
-    { image: 'assets/daily-posters/tech-sunday.jpg' },              // Sunday
-    { image: 'assets/daily-posters/home-monday.jpg' },              // Monday
-    { image: 'assets/daily-posters/fashion-tuesday.jpg' },          // Tuesday
-    { image: 'assets/daily-posters/beauty-family-wednesday.jpg' },  // Wednesday
-    { image: 'assets/daily-posters/power-practical-thursday.jpg' }, // Thursday
-    { image: 'assets/daily-posters/fun-friday.jpg' },               // Friday
-    { image: 'assets/daily-posters/weekend-saturday.jpg' }          // Saturday
+    { image: 'assets/tech-sunday.jpg' },              // Sunday
+    { image: 'assets/home-monday.jpg' },              // Monday
+    { image: 'assets/fashion-tuesday.jpg' },          // Tuesday
+    { image: 'assets/beauty-family-wednesday.jpg' },  // Wednesday
+    { image: 'assets/power-practical-thursday.jpg' }, // Thursday
+    { image: 'assets/fun-friday.jpg' },               // Friday
+    { image: 'assets/weekend-saturday.jpg' }          // Saturday
   ];
 
   function _todayDateStr() { return new Date().toISOString().slice(0, 10); }
@@ -7397,7 +7397,15 @@ function toWhatsappNumber(phone) {
     if (!theme) return;
 
     const img = document.getElementById('dailyThemePosterImg');
-    if (img) img.src = theme.image;
+    // Cache-busted with today's date - not just a one-off fix for this
+    // image, but a permanent safeguard: Netlify's CDN can cache a 404
+    // for a specific URL even after the real file is deployed and a
+    // normal browser refresh can't clear that (it's server-side, not
+    // browser-side). Since the poster genuinely changes once a day
+    // anyway, tying the cache-buster to the date means every day's
+    // image is naturally fetched fresh exactly once, with zero risk of
+    // ever getting stuck on a stale cached failure again.
+    if (img) img.src = theme.image + '?v=' + _todayDateStr();
 
     const overlay = document.getElementById('dailyThemePosterOverlay');
     if (overlay) overlay.style.display = 'flex';
