@@ -3779,6 +3779,21 @@
 
         </div>
 
+        <div style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px; margin-bottom:12px;">
+          <div style="font-weight:700; font-size:13px; color:var(--white); margin-bottom:4px;">⚙️ Custom Commission & Delivery (optional, admin only)</div>
+          <p style="color:var(--gray); font-size:11.5px; margin-bottom:10px;">Leave both blank to use the standard commission brackets and weight-based delivery fee, same as every other product. Fill one in only if THIS specific product needs a different flat KES amount.</p>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div>
+              <label style="font-size:10px; color:var(--gray); display:block;">Commission (KES)</label>
+              <input type="number" id="adminCommissionValue" min="0" step="0.01" placeholder="leave blank for automatic" oninput="window._updateAdminPricePreview()" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;">
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <label style="font-size:10px; color:var(--gray); display:block;">Delivery Fee Override (KES, optional)</label>
+            <input type="number" id="adminDeliveryFeeOverride" min="0" step="0.01" placeholder="leave blank to use the standard weight-based fee" oninput="window._updateAdminPricePreview()" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;">
+          </div>
+        </div>
+
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
 
           <div class="field"><label>Original Price * <span style="color:#e74c3c;font-size:11px;">(must be filled)</span></label><input type="number" id="adminOriginalPrice" placeholder="1000" required min="1" style="border-color:var(--border-strong);" oninput="window._updateAdminPricePreview()"></div>
@@ -11378,15 +11393,25 @@ window._updateAdminPricePreview = function() {
   _adminPricePreviewTimer = setTimeout(async () => {
     try {
       const weight = parseFloat(document.getElementById('adminWeight')?.value) || 1;
+      // A plain flat-KES box, same pattern as Selling Price itself -
+      // blank means "use the automatic bracket calculation", any
+      // number means "use exactly this instead", no separate type to
+      // pick.
+      const commissionValueRaw = document.getElementById('adminCommissionValue')?.value;
+      const commissionType = commissionValueRaw !== '' ? 'flat' : 'default';
+      const commissionValue = commissionValueRaw !== '' ? Number(commissionValueRaw) : undefined;
+      const deliveryFeeOverrideRaw = document.getElementById('adminDeliveryFeeOverride')?.value;
+      const deliveryFeeOverride = deliveryFeeOverrideRaw !== '' ? Number(deliveryFeeOverrideRaw) : undefined;
       const res = await adminApiCall('/products/admin/preview-price', {
         method: 'POST',
-        body: JSON.stringify({ seller_price: priceVal, weight })
+        body: JSON.stringify({ seller_price: priceVal, weight, commission_type: commissionType, commission_value: commissionValue, delivery_fee_override: deliveryFeeOverride })
       });
       if (previewEl) previewEl.innerHTML = `
         Buyer will pay: <strong style="color:var(--gold);">KES ${res.data.price.toLocaleString()}</strong> <span style="color:var(--green-light);">(free delivery included)</span>
         ${res.data.commission !== undefined ? `
         <div style="margin-top:6px; font-size:11px; color:var(--gray); border-top:1px solid var(--border); padding-top:6px;">
           Product Price: KES ${priceVal.toLocaleString()} · Commission: KES ${res.data.commission.toLocaleString()} · Delivery: KES ${res.data.delivery_fee.toLocaleString()}
+          ${commissionType !== 'default' ? '<br><span style="color:var(--gold);">⚙️ Custom commission applied</span>' : ''}
         </div>` : ''}
       `;
     } catch (err) {
@@ -11834,6 +11859,9 @@ async function renderAdminProducts() {
       document.getElementById("adminPrice").value = product.sellerPrice != null ? product.sellerPrice : product.price;
 
       document.getElementById("adminOriginalPrice").value = product.originalPrice || '';
+
+      if (document.getElementById("adminCommissionValue")) document.getElementById("adminCommissionValue").value = (product.commissionValue != null) ? product.commissionValue : '';
+      if (document.getElementById("adminDeliveryFeeOverride")) document.getElementById("adminDeliveryFeeOverride").value = (product.deliveryFeeOverride != null) ? product.deliveryFeeOverride : '';
 
       document.getElementById("adminCategory").value = product.category_id || '';
 
@@ -12537,6 +12565,12 @@ window.loadManualData = loadManualData;
 
     const weight = parseFloat(document.getElementById('adminWeight')?.value) || 1;
 
+    const commissionValueRaw = document.getElementById('adminCommissionValue')?.value;
+    const commissionType = commissionValueRaw !== '' ? 'flat' : 'default';
+    const commissionValue = commissionValueRaw !== '' ? Number(commissionValueRaw) : null;
+    const deliveryFeeOverrideRaw = document.getElementById('adminDeliveryFeeOverride')?.value;
+    const deliveryFeeOverride = deliveryFeeOverrideRaw !== '' ? Number(deliveryFeeOverrideRaw) : null;
+
     const lowStock = parseInt(document.getElementById('adminLowStock')?.value, 10);
 
     const desc = document.getElementById("adminDesc")?.value.trim();
@@ -12570,7 +12604,7 @@ window.loadManualData = loadManualData;
 
         await adminApiCall(`/products/admin/${editingProductId}`, {
           method: 'PUT',
-          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, weight, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt, kanyaga_campaign: kanyagaOn ? 'kanyaga' : null, video: window._videoState.admin.url, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
+          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, weight, commission_type: commissionType, commission_value: commissionValue, delivery_fee_override: deliveryFeeOverride, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt, kanyaga_campaign: kanyagaOn ? 'kanyaga' : null, video: window._videoState.admin.url, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
         savedId = editingProductId;
         showToast("Product updated successfully!", "success");
@@ -12587,7 +12621,7 @@ window.loadManualData = loadManualData;
 
         const createRes = await adminApiCall('/products/admin', {
           method: 'POST',
-          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, weight, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt, kanyaga_campaign: kanyagaOn ? 'kanyaga' : null, video: window._videoState.admin.url, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
+          body: JSON.stringify({ name, seller_price: price, fragile, original_price: originalPrice, category, category_id: category ? Number(category) : undefined, images: uploadedAdminImages, hot, is_new_arrival: isNewArrival, is_best_rated: isBestRated, country_of_origin: countryOfOrigin, flash_deal_ends_at: flashDealEndsAt, stock, weight, commission_type: commissionType, commission_value: commissionValue, delivery_fee_override: deliveryFeeOverride, low_stock_threshold: (!isNaN(lowStock) && lowStock >= 0) ? lowStock : undefined, wholesale_tiers: wholesaleTiers, kanyaga_price: kanyagaPrice, kanyaga_start_at: kanyagaStartAt, kanyaga_end_at: kanyagaEndAt, kanyaga_campaign: kanyagaOn ? 'kanyaga' : null, video: window._videoState.admin.url, ...(photoOptions.length > 0 ? { has_variants: 1 } : {}), description: desc })
         });
         savedId = createRes.data.product.id;
         showToast("Product added successfully!", "success");
@@ -12610,6 +12644,9 @@ window.loadManualData = loadManualData;
     document.getElementById("adminPrice").value = "";
 
     document.getElementById("adminOriginalPrice").value = "";
+
+    if (document.getElementById("adminCommissionValue")) document.getElementById("adminCommissionValue").value = "";
+    if (document.getElementById("adminDeliveryFeeOverride")) document.getElementById("adminDeliveryFeeOverride").value = "";
 
     if (document.getElementById("adminStock")) document.getElementById("adminStock").value = "";
 
@@ -12660,6 +12697,9 @@ window.loadManualData = loadManualData;
     document.getElementById("adminPrice").value = "";
 
     document.getElementById("adminOriginalPrice").value = "";
+
+    if (document.getElementById("adminCommissionValue")) document.getElementById("adminCommissionValue").value = "";
+    if (document.getElementById("adminDeliveryFeeOverride")) document.getElementById("adminDeliveryFeeOverride").value = "";
 
     if (document.getElementById("adminStock")) document.getElementById("adminStock").value = "";
 
@@ -18014,6 +18054,14 @@ window.renderSMSLog = renderSMSLog;
       // through the pricing formula again, inflating the price a
       // little more with every single save.
       sellerPrice: p.seller_price != null ? Number(p.seller_price) : null,
+      // Same reasoning as sellerPrice above - only ever present on
+      // admin-facing responses, exposed here so the admin edit form can
+      // pre-fill a product's existing commission/delivery override
+      // instead of silently resetting it back to "Default" every time
+      // the product is edited and re-saved.
+      commissionType: p.commission_type || 'default',
+      commissionValue: p.commission_value != null ? Number(p.commission_value) : null,
+      deliveryFeeOverride: p.delivery_fee_override != null ? Number(p.delivery_fee_override) : null,
       rating: Number(p.rating) || 0,
       numReviews: p.num_reviews || 0,
       sellerEmail: p.seller_email || null,
