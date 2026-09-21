@@ -22333,6 +22333,16 @@ window._varAddType = function(which) {
 
 window._varRemoveType = function(which, name) {
   const state = window._varEditor[which];
+  // Removing an option type immediately clears its value from every
+  // existing row (see below) - on a product that already has saved
+  // variants, that's real data loss the instant this runs, not just a
+  // label change. Confirm first so a mid-rename click can't silently
+  // wipe values the way it did before this check existed.
+  const hasExistingRows = state.rows.some(r => r.id);
+  if (hasExistingRows) {
+    const ok = confirm(`Removing "${name}" will immediately clear this value from every existing variant row. You'll need to type a new value into EVERY row before saving, or the ones you don't get to will be left blank. Continue?`);
+    if (!ok) return;
+  }
   state.types = state.types.filter(t => t.name !== name);
   state.rows.forEach(r => { delete r.values[name]; });
   window._varRender(which);
@@ -22521,8 +22531,9 @@ window._varRender = function(which) {
       </div>
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(90px, 1fr)); gap:8px;">
         <div>
-          <label style="font-size:10px; color:var(--gray); display:block;">Selling Price (KES) *</label>
-          <input type="number" min="0" value="${row.price}" placeholder="e.g. 3000" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._varUpdateRowField('${which}', ${i}, 'price', this.value)">
+          <label style="font-size:10px; color:var(--gray); display:block;">Selling Price (KES) (optional)</label>
+          <input type="number" min="0" value="${row.price}" placeholder="leave blank to use the product's own price" style="width:100%; background:var(--surface-3); border:1px solid var(--border-strong); color:var(--white); border-radius:6px; padding:6px 8px; font-size:12px;" oninput="window._varUpdateRowField('${which}', ${i}, 'price', this.value)">
+          <div style="font-size:9.5px; color:var(--gray); margin-top:3px; line-height:1.3;">Only fill this in if THIS colour/size should cost differently. Whatever you type here gets commission and delivery added on top, same as the product's own price above - it is not the final price the customer pays.</div>
         </div>
         <div>
           <label style="font-size:10px; color:var(--gray); display:block;">Original Price (optional)</label>
