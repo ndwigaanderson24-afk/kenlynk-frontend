@@ -2172,6 +2172,22 @@
 
     <section class="page active" id="page-shop">
 
+      <!-- ── Trust Strip - why buyers can trust KenLynk, at a glance ── -->
+      <div id="trustStrip" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:14px; padding-bottom:2px; scrollbar-width:none; -ms-overflow-style:none;">
+        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0; background:var(--surface-2); border:1px solid var(--border-strong); border-radius:999px; padding:7px 14px; font-size:11.5px; font-weight:600; color:var(--white); white-space:nowrap;">
+          <span style="font-size:14px;">💳</span> Secure M-Pesa Pay
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0; background:var(--surface-2); border:1px solid var(--border-strong); border-radius:999px; padding:7px 14px; font-size:11.5px; font-weight:600; color:var(--white); white-space:nowrap;">
+          <span style="font-size:14px;">🔒</span> OTP-Verified Delivery
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0; background:var(--surface-2); border:1px solid var(--border-strong); border-radius:999px; padding:7px 14px; font-size:11.5px; font-weight:600; color:var(--white); white-space:nowrap;">
+          <span style="font-size:14px;">✅</span> Admin-Confirmed Orders
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0; background:var(--surface-2); border:1px solid var(--border-strong); border-radius:999px; padding:7px 14px; font-size:11.5px; font-weight:600; color:var(--white); white-space:nowrap; cursor:pointer;" onclick="window._openHowKenLynkWorks && window._openHowKenLynkWorks()">
+          <span style="font-size:14px;">ℹ️</span> How KenLynk Works
+        </div>
+      </div>
+
       <!-- ── Smart Search Bar ───────────────────────────────── -->
       <div id="shopSearchWrap" style="position:relative; margin-bottom:10px;">
         <div class="shop-search-box">
@@ -3161,7 +3177,7 @@
               <input type="number" id="sellerPrice" min="1" placeholder="0" oninput="window._updateSellerPricePreview()">
               <div id="sellerPricePreview" style="font-size:12px; color:var(--gray); margin-top:4px;"></div>
             </div>
-            <div class="field"><label>Original Price (optional)</label><input type="number" id="sellerOriginalPrice" min="0" placeholder="For showing a discount"></div>
+            <div class="field"><label>Original Price (optional)</label><input type="number" id="sellerOriginalPrice" min="0" placeholder="For showing a discount" oninput="window._updateSellerPricePreview()"></div>
             <div class="field" style="display:flex; align-items:center; gap:8px;">
               <input type="checkbox" id="sellerFragile" style="width:auto;" onchange="window._updateSellerPricePreview()">
               <label style="margin:0;">⚠️ Fragile item (glass, electronics, etc)</label>
@@ -3743,7 +3759,7 @@
 
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
 
-          <div class="field"><label>Original Price * <span style="color:#e74c3c;font-size:11px;">(must be filled)</span></label><input type="number" id="adminOriginalPrice" placeholder="1000" required min="1" style="border-color:var(--border-strong);"></div>
+          <div class="field"><label>Original Price * <span style="color:#e74c3c;font-size:11px;">(must be filled)</span></label><input type="number" id="adminOriginalPrice" placeholder="1000" required min="1" style="border-color:var(--border-strong);" oninput="window._updateAdminPricePreview()"></div>
 
           <div class="field"><label>Category *</label>
             <div id="adminCategoryPicker" style="display:flex; flex-direction:column; gap:8px;">
@@ -4295,6 +4311,56 @@
     <button onclick="closeDailyThemePoster()" style="position:absolute; top:-14px; right:-14px; background:var(--gold); border:none; color:#111; width:34px; height:34px; border-radius:50%; font-size:18px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.4); z-index:2;">✕</button>
     <img id="dailyThemePosterImg" src="" alt="Today's theme" onclick="closeDailyThemePoster(); goToPage('shop');" style="width:100%; display:block; border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,0.5); cursor:pointer;">
     <button onclick="closeDailyThemePoster(); goToPage('shop');" style="width:100%; margin-top:12px; background:var(--gold); color:#111; border:none; border-radius:12px; padding:13px; font-weight:800; font-size:15px; cursor:pointer;">🛍️ Shop Today's Picks</button>
+  </div>
+</div>
+
+<div id="howKenLynkWorksOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:3000; align-items:center; justify-content:center; padding:16px;" onclick="if(event.target===this) closeHowKenLynkWorks();">
+  <div style="background:var(--surface); border:1px solid var(--border-strong); border-radius:18px; max-width:420px; width:100%; max-height:85vh; overflow-y:auto; padding:24px; position:relative;">
+    <button onclick="closeHowKenLynkWorks()" style="position:absolute; top:14px; right:14px; background:none; border:none; color:var(--gray); font-size:22px; cursor:pointer; line-height:1;">✕</button>
+    <h3 style="font-family:var(--font-display); color:var(--gold); margin:0 0 4px;">How KenLynk Works</h3>
+    <p style="color:var(--gray); font-size:13px; margin:0 0 20px;">Why you can trust what you order actually arrives.</p>
+
+    <div style="display:flex; gap:12px; margin-bottom:18px;">
+      <div style="font-size:26px; flex-shrink:0;">💳</div>
+      <div>
+        <div style="font-weight:700; color:var(--white); font-size:14px;">Pay securely with M-Pesa</div>
+        <div style="color:var(--gray); font-size:12.5px; margin-top:2px;">Checkout the way you already trust - no new payment app to learn.</div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:12px; margin-bottom:18px;">
+      <div style="font-size:26px; flex-shrink:0;">📦</div>
+      <div>
+        <div style="font-weight:700; color:var(--white); font-size:14px;">Track every step</div>
+        <div style="color:var(--gray); font-size:12.5px; margin-top:2px;">See your order move from Processing to Out for Delivery in real time, not just "shipped" and silence.</div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:12px; margin-bottom:18px;">
+      <div style="font-size:26px; flex-shrink:0;">🔒</div>
+      <div>
+        <div style="font-weight:700; color:var(--white); font-size:14px;">OTP-verified delivery</div>
+        <div style="color:var(--gray); font-size:12.5px; margin-top:2px;">Your rider can't mark an order delivered without the code sent straight to your phone. No code, no false "delivered."</div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:12px; margin-bottom:18px;">
+      <div style="font-size:26px; flex-shrink:0;">✅</div>
+      <div>
+        <div style="font-weight:700; color:var(--white); font-size:14px;">A human checks before it's final</div>
+        <div style="color:var(--gray); font-size:12.5px; margin-top:2px;">An order isn't closed out just because a rider tapped a button - our team reviews it first.</div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:12px; margin-bottom:22px;">
+      <div style="font-size:26px; flex-shrink:0;">↩️</div>
+      <div>
+        <div style="font-weight:700; color:var(--white); font-size:14px;">Real returns, real refunds</div>
+        <div style="color:var(--gray); font-size:12.5px; margin-top:2px;">Something wrong with your order? Request a return right from your order history.</div>
+      </div>
+    </div>
+
+    <button onclick="closeHowKenLynkWorks()" style="width:100%; background:var(--gold); color:#111; border:none; border-radius:12px; padding:13px; font-weight:800; font-size:14px; cursor:pointer;">Got it</button>
   </div>
 </div>
 
@@ -7358,7 +7424,7 @@ function toWhatsappNumber(phone) {
 
   let secondsLeft = 6;
 
-  function finishLaunch(){ launcher.classList.add("hide"); appEl.classList.add("show"); setTimeout(()=> launcher.style.display = "none", 650); setTimeout(()=> showDailyThemePoster(), 900); }
+  function finishLaunch(){ launcher.classList.add("hide"); appEl.classList.add("show"); setTimeout(()=> launcher.style.display = "none", 650); setTimeout(()=> showDailyThemePoster(), 900); setTimeout(()=> showHowKenLynkWorksOnce(), 2600); }
 
   var launcherTimer = setInterval(()=> { secondsLeft--; if (secondsLeft <= 0) { clearInterval(launcherTimer); finishLaunch(); } else { if (countNum) countNum.textContent = secondsLeft; } }, 1000);
 
@@ -7417,6 +7483,34 @@ function toWhatsappNumber(phone) {
     const overlay = document.getElementById('dailyThemePosterOverlay');
     if (overlay) overlay.style.display = 'none';
   };
+
+  // ── "How KenLynk Works" trust explainer ─────────────────────────────
+  // Reachable any time via the trust-strip badge on the shop page, and
+  // shown automatically exactly ONCE EVER (not daily, unlike the theme
+  // poster) for a brand-new visitor - a returning shopper who's already
+  // seen it is never interrupted by it again.
+  window._openHowKenLynkWorks = function() {
+    const overlay = document.getElementById('howKenLynkWorksOverlay');
+    if (overlay) overlay.style.display = 'flex';
+    try { localStorage.setItem('kenlynk_trust_intro_seen', '1'); } catch (e) { /* non-fatal */ }
+  };
+  window.closeHowKenLynkWorks = function() {
+    const overlay = document.getElementById('howKenLynkWorksOverlay');
+    if (overlay) overlay.style.display = 'none';
+  };
+  function showHowKenLynkWorksOnce() {
+    try {
+      if (localStorage.getItem('kenlynk_trust_intro_seen')) return;
+    } catch (e) { /* localStorage unavailable - just proceed, no harm in showing it */ }
+    // Don't stack on top of the daily theme poster if it's still open -
+    // wait for it to close first rather than showing both at once.
+    const dailyPoster = document.getElementById('dailyThemePosterOverlay');
+    if (dailyPoster && dailyPoster.style.display === 'flex') {
+      setTimeout(showHowKenLynkWorksOnce, 1500);
+      return;
+    }
+    window._openHowKenLynkWorks();
+  }
 
 
 
@@ -15045,6 +15139,12 @@ function createAdminSellerManagement() {
         <button onclick="window._runClearVariantPricing()" id="variantPricingMigrateBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Clear Variant Pricing Now</button>
         <div id="variantPricingMigrateResult" style="margin-top:10px; font-size:12px;"></div>
       </div>
+      <div id="adminMissingImagesBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px; margin-bottom:12px;">
+        <div style="font-weight:700; font-size:13px; color:var(--white); margin-bottom:4px;">📷 Variants Missing Photos</div>
+        <p style="color:var(--gray); font-size:12px; margin-bottom:10px;">Any colour/size below has no photo of its own, so buyers see the same generic product photo no matter which one they tap - usually from before per-variant photos existed. Open the checklist, then upload a photo for each through that product's variant editor.</p>
+        <button onclick="window._loadMissingImagesChecklist()" id="missingImagesBtn" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;">Check Now</button>
+        <div id="missingImagesResult" style="margin-top:10px; font-size:12px;"></div>
+      </div>
       <div id="adminMigrateImagesBox" style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:10px; padding:14px;">
         <div style="font-weight:700; font-size:13px; color:var(--white); margin-bottom:4px;">🔄 Migrate Images to Cloudinary</div>
         <p style="color:var(--gray); font-size:12px; margin-bottom:10px;">Older products still have their photo stored either as raw data in the database or on the server's own disk, both of which count against our hosting bandwidth every time someone views them. This one-time action moves every one of those photos over to Cloudinary and updates the product to point at the new address instead. Nothing changes visually for buyers. Safe to run more than once - only touches photos that still need it.</p>
@@ -15108,6 +15208,47 @@ function createAdminSellerManagement() {
       showToast('⚠️ ' + err.message, 'error');
     }
     if (btn) { btn.disabled = false; btn.textContent = 'Clear Variant Pricing Now'; }
+  };
+
+  window._loadMissingImagesChecklist = async function() {
+    const btn = document.getElementById('missingImagesBtn');
+    const resultEl = document.getElementById('missingImagesResult');
+    if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
+    if (resultEl) resultEl.innerHTML = '';
+
+    try {
+      const res = await adminApiCall('/admin/variants/missing-images');
+      const variants = res.data.variants || [];
+      if (!variants.length) {
+        resultEl.innerHTML = `<span style="color:var(--green-light);">✅ Every active variant already has its own photo.</span>`;
+      } else {
+        // Group by product so it reads as a per-product checklist rather
+        // than one long flat list of unrelated colours.
+        const byProduct = {};
+        variants.forEach(v => {
+          if (!byProduct[v.product_id]) byProduct[v.product_id] = { name: v.product_name, seller: v.seller_business_name || v.seller_email || 'Platform', items: [] };
+          byProduct[v.product_id].items.push(v);
+        });
+        const groupsHtml = Object.values(byProduct).map(group => `
+          <div style="background:var(--surface-3); border-radius:8px; padding:10px; margin-bottom:8px;">
+            <div style="font-weight:700; font-size:12.5px; color:var(--white);">${escapeHtml(group.name)}</div>
+            <div style="font-size:11px; color:var(--gray); margin-bottom:6px;">Seller: ${escapeHtml(group.seller)}</div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+              ${group.items.map(v => `<span style="background:var(--surface-2); border:1px solid var(--border-strong); border-radius:999px; padding:3px 10px; font-size:10.5px; color:var(--gray);">${escapeHtml(v.label || v.sku || ('Variant #' + v.variant_id))}</span>`).join('')}
+            </div>
+          </div>
+        `).join('');
+        resultEl.innerHTML = `
+          <div style="color:var(--gold); font-weight:600; margin-bottom:8px;">⚠️ ${variants.length} variant${variants.length===1?'':'s'} across ${Object.keys(byProduct).length} product${Object.keys(byProduct).length===1?'':'s'} still need${Object.keys(byProduct).length===1?'s':''} a photo:</div>
+          <div style="max-height:320px; overflow-y:auto;">${groupsHtml}</div>
+        `;
+      }
+      showToast(variants.length ? `⚠️ ${variants.length} variant(s) missing photos.` : '✅ All variants have photos.', variants.length ? 'error' : 'success');
+    } catch (err) {
+      if (resultEl) resultEl.innerHTML = `<span style="color:#e74c3c;">⚠️ ${escapeHtml(err.message)}</span>`;
+      showToast('⚠️ ' + err.message, 'error');
+    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Check Now'; }
   };
 
   window._runMigrateImagesToCloudinary = async function() {
