@@ -2188,6 +2188,26 @@
         </div>
       </div>
 
+      <!-- ── Shop by Budget ─────────────────────────────────── -->
+      <div style="background:linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%); border:1px solid var(--gold); border-radius:14px; padding:14px 16px; margin-bottom:14px;">
+        <div style="font-weight:800; font-size:14.5px; color:var(--white); margin-bottom:2px;">💰 What can KES <span style="color:var(--gold);">___</span> get me?</div>
+        <div style="font-size:11.5px; color:var(--gray); margin-bottom:10px;">Tell us your budget - we'll show you what fits.</div>
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <input type="number" id="budgetInput" placeholder="e.g. 20000" min="1" onkeydown="if(event.key==='Enter') window._submitBudgetInput()" style="flex:1; background:var(--surface-1); border:1px solid var(--border-strong); color:var(--white); border-radius:8px; padding:9px 12px; font-size:13px;">
+          <button onclick="window._submitBudgetInput()" style="background:var(--gold); color:#111; border:none; border-radius:8px; padding:9px 16px; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap;">Find It</button>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button onclick="window._applyBudgetFilter(5000)" style="background:var(--surface-1); border:1px solid var(--border-strong); color:var(--white); border-radius:999px; padding:5px 12px; font-size:11px; cursor:pointer;">KES 5,000</button>
+          <button onclick="window._applyBudgetFilter(10000)" style="background:var(--surface-1); border:1px solid var(--border-strong); color:var(--white); border-radius:999px; padding:5px 12px; font-size:11px; cursor:pointer;">KES 10,000</button>
+          <button onclick="window._applyBudgetFilter(20000)" style="background:var(--surface-1); border:1px solid var(--border-strong); color:var(--white); border-radius:999px; padding:5px 12px; font-size:11px; cursor:pointer;">KES 20,000</button>
+          <button onclick="window._applyBudgetFilter(50000)" style="background:var(--surface-1); border:1px solid var(--border-strong); color:var(--white); border-radius:999px; padding:5px 12px; font-size:11px; cursor:pointer;">KES 50,000</button>
+        </div>
+        <div id="activeBudgetChip" style="display:none; align-items:center; gap:8px; margin-top:10px; background:rgba(255,215,0,0.12); border:1px solid var(--gold); border-radius:8px; padding:7px 10px;">
+          <span id="activeBudgetChipLabel" style="font-size:11.5px; color:var(--gold); font-weight:600; flex:1;"></span>
+          <button onclick="window._clearBudgetFilter()" style="background:none; border:none; color:var(--gray); font-size:16px; cursor:pointer; line-height:1;">✕</button>
+        </div>
+      </div>
+
       <!-- ── Smart Search Bar ───────────────────────────────── -->
       <div id="shopSearchWrap" style="position:relative; margin-bottom:10px;">
         <div class="shop-search-box">
@@ -8206,6 +8226,7 @@ if(page === "admin") {
   let _filterSort     = '';
   let _filterDiscount = false;
   let _filterInStock  = false;
+  let _filterBudgetMax = null; // set by the "Shop by Budget" entry point - a plain KES ceiling, independent of the preset filterPrice dropdown
   let _collectionMode = null; // 'hotdeals' | 'new' | 'under500' | 'toprated' | 'local' | null
 
   window._filterCollection = function(mode) {
@@ -8220,6 +8241,36 @@ if(page === "admin") {
     _filterPrice  = document.getElementById('filterPrice')?.value || '';
     _filterRating = document.getElementById('filterRating')?.value || '';
     _filterSort   = document.getElementById('filterSort')?.value || '';
+    renderProducts();
+  };
+
+  // ── Shop by Budget ("What can KES X get me?") ──────────────────────
+  window._applyBudgetFilter = function(amount) {
+    const num = Number(amount);
+    if (!num || num <= 0) { showToast('⚠️ Enter a valid amount first.', 'error'); return; }
+    _filterBudgetMax = num;
+    const input = document.getElementById('budgetInput');
+    if (input) input.value = num;
+    const chip = document.getElementById('activeBudgetChip');
+    const chipLabel = document.getElementById('activeBudgetChipLabel');
+    if (chip && chipLabel) {
+      chipLabel.textContent = `Showing what KES ${num.toLocaleString()} can get you`;
+      chip.style.display = 'flex';
+    }
+    renderProducts();
+    const grid = document.getElementById('productsGrid') || document.getElementById('productGrid');
+    if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  window._submitBudgetInput = function() {
+    const val = document.getElementById('budgetInput')?.value;
+    window._applyBudgetFilter(val);
+  };
+
+  window._clearBudgetFilter = function() {
+    _filterBudgetMax = null;
+    const input = document.getElementById('budgetInput'); if (input) input.value = '';
+    const chip = document.getElementById('activeBudgetChip'); if (chip) chip.style.display = 'none';
     renderProducts();
   };
 
@@ -8242,6 +8293,9 @@ if(page === "admin") {
   window._clearAllFilters = function() {
     _filterPrice = _filterRating = _filterSort = '';
     _filterDiscount = _filterInStock = false;
+    _filterBudgetMax = null;
+    const budgetInput = document.getElementById('budgetInput'); if (budgetInput) budgetInput.value = '';
+    const budgetChip = document.getElementById('activeBudgetChip'); if (budgetChip) budgetChip.style.display = 'none';
     const fp = document.getElementById('filterPrice'); if (fp) fp.value = '';
     const fr = document.getElementById('filterRating'); if (fr) fr.value = '';
     const fs = document.getElementById('filterSort'); if (fs) fs.value = '';
@@ -8273,6 +8327,7 @@ if(page === "admin") {
     if (_filterPrice === 'under1000') out = out.filter(p => p.price < 1000);
     if (_filterPrice === 'under5000') out = out.filter(p => p.price < 5000);
     if (_filterPrice === 'under10000') out = out.filter(p => p.price < 10000);
+    if (_filterBudgetMax) out = out.filter(p => p.price <= _filterBudgetMax);
 
     // Rating filter
     if (_filterRating) out = out.filter(p => (p.rating||0) >= Number(_filterRating));
