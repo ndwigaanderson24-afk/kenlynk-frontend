@@ -9543,8 +9543,9 @@ document.getElementById("payBtn").addEventListener("click", async ()=>{
 
       const owner = getCartOwnerParams();
 
-      // Step 1: charge the real amount via IntaSend - NO order is created yet.
-      const initResult = await window.apiCall('/intasend/checkout', {
+      // Step 1: charge the real amount via direct M-Pesa (Daraja) - NO
+      // order is created yet.
+      const initResult = await window.apiCall('/payments/mpesa/checkout', {
         method: 'POST',
         body: JSON.stringify({
           session_id: owner.asBody.session_id,
@@ -9564,12 +9565,13 @@ document.getElementById("payBtn").addEventListener("click", async ()=>{
         })
       });
 
-      const apiRef = initResult.data.api_ref;
+      const checkoutRef = initResult.data.checkout_request_id;
       payBtn.textContent = '📱 Check your phone — enter M-Pesa PIN...';
       showToast(`📲 STK push sent to ${phone} for KES ${initResult.data.amount.toLocaleString()}. Enter your M-Pesa PIN to complete payment.`, "success");
 
-      // Step 2: poll until IntaSend confirms the payment (webhook already
-      // created the real order server-side by the time this sees COMPLETE).
+      // Step 2: poll until M-Pesa confirms the payment (the callback
+      // already created the real order server-side by the time this
+      // sees "completed").
       const maxAttempts = 20;
       let attempt = 0;
       let finalStatus = null;
@@ -9578,10 +9580,10 @@ document.getElementById("payBtn").addEventListener("click", async ()=>{
         await new Promise(r => setTimeout(r, 4000));
         attempt++;
         try {
-          statusResult = await window.apiCall(`/intasend/status/${apiRef}`);
+          statusResult = await window.apiCall(`/payments/mpesa/status/${checkoutRef}`);
           const s = statusResult.data.status;
-          if (s === 'COMPLETE') { finalStatus = 'completed'; break; }
-          if (s === 'FAILED')   { finalStatus = 'failed';    break; }
+          if (s === 'completed') { finalStatus = 'completed'; break; }
+          if (s === 'failed')    { finalStatus = 'failed';    break; }
           payBtn.textContent = `📱 Waiting for PIN… (${attempt * 4}s)`;
         } catch (pollErr) {
           console.warn('Poll attempt failed:', pollErr.message);
@@ -9597,7 +9599,7 @@ document.getElementById("payBtn").addEventListener("click", async ()=>{
         return;
       }
       if (statusResult?.data?.result?.error) {
-        showToast('⚠️ Payment succeeded but there was a problem creating your order: ' + statusResult.data.result.error + '. Please contact support with this reference: ' + apiRef, 'error');
+        showToast('⚠️ Payment succeeded but there was a problem creating your order: ' + statusResult.data.result.error + '. Please contact support with this reference: ' + checkoutRef, 'error');
         return;
       }
 
