@@ -11708,6 +11708,8 @@ async function renderAdminProducts() {
 
     if (!list) return;
 
+    if (!adminToken) return; // not signed in as admin - skip the admin-only request
+
     try {
       const result = await adminApiCall('/products/admin/all');
       adminProductsMirror = (result.data.products || []).map(mapApiProduct);
@@ -14835,6 +14837,8 @@ function resetSellerApplicationById(applicationId) {
 
   async function renderAdminSellerApplications() {
 
+    if (!adminToken) return; // not signed in as admin - skip the admin-only request
+
     let approved = [];
     try {
       const result = await adminApiCall('/admin/sellers?status=approved');
@@ -15794,6 +15798,8 @@ function createAdminSellerManagement() {
     const container = document.getElementById('adminSellerApps');
 
     if (!container) return;
+
+    if (!adminToken) return; // not signed in as admin - skip the admin-only request
 
     let applications = [];
     try {
@@ -18301,6 +18307,10 @@ function renderSalesChart() {
 
   if (!canvas) return;
 
+  // Chart.js comes from a CDN; if it is blocked or offline, skip the chart
+  // instead of throwing "Chart is not defined".
+  if (typeof Chart === 'undefined') { console.warn('Chart.js not loaded - sales chart skipped'); return; }
+
   
 
   // Prepare data for the chart
@@ -19858,6 +19868,7 @@ window._checkAdminNewOrdersBadge = _checkAdminNewOrdersBadge;
 async function renderAdminOrdersList(loadMore) {
   const container = document.getElementById('adminOrdersList');
   if (!container) return;
+  if (!adminToken) return; // not signed in as admin - skip the admin-only request
 
   // Viewing the orders list counts as "seen" - clear the badge and
   // reset the "last checked" marker for next time.
