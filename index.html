@@ -7486,39 +7486,31 @@ function toWhatsappNumber(phone) {
 
 
 
-
 document.addEventListener("DOMContentLoaded", function() {
     const launcher = document.getElementById("launcher");
     const app = document.getElementById("app");
     const countNum = document.getElementById("countNum");
     const skipBtn = document.getElementById("skipBtn");
 
-    // Set your countdown here (e.g., 4 seconds is usually a sweet spot)
-    let secondsLeft = 4; 
+    let secondsLeft = 6; // Start at 6
+    if (countNum) countNum.textContent = secondsLeft; // Display 6 immediately
 
     function finishLaunch() {
-        // Add classes to trigger CSS fade out
-        if (launcher) launcher.classList.add("hide");
-        if (app) app.classList.add("show");
-        
-        // Hide the launcher completely after the fade animation finishes (0.5s)
-        setTimeout(() => {
-            if (launcher) launcher.style.display = "none";
-        }, 500);
+        if (launcher) launcher.style.display = "none";
+        if (app) app.style.display = "block";
     }
 
-    // The countdown timer
     let launcherTimer = setInterval(() => {
-        secondsLeft--;
-        if (countNum) countNum.textContent = secondsLeft;
-
-        if (secondsLeft <= 0) {
-            clearInterval(launcherTimer);
-            finishLaunch();
+        secondsLeft--; // Subtract 1
+        
+        if (secondsLeft > 0) {
+            if (countNum) countNum.textContent = secondsLeft; // Update screen if > 0
+        } else {
+            clearInterval(launcherTimer); // Stop timer
+            finishLaunch(); // Open website
         }
-    }, 1000);
+    }, 1000); // Wait 1000ms (1 second) between each number
 
-    // Make sure the Skip button works
     if (skipBtn) {
         skipBtn.addEventListener("click", () => {
             clearInterval(launcherTimer);
@@ -7526,6 +7518,8 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 });
+
+
 
   // ── Daily category theme poster ─────────────────────────────────────
   // Matches the weekly content calendar: each day of the week has its
