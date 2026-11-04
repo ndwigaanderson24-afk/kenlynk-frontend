@@ -7494,9 +7494,14 @@ function toWhatsappNumber(phone) {
 
   let secondsLeft = 6;
 
-  function finishLaunch(){ launcher.classList.add("hide"); appEl.classList.add("show"); setTimeout(()=> launcher.style.display = "none", 650); setTimeout(()=> showDailyThemePoster(), 900); setTimeout(()=> showHowKenLynkWorksOnce(), 2600); }
+  function finishLaunch(){ launcher.classList.add("hide"); appEl.classList.add("show"); setTimeout(()=> launcher.style.display = "none", 650);
+   setTimeout(()=> showDailyThemePoster(), 900); setTimeout(()=> showHowKenLynkWorksOnce(), 2600); }
 
-  var launcherTimer = setInterval(()=> { secondsLeft--; if (secondsLeft <= 0) { clearInterval(launcherTimer); finishLaunch(); } else { if (countNum) countNum.textContent = secondsLeft; } }, 1000);
+  var launcherTimer = setInterval(()=> { secondsLeft--; if (secondsLeft <= 0) { clearInterval(launcherTimer); finishLaunch(); } else { if (countNum) 
+    countNum.textContent = secondsLeft; } }, 1000);
+    setTimeout(finishLaunch, 1000); // Force the launcher to hide after 1 second
+
+
 
   document.getElementById("skipBtn").addEventListener("click", ()=>{ clearInterval(launcherTimer); finishLaunch(); });
 
