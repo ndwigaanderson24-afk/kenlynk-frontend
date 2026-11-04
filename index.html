@@ -7484,8 +7484,6 @@ function toWhatsappNumber(phone) {
   return digits;
 }
 
-
-
 document.addEventListener("DOMContentLoaded", function() {
     const launcher = document.getElementById("launcher");
     const app = document.getElementById("app");
@@ -7497,7 +7495,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function finishLaunch() {
         if (launcher) launcher.style.display = "none";
-        if (app) app.style.display = "block";
+        if (app) {
+    app.style.display = "block";
+    app.style.opacity = "1";     // Force it to be visible
+    app.style.visibility = "visible"; // Force it to be seen
+}
     }
 
     let launcherTimer = setInterval(() => {
