@@ -7486,24 +7486,46 @@ function toWhatsappNumber(phone) {
 
 
 
-  const launcher = document.getElementById("launcher");
 
-  const appEl = document.getElementById("app");
+document.addEventListener("DOMContentLoaded", function() {
+    const launcher = document.getElementById("launcher");
+    const app = document.getElementById("app");
+    const countNum = document.getElementById("countNum");
+    const skipBtn = document.getElementById("skipBtn");
 
-  const countNum = document.getElementById("countNum");
+    // Set your countdown here (e.g., 4 seconds is usually a sweet spot)
+    let secondsLeft = 4; 
 
-  let secondsLeft = 6;
+    function finishLaunch() {
+        // Add classes to trigger CSS fade out
+        if (launcher) launcher.classList.add("hide");
+        if (app) app.classList.add("show");
+        
+        // Hide the launcher completely after the fade animation finishes (0.5s)
+        setTimeout(() => {
+            if (launcher) launcher.style.display = "none";
+        }, 500);
+    }
 
-  function finishLaunch(){ launcher.classList.add("hide"); appEl.classList.add("show"); setTimeout(()=> launcher.style.display = "none", 650);
-   setTimeout(()=> showDailyThemePoster(), 900); setTimeout(()=> showHowKenLynkWorksOnce(), 2600); }
+    // The countdown timer
+    let launcherTimer = setInterval(() => {
+        secondsLeft--;
+        if (countNum) countNum.textContent = secondsLeft;
 
-  var launcherTimer = setInterval(()=> { secondsLeft--; if (secondsLeft <= 0) { clearInterval(launcherTimer); finishLaunch(); } else { if (countNum) 
-    countNum.textContent = secondsLeft; } }, 1000);
-    setTimeout(finishLaunch, 1000); // Force the launcher to hide after 1 second
+        if (secondsLeft <= 0) {
+            clearInterval(launcherTimer);
+            finishLaunch();
+        }
+    }, 1000);
 
-
-
-  document.getElementById("skipBtn").addEventListener("click", ()=>{ clearInterval(launcherTimer); finishLaunch(); });
+    // Make sure the Skip button works
+    if (skipBtn) {
+        skipBtn.addEventListener("click", () => {
+            clearInterval(launcherTimer);
+            finishLaunch();
+        });
+    }
+});
 
   // ── Daily category theme poster ─────────────────────────────────────
   // Matches the weekly content calendar: each day of the week has its
